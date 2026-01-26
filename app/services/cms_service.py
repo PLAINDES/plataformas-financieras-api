@@ -1,0 +1,358 @@
+
+
+# app/services/cms_service.py
+from sqlalchemy.orm import Session
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+from ..models.user import User
+from ..models.cms import Page, Section, Menu, MenuItem, Media, ContactMessage
+from ..schemas.cms import (
+    PageCreate, PageUpdate, PageResponse, PageWithSections,
+    SectionCreate, SectionUpdate, SectionResponse,
+    MenuItemCreate, MenuItemUpdate, MenuItemResponse,
+    MediaCreate, MediaResponse,
+    ContactMessageCreate, ContactMessageUpdate, ContactMessageResponse,
+    LandingDataResponse, AdminDashboardStats,
+    MenuWithItems
+)
+from ..repositories.cms_repository import CMSRepository
+
+
+class CMSService:
+    """Servicio para manejar la lógica de negocio del CMS"""
+    
+    def __init__(self, db: Session):
+        self.db = db
+        self.repository = CMSRepository(db)
+
+
+    
+    # ==================== LANDING PAGE ====================
+    
+    def get_landing_page(self, slug: str = None) -> LandingDataResponse:
+        """
+        Obtiene todos los datos para renderizar la landing page
+        
+        Args:
+            slug: Slug de la página (si no se pasa, obtiene la homepage)
+            
+        Returns:
+            LandingDataResponse con toda la data necesaria
+        """
+        # Obtener página
+        if slug:
+            page = self.repository.get_page_by_slug(slug)
+        else:
+            page = self.repository.get_homepage()
+
+        site_settings = self.repository.get_site_settings("main")
+        site = None
+
+        if site_settings:
+            logo = self.repository.get_media_by_id(site_settings.header_logo_id)
+            favicon = self.repository.get_media_by_id(site_settings.favicon_id)
+
+            site = {
+                "site_key": site_settings.site_key,
+                "name": site_settings.meta.get("site_name") if site_settings.meta else None,
+                "branding": {
+                    "logo_url": logo.url if logo else None,
+                    "logo_alt": logo.alt_text if logo else None,
+                    "favicon_url": favicon.url if favicon else None
+                },
+                "theme": {
+                    "primary_color": site_settings.meta.get("primary_color"),
+                    "theme": site_settings.meta.get("theme")
+                },
+                "meta": site_settings.meta
+            }
+
+        
+        if not page:
+            raise ValueError("Page not found")
+        
+        # Obtener todos los menús
+        all_menus = self.repository.get_all_menus()
+        menus_dict = {}
+        
+        for menu in all_menus:
+            visible_items = [
+                item for item in menu.items 
+                if item.is_visible
+            ]
+            menus_dict[menu.name] = MenuWithItems(
+                id=menu.id,
+                name=menu.name,
+                label=menu.label,
+                created_at=menu.created_at,
+                updated_at=menu.updated_at,
+                items=[self._menuitem_to_response(item) for item in visible_items]
+            )
+        
+        # SEO data
+        seo = {
+            "title": page.seo_title or page.title,
+            "description": page.seo_description,
+            "image": page.seo_image
+        }
+        
+        return LandingDataResponse(
+            page=self._page_to_response_with_sections(page),
+            menus=menus_dict,
+            seo=seo,
+            site=site
+        )
+    
+    # ==================== PAGES ====================
+    
+    def get_page(self, page_id: int) -> PageWithSections:
+        """Obtiene una página con sus secciones"""
+        page = self.repository.get_page_by_id(page_id)
+        if not page:
+            raise ValueError("Page not found")
+        return self._page_to_response_with_sections(page)
+    
+    def get_all_pages(self, status: Optional[str] = None) -> List[PageResponse]:
+        """Obtiene todas las páginas"""
+        pages = self.repository.get_all_pages(status)
+        return [self._page_to_response(page) for page in pages]
+    
+    def create_page(self, page_data: PageCreate) -> PageResponse:
+        """Crea una nueva página"""
+        page = self.repository.create_page(page_data.model_dump())
+        self.db.commit()
+        return self._page_to_response(page)
+    
+    def update_page(self, page_id: int, page_data: PageUpdate) -> PageResponse:
+        """Actualiza una página"""
+        update_dict = page_data.model_dump(exclude_unset=True)
+        page = self.repository.update_page(page_id, update_dict)
+        
+        if not page:
+            raise ValueError("Page not found")
+        
+        self.db.commit()
+        return self._page_to_response(page)
+    
+    def delete_page(self, page_id: int) -> bool:
+        """Elimina una página (soft delete)"""
+        result = self.repository.delete_page(page_id)
+        if result:
+            self.db.commit()
+        return result
+    
+    # ==================== SECTIONS ====================
+    
+    def create_section(self, section_data: SectionCreate) -> SectionResponse:
+        """Crea una nueva sección"""
+        section = self.repository.create_section(section_data.model_dump())
+        self.db.commit()
+        return self._section_to_response(section)
+    
+    def update_section(self, section_id: int, section_data: SectionUpdate) -> SectionResponse:
+        """Actualiza una sección"""
+        update_dict = section_data.model_dump(exclude_unset=True)
+        section = self.repository.update_section(section_id, update_dict)
+        
+        if not section:
+            raise ValueError("Section not found")
+        
+        self.db.commit()
+        return self._section_to_response(section)
+    
+    def delete_section(self, section_id: int) -> bool:
+        """Elimina una sección"""
+        result = self.repository.delete_section(section_id)
+        if result:
+            self.db.commit()
+        return result
+    
+    # ==================== CONTACT MESSAGES ====================
+    
+    def create_contact_message(
+        self, 
+        message_data: ContactMessageCreate,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
+    ) -> ContactMessageResponse:
+        """Crea un nuevo mensaje de contacto"""
+        data = message_data.model_dump()
+        data["ip_address"] = ip_address
+        data["user_agent"] = user_agent
+        
+        message = self.repository.create_message(data)
+        self.db.commit()
+        
+        return self._message_to_response(message)
+    
+    def get_all_messages(
+        self, 
+        status: Optional[str] = None,
+        limit: Optional[int] = None
+    ) -> List[ContactMessageResponse]:
+        """Obtiene mensajes de contacto"""
+        messages = self.repository.get_all_messages(status, limit)
+        return [self._message_to_response(msg) for msg in messages]
+    
+    def update_message_status(
+        self,
+        message_id: int,
+        status_data: ContactMessageUpdate,
+        user_id: Optional[int] = None
+    ) -> ContactMessageResponse:
+        """Actualiza el estado de un mensaje"""
+        message = self.repository.update_message_status(
+            message_id,
+            status_data.status,
+            user_id if status_data.status == "replied" else None
+        )
+        
+        if not message:
+            raise ValueError("Message not found")
+        
+        self.db.commit()
+        return self._message_to_response(message)
+    
+    # ==================== MEDIA ====================
+    
+    def get_all_media(
+        self,
+        folder: Optional[str] = None,
+        mime_type: Optional[str] = None
+    ) -> List[MediaResponse]:
+        """Obtiene todos los archivos media"""
+        media_list = self.repository.get_all_media(folder, mime_type)
+        return [self._media_to_response(media) for media in media_list]
+    
+    def create_media(self, media_data: MediaCreate) -> MediaResponse:
+        """Registra un nuevo archivo media"""
+        media = self.repository.create_media(media_data.model_dump())
+        self.db.commit()
+        return self._media_to_response(media)
+    
+    # ==================== ADMIN DASHBOARD ====================
+    
+    def get_dashboard_stats(self) -> AdminDashboardStats:
+        """Obtiene estadísticas para el dashboard admin"""
+        stats = self.repository.get_dashboard_stats()
+        recent_messages = self.get_all_messages(limit=5)
+        
+        return AdminDashboardStats(
+            total_pages=stats["total_pages"],
+            published_pages=stats["published_pages"],
+            draft_pages=stats["draft_pages"],
+            total_messages=stats["total_messages"],
+            unread_messages=stats["unread_messages"],
+            total_media=stats["total_media"],
+            recent_messages=recent_messages
+        )
+    
+    # ==================== CONVERTERS ====================
+    
+    def _page_to_response(self, page: Page) -> PageResponse:
+        """Convierte Page a PageResponse"""
+        return PageResponse(
+            id=page.id,
+            title=page.title,
+            slug=page.slug,
+            template=page.template,
+            parent_id=page.parent_id,
+            status=page.status.value,
+            order=page.order,
+            is_homepage=page.is_homepage,
+            settings=page.settings,
+            seo_title=page.seo_title,
+            seo_description=page.seo_description,
+            seo_image=page.seo_image,
+            created_at=page.created_at,
+            updated_at=page.updated_at
+        )
+    
+    def _page_to_response_with_sections(self, page: Page) -> PageWithSections:
+        """Convierte Page a PageWithSections"""
+        return PageWithSections(
+            id=page.id,
+            title=page.title,
+            slug=page.slug,
+            template=page.template,
+            parent_id=page.parent_id,
+            status=page.status.value,
+            order=page.order,
+            is_homepage=page.is_homepage,
+            settings=page.settings,
+            seo_title=page.seo_title,
+            seo_description=page.seo_description,
+            seo_image=page.seo_image,
+            created_at=page.created_at,
+            updated_at=page.updated_at,
+            sections=[
+                self._section_to_response(section) 
+                for section in sorted(page.sections, key=lambda s: s.order)
+                if section.is_visible
+            ]
+        )
+    
+    def _section_to_response(self, section: Section) -> SectionResponse:
+        """Convierte Section a SectionResponse"""
+        return SectionResponse(
+            id=section.id,
+            page_id=section.page_id,
+            name=section.name,
+            component=section.component,
+            data=section.data,
+            order=section.order,
+            is_visible=section.is_visible,
+            created_at=section.created_at,
+            updated_at=section.updated_at
+        )
+    
+    def _menuitem_to_response(self, item: MenuItem) -> MenuItemResponse:
+        """Convierte MenuItem a MenuItemResponse"""
+        return MenuItemResponse(
+            id=item.id,
+            menu_id=item.menu_id,
+            parent_id=item.parent_id,
+            title=item.title,
+            url=item.url,
+            page_id=item.page_id,
+            target=item.target.value,
+            icon=item.icon,
+            order=item.order,
+            is_visible=item.is_visible,
+            created_at=item.created_at,
+            updated_at=item.updated_at
+        )
+    
+    def _media_to_response(self, media: Media) -> MediaResponse:
+        """Convierte Media a MediaResponse"""
+        return MediaResponse(
+            id=media.id,
+            filename=media.filename,
+            original_name=media.original_name,
+            mime_type=media.mime_type,
+            size=media.size,
+            url=media.url,
+            storage_path=media.storage_path,
+            alt_text=media.alt_text,
+            caption=media.caption,
+            folder=media.folder,
+            uploaded_by=media.uploaded_by,
+            meta=media.meta,
+            created_at=media.created_at,
+            updated_at=media.updated_at
+        )
+    
+    def _message_to_response(self, message: ContactMessage) -> ContactMessageResponse:
+        """Convierte ContactMessage a ContactMessageResponse"""
+        return ContactMessageResponse(
+            id=message.id,
+            name=message.name,
+            email=message.email,
+            phone=message.phone,
+            subject=message.subject,
+            message=message.message,
+            status=message.status.value,
+            replied_at=message.replied_at,
+            replied_by=message.replied_by,
+            created_at=message.created_at
+        )
