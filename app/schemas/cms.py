@@ -69,11 +69,16 @@ class ContentBase(BaseModel):
 
 class ContentResponse(ContentBase):
     id: int
+    page_id: Optional[int] = None
     content_type_id: int
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class PageWithContents(PageResponse):
+    contents: List[ContentResponse] = []
+
 
 # ==================== SECTION SCHEMAS ====================
 class SectionBase(BaseModel):
@@ -123,11 +128,21 @@ class SectionResponse(SectionBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+class SectionResponse(SectionBase):
+    id: int
+    page_id: int
+    contents: list[SectionContentResponse]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 
 class PageWithSections(PageResponse):
     sections: List[SectionResponse] = []
+
 
 
 # ==================== MENU SCHEMAS ====================
@@ -213,50 +228,14 @@ class MediaResponse(MediaBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ==================== CONTACT MESSAGE SCHEMAS ====================
-class ContactMessageCreate(BaseModel):
-    name: str = Field(..., max_length=255)
-    email: str = Field(..., max_length=255)
-    phone: Optional[str] = Field(None, max_length=50)
-    subject: Optional[str] = Field(None, max_length=255)
-    message: str
 
-
-class ContactMessageUpdate(BaseModel):
-    status: Literal["unread", "read", "replied"]
-
-
-class ContactMessageResponse(BaseModel):
-    id: int
-    name: str
-    email: str
-    phone: Optional[str]
-    subject: Optional[str]
-    message: str
-    status: str
-    replied_at: Optional[datetime]
-    replied_by: Optional[int]
-    created_at: datetime
-    
-    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== LANDING PAGE SCHEMAS ====================
 class LandingDataResponse(BaseModel):
     """Respuesta completa para renderizar la landing page"""
-    page: PageWithSections
+    page: PageWithContents
     menus: Dict[str, MenuWithItems]  # key = menu name (header, footer, etc)
     site: Optional[SiteResponse] = None
     meta: Optional[Dict[str, Any]] = None
     model_config = ConfigDict(from_attributes=True)
-
-
-class AdminDashboardStats(BaseModel):
-    """Estadísticas para el dashboard admin"""
-    total_pages: int
-    published_pages: int
-    draft_pages: int
-    total_messages: int
-    unread_messages: int
-    total_media: int
-    recent_messages: List[ContactMessageResponse]

@@ -1,18 +1,18 @@
 
 
 # app/services/cms_service.py
+from importlib.resources import contents
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from ..models.user import User
 from ..models.cms import Content , Page, Section, Menu, MenuItem, Media, ContactMessage
 from ..schemas.cms import (
-    ContentUpdate, PageCreate, PageUpdate, PageResponse, PageWithSections, ContentResponse,ContentBase, SectionContentResponse,
+    ContentUpdate, PageCreate, PageUpdate, PageResponse, PageWithContents, ContentResponse,ContentBase, SectionContentResponse,
     SectionCreate, SectionUpdate, SectionResponse,
-    MenuItemCreate, MenuItemUpdate, MenuItemResponse,
+    MenuItemCreate, MenuItemUpdate, MenuItemResponse, PageWithSections,
     MediaCreate, MediaResponse,
-    ContactMessageCreate, ContactMessageUpdate, ContactMessageResponse,
-    LandingDataResponse, AdminDashboardStats,
+    LandingDataResponse,
     MenuWithItems
 )
 from ..repositories.cms_repository import CMSRepository
@@ -25,9 +25,149 @@ class CMSService:
         self.db = db
         self.repository = CMSRepository(db)
 
+    def get_landing_page_new(self, slug: str = None) -> LandingDataResponse:
+        """
+        Obtiene todos los datos para renderizar la landing page
+        
+        Args:
+            slug: Slug de la página (si no se pasa, obtiene la homepage)
+            
+        Returns:
+            LandingDataResponse con toda la data necesaria
+        """
+        # Obtener página
+
+        page = self.repository.get_homepage_new()
+
+        contents = self.repository.get_contents_by_page_id(page.id)
+
+
+        site_settings = self.repository.get_site_settings("main")
+        site = None
+
+        if site_settings:
+            logo = self.repository.get_media_by_id(site_settings.header_logo_id)
+            favicon = self.repository.get_media_by_id(site_settings.favicon_id)
+
+            site = {
+                "site_key": site_settings.site_key,
+                "name": site_settings.meta.get("site_name") if site_settings.meta else None,
+                "branding": {
+                    "logo_url": logo.url if logo else None,
+                    "logo_alt": logo.alt_text if logo else None,
+                    "favicon_url": favicon.url if favicon else None
+                },
+                "theme": {
+                    "primary_color": site_settings.meta.get("primary_color"),
+                    "theme": site_settings.meta.get("theme")
+                },
+                "meta": site_settings.meta
+            }
+        if not page:
+            raise ValueError("Page not found")
+        
+        # Obtener todos los menús
+        all_menus = self.repository.get_all_menus()
+        menus_dict = {}
+        
+        for menu in all_menus:
+            visible_items = [
+                item for item in menu.items 
+                if item.is_visible
+            ]
+            menus_dict[menu.name] = MenuWithItems(
+                id=menu.id,
+                name=menu.name,
+                label=menu.label,
+                created_at=menu.created_at,
+                updated_at=menu.updated_at,
+                items=[self._menuitem_to_response(item) for item in visible_items]
+            )
+        
+        page.contents = contents
+
+        return LandingDataResponse(
+            page=self._page_to_response_with_contents(page),
+            menus=menus_dict,
+            site=site
+        )
+
+    def get_landing_page(self, slug: str = None) -> LandingDataResponse:
+        """
+        Obtiene todos los datos para renderizar la landing page
+        
+        Args:
+            slug: Slug de la página (si no se pasa, obtiene la homepage)
+            
+        Returns:
+            LandingDataResponse con toda la data necesaria
+        """
+        # Obtener página
+        if slug:
+            page = self.repository.get_page_by_slug(slug)
+        else:
+            page = self.repository.get_homepage()
+
+        sections = self.repository.get_sections_with_contents_by_page_id(page.id)
+   
+
+
+        site_settings = self.repository.get_site_settings("main")
+        site = None
+
+        if site_settings:
+            logo = self.repository.get_media_by_id(site_settings.header_logo_id)
+            favicon = self.repository.get_media_by_id(site_settings.favicon_id)
+
+            site = {
+                "site_key": site_settings.site_key,
+                "name": site_settings.meta.get("site_name") if site_settings.meta else None,
+                "branding": {
+                    "logo_url": logo.url if logo else None,
+                    "logo_alt": logo.alt_text if logo else None,
+                    "favicon_url": favicon.url if favicon else None
+                },
+                "theme": {
+                    "primary_color": site_settings.meta.get("primary_color"),
+                    "theme": site_settings.meta.get("theme")
+                },
+                "meta": site_settings.meta
+            }
+
+        
+        if not page:
+            raise ValueError("Page not found")
+        
+        # Obtener todos los menús
+        all_menus = self.repository.get_all_menus()
+        menus_dict = {}
+        
+        for menu in all_menus:
+            visible_items = [
+                item for item in menu.items 
+                if item.is_visible
+            ]
+            menus_dict[menu.name] = MenuWithItems(
+                id=menu.id,
+                name=menu.name,
+                label=menu.label,
+                created_at=menu.created_at,
+                updated_at=menu.updated_at,
+                items=[self._menuitem_to_response(item) for item in visible_items]
+            )
+        
+        page.sections = sections
+    
+        return LandingDataResponse(
+            page=self._page_to_response_with_sections(page),
+            menus=menus_dict,
+            site=site
+        )
+    
+    
+
 
     # app/services/cms_service.py
-
     def get_section_for_editing(self, section_id: int):
         """Obtiene una sección completa con sus contenidos para edición"""
         section = self.repository.get_section_with_contents(section_id)
@@ -62,7 +202,6 @@ class CMSService:
         }
     
     # app/services/cms_service.py
-
     def update_content_data(self, content_id: int, content_update: ContentUpdate):
         """Actualiza los datos JSON de un contenido"""
         content = self.repository.get_content_by_id(content_id)
@@ -91,10 +230,7 @@ class CMSService:
             }
         }
 
-
-    
     # ==================== LANDING PAGE ====================
-    
     def get_landing_page(self, slug: str = None) -> LandingDataResponse:
         """
         Obtiene todos los datos para renderizar la landing page
@@ -168,7 +304,6 @@ class CMSService:
         )
     
     # ==================== PAGES ====================
-    
     def get_page(self, page_id: int) -> PageWithSections:
         """Obtiene una página con sus secciones"""
         page = self.repository.get_page_by_id(page_id)
@@ -205,78 +340,6 @@ class CMSService:
             self.db.commit()
         return result
     
-    # ==================== SECTIONS ====================
-    
-    def create_section(self, section_data: SectionCreate) -> SectionResponse:
-        """Crea una nueva sección"""
-        section = self.repository.create_section(section_data.model_dump())
-        self.db.commit()
-        return self._section_to_response(section)
-    
-    def update_section(self, section_id: int, section_data: SectionUpdate) -> SectionResponse:
-        """Actualiza una sección"""
-        update_dict = section_data.model_dump(exclude_unset=True)
-        section = self.repository.update_section(section_id, update_dict)
-        
-        if not section:
-            raise ValueError("Section not found")
-        
-        self.db.commit()
-        return self._section_to_response(section)
-    
-    def delete_section(self, section_id: int) -> bool:
-        """Elimina una sección"""
-        result = self.repository.delete_section(section_id)
-        if result:
-            self.db.commit()
-        return result
-    
-    # ==================== CONTACT MESSAGES ====================
-    
-    def create_contact_message(
-        self, 
-        message_data: ContactMessageCreate,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
-    ) -> ContactMessageResponse:
-        """Crea un nuevo mensaje de contacto"""
-        data = message_data.model_dump()
-        data["ip_address"] = ip_address
-        data["user_agent"] = user_agent
-        
-        message = self.repository.create_message(data)
-        self.db.commit()
-        
-        return self._message_to_response(message)
-    
-    def get_all_messages(
-        self, 
-        status: Optional[str] = None,
-        limit: Optional[int] = None
-    ) -> List[ContactMessageResponse]:
-        """Obtiene mensajes de contacto"""
-        messages = self.repository.get_all_messages(status, limit)
-        return [self._message_to_response(msg) for msg in messages]
-    
-    def update_message_status(
-        self,
-        message_id: int,
-        status_data: ContactMessageUpdate,
-        user_id: Optional[int] = None
-    ) -> ContactMessageResponse:
-        """Actualiza el estado de un mensaje"""
-        message = self.repository.update_message_status(
-            message_id,
-            status_data.status,
-            user_id if status_data.status == "replied" else None
-        )
-        
-        if not message:
-            raise ValueError("Message not found")
-        
-        self.db.commit()
-        return self._message_to_response(message)
-    
     # ==================== MEDIA ====================
     
     def get_all_media(
@@ -294,25 +357,7 @@ class CMSService:
         self.db.commit()
         return self._media_to_response(media)
     
-    # ==================== ADMIN DASHBOARD ====================
-    
-    def get_dashboard_stats(self) -> AdminDashboardStats:
-        """Obtiene estadísticas para el dashboard admin"""
-        stats = self.repository.get_dashboard_stats()
-        recent_messages = self.get_all_messages(limit=5)
-        
-        return AdminDashboardStats(
-            total_pages=stats["total_pages"],
-            published_pages=stats["published_pages"],
-            draft_pages=stats["draft_pages"],
-            total_messages=stats["total_messages"],
-            unread_messages=stats["unread_messages"],
-            total_media=stats["total_media"],
-            recent_messages=recent_messages
-        )
-    
     # ==================== CONVERTERS ====================
-    
     def _page_to_response(self, page: Page) -> PageResponse:
         """Convierte Page a PageResponse"""
         return PageResponse(
@@ -356,10 +401,35 @@ class CMSService:
             ]
         )
     
+    def _page_to_response_with_contents(self, page: Page) -> PageWithContents:
+        """Convierte Page a PageWithContents"""
+        return PageWithContents(
+            id=page.id,
+            title=page.title,
+            slug=page.slug,
+            template=page.template,
+            parent_id=page.parent_id,
+            status=page.status.value,
+            order=page.order,
+            is_homepage=page.is_homepage,
+            settings=page.settings,
+            seo_title=page.seo_title,
+            seo_description=page.seo_description,
+            seo_image=page.seo_image,
+            created_at=page.created_at,
+            updated_at=page.updated_at,
+            contents=[
+                self._content_to_response(content) 
+                for content in sorted(page.contents, key=lambda c: c.sort_order)
+                if content.is_visible
+            ]
+        )
+    
     #Mapper
     def _content_to_response(self, content: Content) -> ContentResponse:
         return ContentResponse(
             id=content.id,
+            page_id=content.page_id,
             content_type_id=content.content_type_id,
             slug=content.slug,
             data=content.data,
@@ -430,17 +500,3 @@ class CMSService:
             updated_at=media.updated_at
         )
     
-    def _message_to_response(self, message: ContactMessage) -> ContactMessageResponse:
-        """Convierte ContactMessage a ContactMessageResponse"""
-        return ContactMessageResponse(
-            id=message.id,
-            name=message.name,
-            email=message.email,
-            phone=message.phone,
-            subject=message.subject,
-            message=message.message,
-            status=message.status.value,
-            replied_at=message.replied_at,
-            replied_by=message.replied_by,
-            created_at=message.created_at
-        )

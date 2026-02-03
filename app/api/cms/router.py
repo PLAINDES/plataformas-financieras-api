@@ -9,10 +9,8 @@ from ...schemas.cms import (
     LandingDataResponse,
     PageCreate, PageUpdate, PageResponse, PageWithSections,
     SectionCreate, SectionUpdate, SectionResponse,
-    ContactMessageCreate, ContactMessageUpdate, ContactMessageResponse,
-    MediaCreate, MediaResponse,
-    AdminDashboardStats
-)
+    MediaCreate, MediaResponse
+    )
 from ...models.user import User
 from ...services.cms_service import CMSService
 from ..deps import get_current_admin, get_optional_user
@@ -37,6 +35,28 @@ def get_landing_page(
     try:
         cms_service = CMSService(db)
         return cms_service.get_landing_page(slug)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    
+@router.get("/landing2", response_model=LandingDataResponse)
+def get_landing_page(
+    slug: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene todos los datos para renderizar la landing page
+    
+    - Sin slug: retorna la homepage
+    - Con slug: retorna la página específica
+    
+    Endpoint público
+    """
+    try:
+        cms_service = CMSService(db)
+        return cms_service.get_landing_page_new(slug)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -213,73 +233,6 @@ def delete_section(
     return None
 
 
-# ==================== CONTACT MESSAGES ====================
-
-@router.post("/contact", response_model=ContactMessageResponse, status_code=status.HTTP_201_CREATED)
-def create_contact_message(
-    message_data: ContactMessageCreate,
-    request: Request,
-    db: Session = Depends(get_db)
-):
-    """
-    Crea un mensaje de contacto
-    
-    Endpoint público - no requiere autenticación
-    """
-    cms_service = CMSService(db)
-    
-    # Capturar IP y user agent
-    ip_address = request.client.host if request.client else None
-    user_agent = request.headers.get("user-agent")
-    
-    return cms_service.create_contact_message(
-        message_data,
-        ip_address=ip_address,
-        user_agent=user_agent
-    )
-
-
-@router.get("/contact", response_model=List[ContactMessageResponse])
-def get_contact_messages(
-    status_filter: Optional[str] = None,
-    limit: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
-):
-    """
-    Lista mensajes de contacto (solo admin)
-    
-    - **status_filter**: 'unread', 'read', o 'replied'
-    - **limit**: Número máximo de mensajes
-    """
-    cms_service = CMSService(db)
-    return cms_service.get_all_messages(status_filter, limit)
-
-
-@router.patch("/contact/{message_id}", response_model=ContactMessageResponse)
-def update_message_status(
-    message_id: int,
-    status_data: ContactMessageUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
-):
-    """
-    Actualiza el estado de un mensaje (solo admin)
-    """
-    try:
-        cms_service = CMSService(db)
-        return cms_service.update_message_status(
-            message_id,
-            status_data,
-            current_user.id
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
-
-
 # ==================== MEDIA (ADMIN) ====================
 
 @router.get("/media", response_model=List[MediaResponse])
@@ -313,20 +266,6 @@ def create_media(
     """
     cms_service = CMSService(db)
     return cms_service.create_media(media_data)
-
-
-# ==================== DASHBOARD (ADMIN) ====================
-
-@router.get("/dashboard/stats", response_model=AdminDashboardStats)
-def get_dashboard_stats(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin)
-):
-    """
-    Obtiene estadísticas para el dashboard admin
-    """
-    cms_service = CMSService(db)
-    return cms_service.get_dashboard_stats()
 
 
 # app/api/v1/cms.py

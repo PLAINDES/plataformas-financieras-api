@@ -54,6 +54,7 @@ class Page(Base):
     
     # Relationships
     sections = relationship("Section", back_populates="page", cascade="all, delete-orphan")
+    contents = relationship("Content", back_populates="page", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Page {self.slug}>"
@@ -137,23 +138,26 @@ class Content(Base):
     __tablename__ = "cms_contents"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+    page_id = Column(BigInteger, ForeignKey("cms_pages.id"), nullable=True)
     content_type_id = Column(BigInteger, ForeignKey("cms_content_types.id"), nullable=False)
     slug = Column(String(255), nullable=False)
+    admin_label = Column(String(255), nullable=False)
     data = Column(JSON, nullable=False)
     status = Column(
         SQLEnum(ContentStatus, name="contentstatus",
         values_callable=lambda e: [x.value for x in e]),
         default=ContentStatus.DRAFT
     )
-
+    is_visible = Column(Boolean, default=True)
     published_at = Column(DateTime, nullable=True)
     author_id = Column(BigInteger, ForeignKey("sys_users.id"), nullable=True)
-
+    sort_order = Column(Integer, default=0)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     deleted_at = Column(DateTime, nullable=True)
 
     content_type = relationship("ContentType", back_populates="contents")
+    page = relationship("Page", back_populates="contents")
 
     def __repr__(self):
         return f"<Content {self.slug}>"
