@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from ..models.user import User
-from ..models.cms import Page, Section, Menu, MenuItem, Media, ContactMessage
+from ..models.cms import Content , Page, Section, Menu, MenuItem, Media, ContactMessage
 from ..schemas.cms import (
-    PageCreate, PageUpdate, PageResponse, PageWithSections,
+    ContentUpdate, PageCreate, PageUpdate, PageResponse, PageWithSections, ContentResponse,ContentBase, SectionContentResponse,
     SectionCreate, SectionUpdate, SectionResponse,
     MenuItemCreate, MenuItemUpdate, MenuItemResponse,
     MediaCreate, MediaResponse,
@@ -24,6 +24,72 @@ class CMSService:
     def __init__(self, db: Session):
         self.db = db
         self.repository = CMSRepository(db)
+
+
+    # app/services/cms_service.py
+
+    def get_section_for_editing(self, section_id: int):
+        """Obtiene una sección completa con sus contenidos para edición"""
+        section = self.repository.get_section_with_contents(section_id)
+        
+        if not section:
+            raise ValueError(f"Section {section_id} not found")
+        
+        return {
+            "section": {
+                "id": section.id,
+                "name": section.name,
+                "component": section.component,
+                "order": section.order,
+                "is_visible": section.is_visible,
+                "page_id": section.page_id
+            },
+            "contents": [
+                {
+                    "section_content_id": sc.id,
+                    "order": sc.order,
+                    "is_visible": sc.is_visible,
+                    "content": {
+                        "id": sc.content.id,
+                        "slug": sc.content.slug,
+                        "data": sc.content.data,
+                        "status": sc.content.status,
+                        "content_type_id": sc.content.content_type_id
+                    }
+                }
+                for sc in section.contents
+            ]
+        }
+    
+    # app/services/cms_service.py
+
+    def update_content_data(self, content_id: int, content_update: ContentUpdate):
+        """Actualiza los datos JSON de un contenido"""
+        content = self.repository.get_content_by_id(content_id)
+        
+        if not content:
+            raise ValueError(f"Content with id {content_id} not found")
+        
+        # Preparar datos para actualizar
+        update_payload = {"data": content_update.data}
+        if content_update.status:
+            update_payload["status"] = content_update.status
+        
+        # Actualizar
+        updated_content = self.repository.update_content(content_id, update_payload)
+        self.repository.db.commit()
+        
+        return {
+            "success": True,
+            "message": "Content updated successfully",
+            "content": {
+                "id": updated_content.id,
+                "slug": updated_content.slug,
+                "data": updated_content.data,
+                "status": updated_content.status,
+                "updated_at": updated_content.updated_at
+            }
+        }
 
 
     
@@ -44,6 +110,10 @@ class CMSService:
             page = self.repository.get_page_by_slug(slug)
         else:
             page = self.repository.get_homepage()
+
+        sections = self.repository.get_sections_with_contents_by_page_id(page.id)
+   
+
 
         site_settings = self.repository.get_site_settings("main")
         site = None
@@ -89,17 +159,11 @@ class CMSService:
                 items=[self._menuitem_to_response(item) for item in visible_items]
             )
         
-        # SEO data
-        seo = {
-            "title": page.seo_title or page.title,
-            "description": page.seo_description,
-            "image": page.seo_image
-        }
-        
+        page.sections = sections
+    
         return LandingDataResponse(
             page=self._page_to_response_with_sections(page),
             menus=menus_dict,
-            seo=seo,
             site=site
         )
     
@@ -292,19 +356,43 @@ class CMSService:
             ]
         )
     
+    #Mapper
+    def _content_to_response(self, content: Content) -> ContentResponse:
+        return ContentResponse(
+            id=content.id,
+            content_type_id=content.content_type_id,
+            slug=content.slug,
+            data=content.data,
+            status=content.status.value,  
+    
+            created_at=content.created_at,
+            updated_at=content.updated_at
+        )
+
+        
     def _section_to_response(self, section: Section) -> SectionResponse:
-        """Convierte Section a SectionResponse"""
         return SectionResponse(
             id=section.id,
             page_id=section.page_id,
             name=section.name,
             component=section.component,
-            data=section.data,
             order=section.order,
             is_visible=section.is_visible,
             created_at=section.created_at,
-            updated_at=section.updated_at
+            updated_at=section.updated_at,
+            contents=[
+                    SectionContentResponse(
+                        id=sc.id,
+                        order=sc.order,
+                        is_visible=sc.is_visible,
+                        content=self._content_to_response(sc.content)
+                    )
+                    for sc in section.contents
+                    if sc.is_visible
+                ]
+
         )
+
     
     def _menuitem_to_response(self, item: MenuItem) -> MenuItemResponse:
         """Convierte MenuItem a MenuItemResponse"""

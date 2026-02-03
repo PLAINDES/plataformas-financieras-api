@@ -39,7 +39,7 @@ class Page(Base):
     slug = Column(String(255), nullable=False, unique=True, index=True)
     template = Column(String(100), default="default", comment="Template a usar")
     parent_id = Column(BigInteger, ForeignKey("cms_pages.id"), nullable=True)
-    status = Column(SQLEnum(PageStatus), default=PageStatus.DRAFT, nullable=False)
+    status = Column(SQLEnum(PageStatus,name="pagestatus",values_callable= lambda enum: [e.value for e in enum], native_enum=True,validate_strings=True), default=PageStatus.DRAFT, nullable=False)
     order = Column(Integer, default=0)
     is_homepage = Column(Boolean, default=False)
     settings = Column(JSON, nullable=True, comment="Configuración de página")
@@ -82,9 +82,9 @@ class Section(Base):
     
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     page_id = Column(BigInteger, ForeignKey("cms_pages.id"), nullable=False)
+    
     name = Column(String(255), nullable=False)
     component = Column(String(100), nullable=False, comment="Componente React a renderizar")
-    data = Column(JSON, nullable=True, comment="Props del componente")
     order = Column(Integer, default=0)
     is_visible = Column(Boolean, default=True)
     
@@ -94,9 +94,71 @@ class Section(Base):
     
     # Relationships
     page = relationship("Page", back_populates="sections")
+    contents = relationship("SectionContent", order_by="SectionContent.order",cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Section {self.name} - Page {self.page_id}>"
+    
+class SectionContent(Base):
+    __tablename__ = "cms_section_contents"
+
+    id = Column(BigInteger, primary_key=True)
+    section_id = Column(BigInteger, ForeignKey("cms_sections.id"), nullable=False)
+    content_id = Column(BigInteger, ForeignKey("cms_contents.id"), nullable=False)
+
+    order = Column(Integer, default=0)
+    is_visible = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    content = relationship("Content")
+
+
+    
+class ContentType(Base):
+    __tablename__ = "cms_content_types"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False, unique=True)
+    label = Column(String(255), nullable=False)
+    label_plural = Column(String(255), nullable=True)
+    content_schema = Column(JSON, nullable=True)
+    icon = Column(String(50), nullable=True)
+    is_singleton = Column(Boolean, default=False)
+    settings = Column(JSON, nullable=True)
+
+    contents = relationship("Content", back_populates="content_type")
+
+    def __repr__(self):
+        return f"<ContentType {self.name}>"
+    
+class Content(Base):
+    __tablename__ = "cms_contents"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    content_type_id = Column(BigInteger, ForeignKey("cms_content_types.id"), nullable=False)
+    slug = Column(String(255), nullable=False)
+    data = Column(JSON, nullable=False)
+    status = Column(
+        SQLEnum(ContentStatus, name="contentstatus",
+        values_callable=lambda e: [x.value for x in e]),
+        default=ContentStatus.DRAFT
+    )
+
+    published_at = Column(DateTime, nullable=True)
+    author_id = Column(BigInteger, ForeignKey("sys_users.id"), nullable=True)
+
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime, nullable=True)
+
+    content_type = relationship("ContentType", back_populates="contents")
+
+    def __repr__(self):
+        return f"<Content {self.slug}>"
+
+
 
 
 class Menu(Base):
@@ -127,7 +189,7 @@ class MenuItem(Base):
     title = Column(String(255), nullable=False)
     url = Column(String(500), nullable=True)
     page_id = Column(BigInteger, ForeignKey("cms_pages.id"), nullable=True)
-    target = Column(SQLEnum(MenuTarget), default=MenuTarget.SELF)
+    target = Column(SQLEnum(MenuTarget, name="menutarget",values_callable= lambda enum: [e.value for e in enum], native_enum=True, validate_strings=True), default=MenuTarget.SELF)
     icon = Column(String(50), nullable=True)
     order = Column(Integer, default=0)
     is_visible = Column(Boolean, default=True)

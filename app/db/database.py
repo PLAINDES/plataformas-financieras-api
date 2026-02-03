@@ -17,6 +17,16 @@ SessionLocal = sessionmaker(
     bind=engine,
 )
 
+from sqlalchemy import text
+
+try:
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    print("✅ Conexión a la base de datos OK")
+except Exception as e:
+    print("❌ Error conectando a la base de datos:", e)
+
+
 
 # Dependency para FastAPI
 def get_db() -> Session:

@@ -9,7 +9,7 @@ from datetime import datetime
 from ..models.cms import (
     Page, Section, Menu, MenuItem, 
     Media, ContactMessage,
-    PageStatus, MessageStatus, Site
+    PageStatus, MessageStatus, Site, SectionContent, Content
 )
 
 
@@ -43,6 +43,26 @@ class CMSRepository:
         
         result = self.db.execute(query)
         return result.scalar_one_or_none()
+    
+    def get_sections_with_contents_by_page_id(self, page_id: int):
+        return (
+            self.db.execute(
+                select(Section)
+                .options(
+                    selectinload(Section.contents)
+                    .selectinload(SectionContent.content)
+                )
+                .where(
+                    Section.page_id == page_id,
+                    Section.deleted_at.is_(None),
+                    Section.is_visible == True
+                )
+                .order_by(Section.order)
+            )
+            .scalars()
+            .all()
+        )
+
     
     def get_page_by_id(self, page_id: int, include_sections: bool = True) -> Optional[Page]:
         """Obtiene página por ID"""
@@ -352,3 +372,59 @@ class CMSRepository:
             "unread_messages": unread_messages or 0,
             "total_media": total_media or 0,
         }
+    
+    # app/repositories/cms_repository.py
+
+    # Agregar este método a la clase CMSRepository:
+
+    def get_section_with_contents(self, section_id: int) -> Optional[Section]:
+        """Obtiene una sección con todos sus contenidos ordenados"""
+        result = self.db.execute(
+            select(Section)
+            .options(
+                selectinload(Section.contents)
+                .selectinload(SectionContent.content)
+            )
+            .where(
+                and_(
+                    Section.id == section_id,
+                    Section.deleted_at.is_(None)
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    def get_contents_by_section(self, section_id: int) -> List[SectionContent]:
+        """Obtiene los contenidos de una sección ordenados"""
+        result = self.db.execute(
+            select(SectionContent)
+            .options(selectinload(SectionContent.content))
+            .where(SectionContent.section_id == section_id)
+            .order_by(SectionContent.order)
+        )
+        return list(result.scalars().all())
+    
+    def get_content_by_id(self, content_id: int) -> Optional[Content]:
+        """Obtiene contenido por ID"""
+        result = self.db.execute(
+            select(Content)
+            .where(
+                and_(
+                    Content.id == content_id,
+                    Content.deleted_at.is_(None)
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    def update_content(self, content_id: int, update_data: dict) -> Optional[Content]:
+        """Actualiza un contenido"""
+        content = self.get_content_by_id(content_id)
+        if content:
+            for key, value in update_data.items():
+                if hasattr(content, key) and value is not None:
+                    setattr(content, key, value)
+            content.updated_at = datetime.utcnow()
+            self.db.flush()
+            self.db.refresh(content)
+        return content

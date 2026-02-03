@@ -20,7 +20,7 @@ class SiteResponse(BaseModel):
     name: Optional[str]
     branding: SiteBranding
     theme: SiteTheme
-    metadata: Optional[Dict[str, Any]]
+    model_config = ConfigDict(from_attributes=True)
 
 # ==================== PAGE SCHEMAS ====================
 class PageBase(BaseModel):
@@ -61,35 +61,69 @@ class PageResponse(PageBase):
     
     model_config = ConfigDict(from_attributes=True)
 
+class ContentBase(BaseModel):
+    slug: str
+    data: Dict[str, Any]
+    status: Literal["draft", "published"] = "draft"
+
+
+class ContentResponse(ContentBase):
+    id: int
+    content_type_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 # ==================== SECTION SCHEMAS ====================
 class SectionBase(BaseModel):
     name: str = Field(..., max_length=255)
     component: str = Field(..., max_length=100)
-    data: Optional[Dict[str, Any]] = None
     order: int = 0
     is_visible: bool = True
 
-
 class SectionCreate(SectionBase):
     page_id: int
+    content_id: int
 
+class ContentUpdate(BaseModel):
+    """Schema para actualizar contenido"""
+    data: Dict[str, Any]
+    status: Optional[str] = None
+
+class SectionContentUpdate(BaseModel):
+    """Schema para actualizar una relación section-content"""
+    order: Optional[int] = None
+    is_visible: Optional[bool] = None
+    content: Optional[ContentUpdate] = None
 
 class SectionUpdate(BaseModel):
     name: Optional[str] = None
     component: Optional[str] = None
-    data: Optional[Dict[str, Any]] = None
     order: Optional[int] = None
     is_visible: Optional[bool] = None
+    contents: Optional[list[SectionContentUpdate]] = None
 
+
+
+class SectionContentResponse(BaseModel):
+    id: int
+    order: int
+    is_visible: bool
+    content: ContentResponse
+
+    model_config = ConfigDict(from_attributes=True)
 
 class SectionResponse(SectionBase):
     id: int
     page_id: int
+    contents: list[SectionContentResponse]
     created_at: datetime
     updated_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
+
+
 
 
 class PageWithSections(PageResponse):
@@ -212,9 +246,8 @@ class LandingDataResponse(BaseModel):
     """Respuesta completa para renderizar la landing page"""
     page: PageWithSections
     menus: Dict[str, MenuWithItems]  # key = menu name (header, footer, etc)
-    seo: Dict[str, Optional[str]]
     site: Optional[SiteResponse] = None
-    
+    meta: Optional[Dict[str, Any]] = None
     model_config = ConfigDict(from_attributes=True)
 
 

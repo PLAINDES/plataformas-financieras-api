@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from ...db.database import get_db
 from ...schemas.cms import (
+    ContentUpdate,
     LandingDataResponse,
     PageCreate, PageUpdate, PageResponse, PageWithSections,
     SectionCreate, SectionUpdate, SectionResponse,
@@ -328,3 +329,53 @@ def get_dashboard_stats(
     return cms_service.get_dashboard_stats()
 
 
+# app/api/v1/cms.py
+
+@router.get("/sections/{section_id}/contents")
+def get_section_contents(
+    section_id: int,
+    db: Session = Depends(get_db)
+):
+    """Obtiene todos los contenidos de una sección para edición"""
+    try:
+        cms_service = CMSService(db)
+        return cms_service.get_section_for_editing(section_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    
+# app/api/v1/cms.py
+
+@router.put("/contents/{content_id}")
+def update_content(
+    content_id: int,
+    content_update: ContentUpdate,
+    db: Session = Depends(get_db),
+):
+    """
+    Actualiza el contenido de una sección
+    
+    Ejemplo para Hero:
+```json
+    {
+      "data": {
+        "title": "Nuevo Título",
+        "description": "Nueva descripción",
+        "ctaText": "Ver más",
+        "ctaUrl": "/contacto"
+      },
+      "status": "published"
+    }
+```
+    """
+    try:
+        cms_service = CMSService(db)
+        result = cms_service.update_content_data(content_id, content_update)
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
