@@ -7,6 +7,7 @@ from .core.config import settings
 from .api.auth.router import router as auth_router
 from .api.cms.router import router as cms_router
 
+print("--- EL SERVIDOR ESTÁ ARRANCANDO ---")
 # Crear instancia de FastAPI
 app = FastAPI(
     title=settings.PROJECT_NAME,

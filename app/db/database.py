@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 
 from app.core.config import settings
@@ -17,7 +17,6 @@ SessionLocal = sessionmaker(
     bind=engine,
 )
 
-from sqlalchemy import text
 
 try:
     with engine.connect() as conn:

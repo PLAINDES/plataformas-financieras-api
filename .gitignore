@@ -11,3 +11,8 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 .idea
+.env
+
+**/__pycache__/
+*.py[cod]
+*$py.class

@@ -1,5 +1,3 @@
-
-
 # app/models/cms.py
 from sqlalchemy import Column, BigInteger, String, DateTime, Enum as SQLEnum, Boolean, JSON, Text, Integer, ForeignKey
 from sqlalchemy.orm import relationship
@@ -23,11 +21,6 @@ class MessageStatus(enum.Enum):
     UNREAD = "unread"
     READ = "read"
     REPLIED = "replied"
-
-
-class MenuTarget(enum.Enum):
-    SELF = "_self"
-    BLANK = "_blank"
 
 
 class Page(Base):
@@ -128,7 +121,6 @@ class ContentType(Base):
     icon = Column(String(50), nullable=True)
     is_singleton = Column(Boolean, default=False)
     settings = Column(JSON, nullable=True)
-
     contents = relationship("Content", back_populates="content_type")
 
     def __repr__(self):
@@ -158,54 +150,29 @@ class Content(Base):
 
     content_type = relationship("ContentType", back_populates="contents")
     page = relationship("Page", back_populates="contents")
+    auditory_logs = relationship("Auditory", back_populates="content")
+
 
     def __repr__(self):
         return f"<Content {self.slug}>"
 
-
-
-
-class Menu(Base):
-    """Menús del sitio"""
-    __tablename__ = "cms_menus"
+class Auditory(Base):
+    __tablename__ = "cms_auditory_logs"
     
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    name = Column(String(100), nullable=False, unique=True, comment="header, footer, sidebar")
-    label = Column(String(255), nullable=False)
-    
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    
-    # Relationships
-    items = relationship("MenuItem", back_populates="menu", cascade="all, delete-orphan")
-    
-    def __repr__(self):
-        return f"<Menu {self.name}>"
-
-
-class MenuItem(Base):
-    """Items de menú"""
-    __tablename__ = "cms_menu_items"
-    
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    menu_id = Column(BigInteger, ForeignKey("cms_menus.id"), nullable=False)
-    parent_id = Column(BigInteger, ForeignKey("cms_menu_items.id"), nullable=True)
+    content_id = Column(BigInteger, ForeignKey("cms_contents.id"), nullable=True)
     title = Column(String(255), nullable=False)
-    url = Column(String(500), nullable=True)
-    page_id = Column(BigInteger, ForeignKey("cms_pages.id"), nullable=True)
-    target = Column(SQLEnum(MenuTarget, name="menutarget",values_callable= lambda enum: [e.value for e in enum], native_enum=True, validate_strings=True), default=MenuTarget.SELF)
-    icon = Column(String(50), nullable=True)
-    order = Column(Integer, default=0)
+    author_id = Column(BigInteger, ForeignKey("sys_users.id"), nullable=True)
+    data = Column(JSON, nullable=False)
     is_visible = Column(Boolean, default=True)
     
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    
     # Relationships
-    menu = relationship("Menu", back_populates="items")
+    content = relationship("Content", back_populates="auditory_logs")
     
     def __repr__(self):
-        return f"<MenuItem {self.title}>"
+        return f"<Auditory {self.title}>"
 
 
 class Media(Base):
@@ -231,7 +198,7 @@ class Media(Base):
     
     def __repr__(self):
         return f"<Media {self.filename}>"
-
+    
 
 class ContactMessage(Base):
     """Mensajes de contacto"""
@@ -246,8 +213,7 @@ class ContactMessage(Base):
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
     status = Column(SQLEnum(MessageStatus), default=MessageStatus.UNREAD, index=True)
-    replied_at = Column(DateTime, nullable=True)
-    replied_by = Column(BigInteger, ForeignKey("sys_users.id"), nullable=True)
+
     
     created_at = Column(DateTime, default=func.now(), nullable=False, index=True)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
