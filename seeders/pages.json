@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "Inicio",
+    "slug": "home",
+    "template": "landing",
+    "parent_id": null,
+    "status": "published",
+    "is_home": false,
+    "site_id": 1,
+    "settings": {"layout": "full", "show_footer": true, "show_header": true},
+    "meta_title": "Plataforma Finanzas | Inicio",
+    "meta_description": "Plataforma Finanzas - Soluciones financieras modernas",
+    "meta_image": null
+  }
+]

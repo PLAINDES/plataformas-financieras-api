@@ -1,0 +1,120 @@
+[
+  {
+    "id": 1,
+    "slug": "hero",
+    "name": "Hero Section",
+    "description": null,
+    "schema": {"title": "string", "ctaUrl": "string", "ctaText": "string", "description": "string"},
+    "icon": null,
+    "is_singleton": true
+  },
+  {
+    "id": 2,
+    "slug": "benefits",
+    "name": "Benefits Section",
+    "description": null,
+    "schema": {"title": "string", "subtitle": "string"},
+    "icon": null,
+    "is_singleton": true
+  },
+  {
+    "id": 3,
+    "slug": "cta",
+    "name": "CTA Section",
+    "description": null,
+    "schema": {"description": "string", "whatsappNumber": "string"},
+    "icon": null,
+    "is_singleton": true
+  },
+  {
+    "id": 4,
+    "slug": "team_section",
+    "name": "Team Section",
+    "description": "Team Sections",
+    "schema": {
+      "title": {"name": "string", "caption": "string"},
+      "authors": [{"id": "string", "name": "string", "caption": "string"}],
+      "collaborators": [{"id": "string", "name": "string", "image": "string", "caption": "string", "description": "string"}],
+      "developmentTeam": [{"id": "string", "name": "string", "caption": "string"}]
+    },
+    "icon": null,
+    "is_singleton": true
+  },
+  {
+    "id": 10,
+    "slug": "platform_card",
+    "name": "Platform Card",
+    "description": "Platform Cards",
+    "schema": {
+      "title": "string", "ctaUrl": "string", "ribbon": "string", "caption": "string",
+      "imageUrl": "string", "videoUrl": "string", "libraryUrl": "string",
+      "description": "string", "hoverVideoUrl": "string"
+    },
+    "icon": "cards",
+    "is_singleton": false
+  },
+  {
+    "id": 20,
+    "slug": "product_card",
+    "name": "Product Card",
+    "description": "Product Cards",
+    "schema": {"name": "string", "price": "number", "caption": "string", "typeName": "string"},
+    "icon": "shopping-cart",
+    "is_singleton": false
+  },
+  {
+    "id": 30,
+    "slug": "section_header",
+    "name": "Section Header",
+    "description": "Section Headers",
+    "schema": {"title": "string", "subtitle": "string"},
+    "icon": "heading",
+    "is_singleton": true
+  },
+  {
+    "id": 31,
+    "slug": "client_logo",
+    "name": "Client Logo",
+    "description": "Client Logos",
+    "schema": {"alt": "string", "name": "string", "imageUrl": "string"},
+    "icon": "image",
+    "is_singleton": false
+  },
+  {
+    "id": 32,
+    "slug": "contact_section",
+    "name": "Contact Section",
+    "description": "Contact Sections",
+    "schema": {
+      "form": {
+        "fields": [{"id": "string", "rows": "number", "type": "string", "label": "string", "required": "boolean", "placeholder": "string"}],
+        "successMessage": "string",
+        "submitButtonText": "string"
+      },
+      "title": "string", "imageUrl": "string", "subtitle": "string"
+    },
+    "icon": "form",
+    "is_singleton": true
+  },
+  {
+    "id": 33,
+    "slug": "header_section",
+    "name": "Landing Header",
+    "description": "Landing Headers",
+    "schema": {"item_header": [{"title": "string"}]},
+    "icon": "layout",
+    "is_singleton": true
+  },
+  {
+    "id": 34,
+    "slug": "footer_section",
+    "name": "Sitio Footer",
+    "description": "Sitio Footers",
+    "schema": {
+      "sections": [{"links": [{"url": "string", "label": "string"}], "title": "string"}],
+      "copyright": "string"
+    },
+    "icon": "layout-footer",
+    "is_singleton": true
+  }
+]

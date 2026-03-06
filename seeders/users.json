@@ -1,0 +1,12 @@
+[
+  {
+    "email": "admin@gmail.com",
+    "password": "admin",
+    "name": "Administrador",
+    "lastname": "Sistema",
+    "role": "admin",
+    "is_active": true,
+    "avatar": null,
+    "settings": null
+  }
+]
