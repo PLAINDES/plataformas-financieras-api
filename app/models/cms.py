@@ -1,5 +1,6 @@
 # app/models/cms.py
 from sqlalchemy import Column, BigInteger, String, DateTime, Enum as SQLEnum, Boolean, JSON, Text, Integer, ForeignKey
+from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -27,11 +28,11 @@ class Page(Base):
     """Páginas del sitio web"""
     __tablename__ = "cms_pages"
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     title = Column(String(255), nullable=False)
     slug = Column(String(255), nullable=False, unique=True, index=True)
     template = Column(String(100), default="default", comment="Template a usar")
-    parent_id = Column(BigInteger, ForeignKey("cms_pages.id"), nullable=True)
+    parent_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_pages.id"), nullable=True)
     status = Column(SQLEnum(PageStatus,name="pagestatus",values_callable= lambda enum: [e.value for e in enum], native_enum=True,validate_strings=True), default=PageStatus.DRAFT, nullable=False)
     order = Column(Integer, default=0)
     is_homepage = Column(Boolean, default=False)
@@ -56,11 +57,11 @@ class Site(Base):
     """Configuración del sitio web"""
     __tablename__ = "cms_site_settings"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     site_key = Column(String(50), nullable=False)
-    header_logo_id = Column(BigInteger, ForeignKey("cms_media.id"), nullable=True)
-    header_logo_sticky_id = Column(BigInteger, nullable=True)
-    favicon_id = Column(BigInteger, nullable=True)
+    header_logo_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_media.id"), nullable=True)
+    header_logo_sticky_id = Column(MySQLBigInt(unsigned=True), nullable=True)
+    favicon_id = Column(MySQLBigInt(unsigned=True), nullable=True)
     meta = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
@@ -74,8 +75,8 @@ class Section(Base):
     """Secciones dentro de páginas"""
     __tablename__ = "cms_sections"
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    page_id = Column(BigInteger, ForeignKey("cms_pages.id"), nullable=False)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+    page_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_pages.id"), nullable=False)
     
     name = Column(String(255), nullable=False)
     component = Column(String(100), nullable=False, comment="Componente React a renderizar")
@@ -96,9 +97,9 @@ class Section(Base):
 class SectionContent(Base):
     __tablename__ = "cms_section_contents"
 
-    id = Column(BigInteger, primary_key=True)
-    section_id = Column(BigInteger, ForeignKey("cms_sections.id"), nullable=False)
-    content_id = Column(BigInteger, ForeignKey("cms_contents.id"), nullable=False)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True)
+    section_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_sections.id"), nullable=False)
+    content_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_contents.id"), nullable=False)
 
     order = Column(Integer, default=0)
     is_visible = Column(Boolean, default=True)
@@ -113,7 +114,7 @@ class SectionContent(Base):
 class ContentType(Base):
     __tablename__ = "cms_content_types"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False, unique=True)
     label = Column(String(255), nullable=False)
     label_plural = Column(String(255), nullable=True)
@@ -129,9 +130,9 @@ class ContentType(Base):
 class Content(Base):
     __tablename__ = "cms_contents"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    page_id = Column(BigInteger, ForeignKey("cms_pages.id"), nullable=True)
-    content_type_id = Column(BigInteger, ForeignKey("cms_content_types.id"), nullable=False)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+    page_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_pages.id"), nullable=True)
+    content_type_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_content_types.id"), nullable=False)
     slug = Column(String(255), nullable=False)
     admin_label = Column(String(255), nullable=False)
     data = Column(JSON, nullable=False)
@@ -142,7 +143,7 @@ class Content(Base):
     )
     is_visible = Column(Boolean, default=True)
     published_at = Column(DateTime, nullable=True)
-    author_id = Column(BigInteger, ForeignKey("sys_users.id"), nullable=True)
+    author_id = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=True)
     sort_order = Column(Integer, default=0)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -159,10 +160,10 @@ class Content(Base):
 class Auditory(Base):
     __tablename__ = "cms_auditory_logs"
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    content_id = Column(BigInteger, ForeignKey("cms_contents.id"), nullable=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+    content_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_contents.id"), nullable=True)
     title = Column(String(255), nullable=False)
-    author_id = Column(BigInteger, ForeignKey("sys_users.id"), nullable=True)
+    author_id = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=True)
     data = Column(JSON, nullable=False)
     is_visible = Column(Boolean, default=True)
     
@@ -179,17 +180,17 @@ class Media(Base):
     """Archivos y medios"""
     __tablename__ = "cms_media"
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     filename = Column(String(255), nullable=False)
     original_name = Column(String(255), nullable=False)
     mime_type = Column(String(100), nullable=False, index=True)
-    size = Column(BigInteger, nullable=True, comment="Tamaño en bytes")
+    size = Column(MySQLBigInt(unsigned=True), nullable=True, comment="Tamaño en bytes")
     url = Column(String(500), nullable=False)
     storage_path = Column(String(500), nullable=False)
     alt_text = Column(String(255), nullable=True)
     caption = Column(Text, nullable=True)
     folder = Column(String(255), default="/", comment="Organización en carpetas")
-    uploaded_by = Column(BigInteger, ForeignKey("sys_users.id"), nullable=True)
+    uploaded_by = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=True)
     meta = Column(JSON, nullable=True, comment="Dimensiones, duración, etc")
     
     created_at = Column(DateTime, default=func.now(), nullable=False)
@@ -204,7 +205,7 @@ class ContactMessage(Base):
     """Mensajes de contacto"""
     __tablename__ = "cms_contact_messages"
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False)
     phone = Column(String(50), nullable=True)

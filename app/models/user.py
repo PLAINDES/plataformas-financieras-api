@@ -1,5 +1,6 @@
 # app/models/user.py
 from sqlalchemy import Column, BigInteger, String, DateTime, Enum as SQLEnum, Boolean, JSON, Text
+from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.sql import func
 from datetime import datetime
 import enum
@@ -15,7 +16,7 @@ class UserRole(enum.Enum):
 class User(Base):
     __tablename__ = "sys_users"
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
@@ -36,8 +37,8 @@ class User(Base):
 class Session(Base):
     __tablename__ = "sys_sessions"
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, nullable=False, index=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+    user_id = Column(MySQLBigInt(unsigned=True), nullable=False, index=True)
     token = Column(String(500), nullable=False, index=True)
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
