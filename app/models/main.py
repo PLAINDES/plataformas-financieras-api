@@ -1,4 +1,5 @@
-from sqlalchemy import Column, BigInteger, String, DateTime, Enum as SQLEnum, Boolean, JSON, ForeignKey, Table
+from sqlalchemy import Column, String, DateTime, Enum as SQLEnum, Boolean, JSON, ForeignKey, Table
+from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -18,17 +19,17 @@ class TemplateCodeType(enum.Enum):
 main_template_code_templates = Table(
     "main_template_codes_main_templates",
     Base.metadata,
-    Column("template_code_id", BigInteger, ForeignKey("main_template_codes.id"), primary_key=True),
-    Column("template_id", BigInteger, ForeignKey("main_templates.id"), primary_key=True),
+    Column("template_code_id", MySQLBigInt(unsigned=True), ForeignKey("main_template_codes.id"), primary_key=True),
+    Column("template_id", MySQLBigInt(unsigned=True), ForeignKey("main_templates.id"), primary_key=True),
 )
 
 
 class Template(Base):
     __tablename__ = "main_templates"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     nombre = Column(String(255), nullable=False)
-    template_file_id = Column(BigInteger, ForeignKey("cms_media.id"), nullable=True)
+    template_file_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_media.id"), nullable=True)
     is_default = Column(Boolean, default=False, nullable=False)
 
     created_at = Column(DateTime, default=func.now(), nullable=False)
@@ -49,7 +50,7 @@ class Template(Base):
 class TemplateComplement(Base):
     __tablename__ = "main_template_complements"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     nombre = Column(String(255), nullable=False)
     fecha = Column(DateTime, nullable=False)
     data = Column(JSON, nullable=True)
@@ -65,9 +66,9 @@ class TemplateComplement(Base):
 class Calculation(Base):
     __tablename__ = "main_calculations"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    calculation_file_id = Column(BigInteger, ForeignKey("cms_media.id"), nullable=True)
-    user_id = Column(BigInteger, ForeignKey("sys_users.id"), nullable=False)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+    calculation_file_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_media.id"), nullable=True)
+    user_id = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=False)
     type = Column(
         SQLEnum(
             CalculationType,
@@ -92,8 +93,8 @@ class Calculation(Base):
 class TemplateCode(Base):
     __tablename__ = "main_template_codes"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    template_code_image_id = Column(BigInteger, ForeignKey("cms_media.id"), nullable=True)
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+    template_code_image_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_media.id"), nullable=True)
     type = Column(
         SQLEnum(
             TemplateCodeType,

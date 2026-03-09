@@ -88,10 +88,14 @@ def delete_template(template_id: int, db: Session = Depends(get_db)):
 @router.get("/template-complements", response_model=List[TemplateComplementResponse])
 def list_template_complements(db: Session = Depends(get_db)):
     result = db.execute(
-        select(TemplateComplement).where(TemplateComplement.deleted_at.is_(None))
+        select(TemplateComplement)
+        .where(TemplateComplement.deleted_at.is_(None))
+        .order_by(TemplateComplement.created_at.desc())
     )
-    complements = result.scalars().all()
-    return [TemplateComplementResponse.model_validate(c) for c in complements]
+    
+    # Solo retornar el más reciente
+    complement = result.scalars().first()
+    return [TemplateComplementResponse.model_validate(complement)] if complement else []
 
 
 @router.get("/template-complements/{complement_id}", response_model=TemplateComplementResponse)

@@ -36,7 +36,7 @@ class TemplateResponse(TemplateBase):
 class TemplateComplementBase(BaseModel):
     nombre: str = Field(..., max_length=255)
     fecha: datetime
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[Any] = None
 
 
 class TemplateComplementCreate(TemplateComplementBase):
@@ -46,7 +46,7 @@ class TemplateComplementCreate(TemplateComplementBase):
 class TemplateComplementUpdate(BaseModel):
     nombre: Optional[str] = Field(None, max_length=255)
     fecha: Optional[datetime] = None
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[Any] = None
 
 
 class TemplateComplementResponse(TemplateComplementBase):
