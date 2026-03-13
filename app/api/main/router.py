@@ -1,8 +1,8 @@
 # app/api/main/router.py
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from ...db.database import get_db
 from ...models.main import Template, TemplateComplement, Calculation, TemplateCode
@@ -146,10 +146,24 @@ def delete_template_complement(complement_id: int, db: Session = Depends(get_db)
 
 # ==================== CALCULATIONS ====================
 @router.get("/calculations", response_model=List[CalculationResponse])
-def list_calculations(db: Session = Depends(get_db)):
-    result = db.execute(select(Calculation))
+def list_calculations(user_id: Optional[int] = None, db: Session = Depends(get_db)):
+
+    query = select(Calculation).options(joinedload(Calculation.report))
+
+    if user_id:
+        query = query.where(Calculation.user_id == user_id)
+
+    result = db.execute(query)
     calculations = result.scalars().all()
-    return [CalculationResponse.model_validate(c) for c in calculations]
+
+    responses = []
+
+    for c in calculations:
+        r = CalculationResponse.model_validate(c)
+        r.report_code = c.report.code if c.report else None
+        responses.append(r)
+
+    return responses
 
 
 @router.get("/calculations/{calculation_id}", response_model=CalculationResponse)

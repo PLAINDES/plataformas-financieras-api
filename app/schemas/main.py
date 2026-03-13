@@ -1,5 +1,5 @@
 # app/schemas/main.py
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 
@@ -65,6 +65,11 @@ class CalculationBase(BaseModel):
     type: Literal["valora", "kapital"]
     data: Optional[Dict[str, Any]] = None
 
+    @field_validator("type", mode="before")
+    @classmethod
+    def extract_enum_value(cls, v):
+        return v.value if hasattr(v, "value") else v
+
 
 class CalculationCreate(CalculationBase):
     pass
@@ -81,8 +86,9 @@ class CalculationResponse(CalculationBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    report_code: str | None = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
 
 # ==================== TEMPLATE CODE SCHEMAS ====================
