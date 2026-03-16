@@ -75,6 +75,7 @@ class Calculation(Base):
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     calculation_file_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_media.id"), nullable=True)
     user_id = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=False)
+    code = Column(String(64), nullable=False, unique=True)
     type = Column(
         SQLEnum(
             CalculationType,
@@ -90,7 +91,10 @@ class Calculation(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     calculation_file = relationship("Media")
-    report = relationship("Report",back_populates="calculation",uselist=False)
+
+    def set_code(self, raw_string: str) -> None:
+        """Genera un hash SHA-256 truncado a 64 chars."""
+        self.code = hashlib.sha256(raw_string.encode()).hexdigest()[:64]
 
     def __repr__(self):
         return f"<Calculation {self.id} - {self.type.value}>"
@@ -133,8 +137,7 @@ class Report(Base):
     __tablename__ = "main_reports"
  
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
-    calculation_id = Column(MySQLBigInt(unsigned=True),ForeignKey("main_calculations.id"),nullable=False)
-    code = Column(String(64), nullable=False, unique=True)
+    template_id = Column(MySQLBigInt(unsigned=True), ForeignKey("main_templates.id"), nullable=False)
     nombre = Column(String(255), nullable=False)
     precio = Column(Numeric(10, 2), nullable=True)
     moneda = Column(String(10), default="SOLES")
@@ -149,14 +152,12 @@ class Report(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     portada = relationship("Cover", foreign_keys=[portada_id])
-    calculation = relationship("Calculation", back_populates="report")
+    template = relationship("Template")
  
-    def set_code(self, raw_string: str) -> None:
-        """Genera un hash SHA-256 truncado a 64 chars para el campo code."""
-        self.code = hashlib.sha256(raw_string.encode()).hexdigest()[:64]
+    
  
     def __repr__(self):
-        return f"<Report {self.nombre} - {self.code[:8]}>"
+        return f"<Report {self.nombre}>"
  
     
 
@@ -186,7 +187,7 @@ class Cover(Base):
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime, nullable=True)
-    
+
     portada = relationship("Media", foreign_keys=[portada_id])
     primer_imagen_footer = relationship("Media", foreign_keys=[primer_imagen_footer_id])
     segundo_imagen_footer = relationship("Media", foreign_keys=[segundo_imagen_footer_id])

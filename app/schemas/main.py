@@ -62,9 +62,9 @@ class TemplateComplementResponse(TemplateComplementBase):
 class CalculationBase(BaseModel):
     calculation_file_id: Optional[int] = None
     user_id: int
+    code: str = Field(..., max_length=64)
     type: Literal["valora", "kapital"]
     data: Optional[Dict[str, Any]] = None
-
     @field_validator("type", mode="before")
     @classmethod
     def extract_enum_value(cls, v):
@@ -86,7 +86,6 @@ class CalculationResponse(CalculationBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    report_code: str | None = None
 
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 

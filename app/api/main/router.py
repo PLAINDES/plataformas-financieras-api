@@ -144,26 +144,16 @@ def delete_template_complement(complement_id: int, db: Session = Depends(get_db)
     return None
 
 
-# ==================== CALCULATIONS ====================
 @router.get("/calculations", response_model=List[CalculationResponse])
 def list_calculations(user_id: Optional[int] = None, db: Session = Depends(get_db)):
-
-    query = select(Calculation).options(joinedload(Calculation.report))
-
+    query = select(Calculation)
     if user_id:
         query = query.where(Calculation.user_id == user_id)
-
+    
     result = db.execute(query)
     calculations = result.scalars().all()
 
-    responses = []
-
-    for c in calculations:
-        r = CalculationResponse.model_validate(c)
-        r.report_code = c.report.code if c.report else None
-        responses.append(r)
-
-    return responses
+    return [CalculationResponse.model_validate(c) for c in calculations]
 
 
 @router.get("/calculations/{calculation_id}", response_model=CalculationResponse)
