@@ -16,7 +16,7 @@ class CMSService:
 
     def get_landing_page(self, slug: str = None) -> LandingDataResponse:
         page = self.repository.get_homepage()
-
+    
         contents = self.repository.get_contents_by_page_id(page.id)
 
         site_settings = self.repository.get_site_settings("main")
@@ -184,7 +184,7 @@ class CMSService:
             updated_at=page.updated_at,
             contents=[
                 self._content_to_response(content)
-                for content in sorted(page.contents, key=lambda c: c.sort_order)
+                for content in sorted(page.contents, key=lambda c: c.sort_order or 0)
                 if content.is_visible
             ]
         )
