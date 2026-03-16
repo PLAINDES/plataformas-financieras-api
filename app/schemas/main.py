@@ -120,3 +120,27 @@ class TemplateCodeResponse(TemplateCodeBase):
     deleted_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ==================== COVER CODE SCHEMAS ====================
+class CoverUpdate(BaseModel):
+    portada_id: Optional[int] = None
+    primer_imagen_footer_id: Optional[int] = None
+    segundo_imagen_footer_id: Optional[int] = None
+    logo_superior_id: Optional[int] = None
+    imagen_central_id: Optional[int] = None
+    logo_inferior_id: Optional[int] = None
+    imagen_fondo_id: Optional[int] = None
+
+
+# ==================== REPORT CODE SCHEMAS ====================
+class ReportUpdate(BaseModel):
+    nombre: Optional[str] = None
+    precio: Optional[float] = None
+    moneda: Optional[str] = None
+    sector_empresa: Optional[str] = None
+    bono_ajustado: Optional[str] = None
+    link_pago: Optional[str] = None
+    contenido: Optional[str] = None
+    activo: Optional[bool] = None
+    cover_data: Optional[CoverUpdate] = None
