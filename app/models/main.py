@@ -1,16 +1,17 @@
 import hashlib
 from unicodedata import numeric
 
-from sqlalchemy import Column, String, DateTime, Numeric, Enum as SQLEnum, Boolean, JSON, ForeignKey, Table
+import enum
+from sqlalchemy import Column, String, DateTime, Numeric, Enum as SQLEnum, Boolean, JSON, ForeignKey, Table, Text
 from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
-from ..db.base import Base
+from app.db.base import Base
 
 class CoverType(enum.Enum):
     IMAGEN_ADJUNTADA = "imagen_adjuntada"
     PERSONALIZADA = "personalizada"
+# pylint: disable=not-callable
 
 class CalculationType(enum.Enum):
     VALORA = "valora"
@@ -199,3 +200,67 @@ class Cover(Base):
     
     def __repr__(self):
         return f"<Covers {self.nombre} ({self.tipo.value})>"
+
+
+# ==================== MASTER TEMPLATES ====================
+
+class MasterTemplateType(enum.Enum):
+    """ Tipo de plantilla maestra, para segmentar lógicas o permisos si es necesario"""
+    VALORA = "valora"
+    KAPITAL = "kapital"
+
+
+class MasterTemplateStatus(enum.Enum):
+    """
+    Estado del proceso de creación/actualización de la plantilla maestra.
+    No es obligatorio pero puede ayudar a trackear el ciclo de vida del
+    archivo en OneDrive y su disponibilidad para los usuarios
+    """
+    DRAFT = "borrador"
+    IN_PROCESS = "en_proceso"
+    COMPLETED = "completado"
+
+
+class MasterTemplate(Base):
+    """
+    Define una versión del Excel maestro
+    El archivo vive en OneDrive. Este registro guarda sus metadatos
+    y la ruta/ID para descargarlo.
+    """
+    __tablename__ = "main_master_templates"
+
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+    nombre = Column(String(255), nullable=False)          # ej: "WACC Colombia Q1 2026"
+    version = Column(String(50), nullable=True)           # ej: "02.02.26"
+    description = Column(Text, nullable=True)
+    type = Column(
+        SQLEnum(
+            MasterTemplateType,
+            name="mastertemplatetype",
+            values_callable=lambda e: [x.value for x in e],
+            native_enum=True,
+            validate_strings=True,
+        ),
+        nullable=False,
+        default=MasterTemplateType.VALORA,
+    )
+    # OneDrive
+    onedrive_env = Column(String(20), nullable=True)      # "development" | "production" | "test"
+    onedrive_folder = Column(String(50), nullable=True)   # "plantillas_maestras"
+    onedrive_item_id = Column(String(512), nullable=True) # ID en OneDrive para descarga directa
+    onedrive_filename = Column(String(512), nullable=True)
+    onedrive_path = Column(String(1024), nullable=True)   # path completo por referencia
+
+    is_active = Column(Boolean, default=True, nullable=False)
+    hojas_config = Column(JSON, nullable=True)            # metadatos de hojas relevantes
+    created_by_user_id = Column(MySQLBigInt(unsigned=True),
+                                ForeignKey("sys_users.id"), nullable=True)
+
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
+
+    created_by = relationship("User", foreign_keys=[created_by_user_id])
+
+    def __repr__(self):
+        return f"<MasterTemplate {self.nombre} v{self.version}>"

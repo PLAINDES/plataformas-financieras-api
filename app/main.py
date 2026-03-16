@@ -7,6 +7,8 @@ from .core.config import settings
 from .api.auth.router import router as auth_router
 from .api.cms.router import router as cms_router
 from .api.main.router import router as main_router
+from .api.main.master_templates_router import router as master_templates_router
+from .api.storage.onedrive_router import router as onedrive_router
 
 print("--- EL SERVIDOR ESTÁ ARRANCANDO ---")
 # Crear instancia de FastAPI
@@ -51,7 +53,9 @@ async def root():
 # Include routers
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cms_router, prefix=settings.API_V1_PREFIX)
-app.include_router(main_router, prefix=settings.API_V1_PREFIX)  
+app.include_router(main_router, prefix=settings.API_V1_PREFIX)
+app.include_router(master_templates_router, prefix=settings.API_V1_PREFIX)
+app.include_router(onedrive_router, prefix=settings.API_V1_PREFIX)
 
 # Global exception handler
 @app.exception_handler(Exception)

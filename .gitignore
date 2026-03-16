@@ -43,3 +43,7 @@ htmlcov/
 
 # MyPy
 .mypy_cache/
+
+# byte‑compiled / cache files
+__pycache__/
+*.py[cod]

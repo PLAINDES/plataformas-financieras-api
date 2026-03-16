@@ -1,14 +1,16 @@
 # app/api/main/router.py
 import os
+from typing import List
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select
+from sqlalchemy import select, func
 from typing import List, Optional
 from datetime import datetime
-from ...db.database import get_db
-from ...models.main import Template, TemplateComplement, Calculation, TemplateCode, Report, Cover
-from ...models.cms import Media
-from ...schemas.main import (
+from app.db.database import get_db
+from app.models.main import Template, TemplateComplement, Calculation, TemplateCode, Report, Cover
+from app.models.cms import Media
+from app.schemas.main import (
     ReportUpdate, TemplateCreate, TemplateUpdate, TemplateResponse,
     TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
     CalculationCreate, CalculationUpdate, CalculationResponse,
@@ -85,7 +87,6 @@ def delete_template(template_id: int, db: Session = Depends(get_db)):
     db.commit()
     return None
 
-
 # ==================== TEMPLATE COMPLEMENTS ====================
 @router.get("/template-complements", response_model=List[TemplateComplementResponse])
 def list_template_complements(db: Session = Depends(get_db)):
@@ -112,6 +113,20 @@ def get_template_complement(complement_id: int, db: Session = Depends(get_db)):
     status_code=status.HTTP_201_CREATED,
 )
 def create_template_complement(payload: TemplateComplementCreate, db: Session = Depends(get_db)):
+    """
+    Creates a new complement. Soft-deletes any existing complement with the same nombre
+    so that only one active record per nombre exists at a time.
+    """
+    # Soft-delete all previous records with the same nombre
+    old_records = db.execute(
+        select(TemplateComplement)
+        .where(TemplateComplement.nombre == payload.nombre)
+        .where(TemplateComplement.deleted_at.is_(None))
+    ).scalars().all()
+
+    for old in old_records:
+        old.deleted_at = datetime.utcnow()
+
     complement = TemplateComplement(**payload.model_dump())
     db.add(complement)
     db.commit()
