@@ -377,6 +377,7 @@ def upgrade() -> None:
         "main_reports",
         sa.Column("id", mysql.BIGINT(unsigned=True), autoincrement=True, nullable=False),
         sa.Column("template_id", mysql.BIGINT(unsigned=True), nullable=False),
+        sa.Column('file', sa.String(length=500), nullable=True),
         sa.Column("nombre", sa.String(length=255), nullable=False),
         sa.Column("precio", sa.Numeric(precision=10, scale=2), nullable=True),
         sa.Column("moneda", sa.String(length=10), nullable=True),

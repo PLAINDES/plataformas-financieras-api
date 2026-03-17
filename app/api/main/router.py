@@ -1,13 +1,15 @@
 # app/api/main/router.py
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
 from typing import List, Optional
 from datetime import datetime
 from ...db.database import get_db
-from ...models.main import Template, TemplateComplement, Calculation, TemplateCode
+from ...models.main import Template, TemplateComplement, Calculation, TemplateCode, Report, Cover
+from ...models.cms import Media
 from ...schemas.main import (
-    TemplateCreate, TemplateUpdate, TemplateResponse,
+    ReportUpdate, TemplateCreate, TemplateUpdate, TemplateResponse,
     TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
     CalculationCreate, CalculationUpdate, CalculationResponse,
     TemplateCodeCreate, TemplateCodeUpdate, TemplateCodeResponse,
@@ -92,8 +94,6 @@ def list_template_complements(db: Session = Depends(get_db)):
         .where(TemplateComplement.deleted_at.is_(None))
         .order_by(TemplateComplement.created_at.desc())
     )
-    
-    # Solo retornar el más reciente
     complement = result.scalars().first()
     return [TemplateComplementResponse.model_validate(complement)] if complement else []
 
@@ -144,15 +144,14 @@ def delete_template_complement(complement_id: int, db: Session = Depends(get_db)
     return None
 
 
+# ==================== CALCULATIONS ====================
 @router.get("/calculations", response_model=List[CalculationResponse])
 def list_calculations(user_id: Optional[int] = None, db: Session = Depends(get_db)):
     query = select(Calculation)
     if user_id:
         query = query.where(Calculation.user_id == user_id)
-    
     result = db.execute(query)
     calculations = result.scalars().all()
-
     return [CalculationResponse.model_validate(c) for c in calculations]
 
 
@@ -263,6 +262,225 @@ def delete_template_code(template_code_id: int, db: Session = Depends(get_db)):
     return None
 
 
+# ==================== REPORTS ====================
+
+@router.get("/reports")
+def list_reports(db: Session = Depends(get_db)):
+    result = db.execute(
+        select(Report)
+        .where(Report.deleted_at.is_(None))
+        .options(
+            joinedload(Report.template).joinedload(Template.template_codes),
+            joinedload(Report.portada).joinedload(Cover.portada),
+            joinedload(Report.portada).joinedload(Cover.primer_imagen_footer),
+            joinedload(Report.portada).joinedload(Cover.segundo_imagen_footer),
+            joinedload(Report.portada).joinedload(Cover.logo_superior),
+            joinedload(Report.portada).joinedload(Cover.imagen_central),
+            joinedload(Report.portada).joinedload(Cover.logo_inferior),
+            joinedload(Report.portada).joinedload(Cover.imagen_fondo),
+        )
+    )
+    reports = result.unique().scalars().all()
+    return [_report_to_response(r) for r in reports]
+
+
+@router.get("/reports/{report_id}")
+def get_report(report_id: int, db: Session = Depends(get_db)):
+    result = db.execute(
+        select(Report)
+        .where(Report.id == report_id, Report.deleted_at.is_(None))
+        .options(
+            joinedload(Report.template).joinedload(Template.template_codes),
+            joinedload(Report.portada).joinedload(Cover.portada),
+            joinedload(Report.portada).joinedload(Cover.primer_imagen_footer),
+            joinedload(Report.portada).joinedload(Cover.segundo_imagen_footer),
+            joinedload(Report.portada).joinedload(Cover.logo_superior),
+            joinedload(Report.portada).joinedload(Cover.imagen_central),
+            joinedload(Report.portada).joinedload(Cover.logo_inferior),
+            joinedload(Report.portada).joinedload(Cover.imagen_fondo),
+        )
+    )
+    report = result.unique().scalar_one_or_none()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return _report_to_response(report)
+
+
+@router.put("/reports/{report_id}")
+def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_db)):
+
+    result = db.execute(
+        select(Report)
+        .where(Report.id == report_id, Report.deleted_at.is_(None))
+        .options(joinedload(Report.portada))
+    )
+    report = result.unique().scalar_one_or_none()
+
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    update_dict = data.model_dump(exclude_unset=True, exclude={"cover_data"})
+
+    for key, value in update_dict.items():
+        setattr(report, key, value)
+
+    if data.cover_data and report.portada:
+        cover_dict = data.cover_data.model_dump(exclude_unset=True)
+        for key, value in cover_dict.items():
+            setattr(report.portada, key, value)
+
+    try:
+        db.commit()
+        db.refresh(report)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Error al actualizar: {str(e)}")
+
+    return {"message": "Reporte actualizado correctamente"}
+
+
+STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../files")
+
+
+@router.post("/reports/{report_id}/upload", status_code=status.HTTP_200_OK)
+async def upload_report_file(
+    report_id: int,
+    file: UploadFile = File(...),
+    html: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    report = db.get(Report, report_id)
+    if not report or report.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    print("STORAGE_DIR:", STORAGE_DIR)
+    print("STORAGE_DIR absoluto:", os.path.abspath(STORAGE_DIR))
+    print("__file__:", __file__)
+
+    os.makedirs(STORAGE_DIR, exist_ok=True)
+
+    filename = f"Reporte-{report_id}.pdf"              
+    pdf_path = os.path.join(STORAGE_DIR, filename)
+
+    with open(pdf_path, "wb") as f:
+        f.write(await file.read())
+
+    html_path = os.path.join(STORAGE_DIR, f"Reporte-{report_id}.html")
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    report.file = filename                                  
+    db.commit()
+    return {"message": "Archivo guardado", "file": filename}
+
+
+@router.get("/reports/{report_id}/content")
+def get_report_content(report_id: int, db: Session = Depends(get_db)):
+    report = db.get(Report, report_id)
+    if not report or report.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    html_path = os.path.join(STORAGE_DIR, f"Reporte-{report_id}.html")
+    if not os.path.exists(html_path):
+        return {"html": ""}
+
+    with open(html_path, "r", encoding="utf-8") as f:
+        return {"html": f.read()}
+
+
+# ==================== COVERS ====================
+
+@router.get("/covers")
+def list_covers(db: Session = Depends(get_db)):
+    result = db.execute(
+        select(Cover)
+        .where(Cover.deleted_at.is_(None))
+        .options(
+            joinedload(Cover.portada),
+            joinedload(Cover.primer_imagen_footer),
+            joinedload(Cover.segundo_imagen_footer),
+            joinedload(Cover.logo_superior),
+            joinedload(Cover.imagen_central),
+            joinedload(Cover.logo_inferior),
+            joinedload(Cover.imagen_fondo),
+        )
+    )
+    covers = result.unique().scalars().all()
+    return [_cover_to_dict(c) for c in covers]
+
+
+@router.get("/covers/{cover_id}")
+def get_cover(cover_id: int, db: Session = Depends(get_db)):
+    result = db.execute(
+        select(Cover)
+        .where(Cover.id == cover_id, Cover.deleted_at.is_(None))
+        .options(
+            joinedload(Cover.portada),
+            joinedload(Cover.primer_imagen_footer),
+            joinedload(Cover.segundo_imagen_footer),
+            joinedload(Cover.logo_superior),
+            joinedload(Cover.imagen_central),
+            joinedload(Cover.logo_inferior),
+            joinedload(Cover.imagen_fondo),
+        )
+    )
+    cover = result.unique().scalar_one_or_none()
+    if not cover:
+        raise HTTPException(status_code=404, detail="Cover not found")
+    return _cover_to_dict(cover)
+
+
+@router.post("/covers", status_code=status.HTTP_201_CREATED)
+def create_cover(payload: dict, db: Session = Depends(get_db)):
+    cover = Cover(
+        nombre=payload["nombre"],
+        tipo=payload["tipo"],
+        portada_id=payload.get("portada_id"),
+        primer_imagen_footer_id=payload.get("primer_imagen_footer_id"),
+        segundo_imagen_footer_id=payload.get("segundo_imagen_footer_id"),
+        logo_superior_id=payload.get("logo_superior_id"),
+        imagen_central_id=payload.get("imagen_central_id"),
+        logo_inferior_id=payload.get("logo_inferior_id"),
+        imagen_fondo_id=payload.get("imagen_fondo_id"),
+    )
+    db.add(cover)
+    db.commit()
+    db.refresh(cover)
+    return get_cover(cover.id, db)
+
+
+@router.put("/covers/{cover_id}")
+def update_cover(cover_id: int, payload: dict, db: Session = Depends(get_db)):
+    cover = db.get(Cover, cover_id)
+    if not cover or cover.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Cover not found")
+
+    allowed = {
+        "nombre", "tipo",
+        "portada_id", "primer_imagen_footer_id", "segundo_imagen_footer_id",
+        "logo_superior_id", "imagen_central_id", "logo_inferior_id", "imagen_fondo_id",
+    }
+    for key, value in payload.items():
+        if key in allowed:
+            setattr(cover, key, value)
+
+    db.commit()
+    db.refresh(cover)
+    return get_cover(cover_id, db)
+
+
+@router.delete("/covers/{cover_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_cover(cover_id: int, db: Session = Depends(get_db)):
+    cover = db.get(Cover, cover_id)
+    if not cover or cover.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Cover not found")
+    cover.deleted_at = datetime.utcnow()
+    db.commit()
+    return None
+
+
+# ==================== HELPER FUNCTIONS ====================
+
 def _get_template_codes(db: Session, template_code_ids: List[int]):
     if not template_code_ids:
         return []
@@ -307,3 +525,67 @@ def _template_code_to_response(code: TemplateCode) -> TemplateCodeResponse:
         updated_at=code.updated_at,
         deleted_at=code.deleted_at,
     )
+
+
+def _media_to_dict(media: Media | None) -> dict | None:
+    if not media:
+        return None
+    return {
+        "id": media.id,
+        "url": media.url,
+        "filename": media.filename,
+        "original_name": media.original_name,
+        "mime_type": media.mime_type,
+        "alt_text": media.alt_text,
+    }
+
+
+def _cover_to_dict(cover: Cover | None) -> dict | None:
+    if not cover:
+        return None
+    return {
+        "id": cover.id,
+        "nombre": cover.nombre,
+        "tipo": cover.tipo.value,
+        "portada": _media_to_dict(cover.portada),
+        "primer_imagen_footer": _media_to_dict(cover.primer_imagen_footer),
+        "segundo_imagen_footer": _media_to_dict(cover.segundo_imagen_footer),
+        "logo_superior": _media_to_dict(cover.logo_superior),
+        "imagen_central": _media_to_dict(cover.imagen_central),
+        "logo_inferior": _media_to_dict(cover.logo_inferior),
+        "imagen_fondo": _media_to_dict(cover.imagen_fondo),
+    }
+
+
+def _report_to_response(report: Report) -> dict:
+    template = report.template
+    return {
+        "id": report.id,
+        "nombre": report.nombre,
+        "file": report.file,
+        "precio": float(report.precio) if report.precio is not None else None,
+        "moneda": report.moneda,
+        "sector_empresa": report.sector_empresa,
+        "bono_ajustado": report.bono_ajustado,
+        "link_pago": report.link_pago,
+        "contenido": report.contenido,
+        "activo": report.activo,
+        "created_at": report.created_at,
+        "updated_at": report.updated_at,
+        "template": {
+            "id": template.id,
+            "nombre": template.nombre,
+            "is_default": template.is_default,
+            "template_codes": [
+                {
+                    "id": tc.id,
+                    "nombre": tc.nombre,
+                    "code": tc.code,
+                    "type": tc.type.value,
+                    "hoja": tc.hoja,
+                }
+                for tc in template.template_codes
+            ],
+        } if template else None,
+        "portada": _cover_to_dict(report.portada),
+    }
