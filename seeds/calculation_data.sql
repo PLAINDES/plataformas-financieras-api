@@ -1,9 +1,21 @@
-USE financiera_db;
-
 -- ─── cms_media ────────────────────────────────────────────────────────────────
-INSERT INTO `cms_media`
-  (id, filename, original_name, mime_type, size, url, storage_path,
-   alt_text, caption, folder, uploaded_by, meta, created_at, updated_at, deleted_at)
+INSERT INTO `cms_media` (
+        `id`,
+        `filename`,
+        `original_name`,
+        `mime_type`,
+        `size`,
+        `url`,
+        `storage_path`,
+        `alt_text`,
+        `caption`,
+        `folder`,
+        `uploaded_by`,
+        `meta`,
+        `created_at`,
+        `updated_at`,
+        `deleted_at`
+    )
 VALUES
   (30,
    'eeff_valora_chile_tecnologia.xlsx',
@@ -72,8 +84,16 @@ VALUES
 
 
 -- ─── main_calculations (valora) ───────────────────────────────────────────────
-INSERT INTO `main_calculations`
-  (id, calculation_file_id, user_id, code, type, data, created_at, updated_at)
+INSERT INTO `main_calculations` (
+        `id`,
+        `calculation_file_id`,
+        `user_id`,
+        `code`,
+        `type`,
+        `data`,
+        `created_at`,
+        `updated_at`
+    )
 VALUES
   (101, 30, 15,
    SUBSTRING(SHA2('valora-chile-tecnologia-15-2026-03-10', 256), 1, 64),
@@ -107,8 +127,16 @@ VALUES
 
 
 -- ─── main_calculations (kapital) ─────────────────────────────────────────────
-INSERT INTO `main_calculations`
-  (id, calculation_file_id, user_id, code, type, data, created_at, updated_at)
+INSERT INTO `main_calculations` (
+        `id`,
+        `calculation_file_id`,
+        `user_id`,
+        `code`,
+        `type`,
+        `data`,
+        `created_at`,
+        `updated_at`
+    )
 VALUES
   (201, NULL, 15,
    SUBSTRING(SHA2('kapital-finanzas-chile-15-2026-03-10', 256), 1, 64),
@@ -172,11 +200,21 @@ VALUES
 
 
 -- ─── main_covers ─────────────────────────────────────────────────────────────
-INSERT INTO `main_covers`
-  (id, nombre, tipo,
-   portada_id, primer_imagen_footer_id, segundo_imagen_footer_id,
-   logo_superior_id, imagen_central_id, logo_inferior_id, imagen_fondo_id,
-   created_at, updated_at, deleted_at)
+INSERT INTO `main_covers` (
+        `id`,
+        `nombre`,
+        `tipo`,
+        `portada_id`,
+        `primer_imagen_footer_id`,
+        `segundo_imagen_footer_id`,
+        `logo_superior_id`,
+        `imagen_central_id`,
+        `logo_inferior_id`,
+        `imagen_fondo_id`,
+        `created_at`,
+        `updated_at`,
+        `deleted_at`
+    )
 VALUES
   (10,
    'Portada Kapital WACC — Finanzas',
@@ -187,8 +225,15 @@ VALUES
 
 
 -- ─── main_templates ──────────────────────────────────────────────────────────
-INSERT INTO `main_templates`
-  (id, nombre, template_file_id, is_default, created_at, updated_at, deleted_at)
+INSERT INTO `main_templates` (
+        `id`,
+        `nombre`,
+        `template_file_id`,
+        `is_default`,
+        `created_at`,
+        `updated_at`,
+        `deleted_at`
+    )
 VALUES
   (10,
    'Template Kapital WACC — Estándar',
@@ -197,8 +242,17 @@ VALUES
 
 
 -- ─── main_template_codes ─────────────────────────────────────────────────────
-INSERT INTO `main_template_codes`
-  (id, template_code_image_id, type, hoja, nombre, code, created_at, updated_at, deleted_at)
+INSERT INTO `main_template_codes` (
+        `id`,
+        `template_code_image_id`,
+        `type`,
+        `hoja`,
+        `nombre`,
+        `code`,
+        `created_at`,
+        `updated_at`,
+        `deleted_at`
+    )
 VALUES
   (10, 32,   'kapital', 'WACC', 'Gráfico de Prima de Mercado (Rm - Rf)', '$$grafico1$$', '2026-03-10 09:20:00', '2026-03-10 09:20:00', NULL),
   (11, NULL, 'kapital', 'WACC', 'Prima de Mercado (Rm - Rf)',            '$$KMZGY$$',    '2026-03-10 09:20:00', '2026-03-10 09:20:00', NULL),
@@ -210,22 +264,37 @@ VALUES
 
 
 -- ─── main_template_codes_main_templates ──────────────────────────────────────
-INSERT INTO `main_template_codes_main_templates`
-  (template_code_id, template_id)
+INSERT INTO `main_template_codes_main_templates` (
+        `template_code_id`,
+        `template_id`
+    )
 VALUES
   (10, 10), (11, 10), (12, 10),
   (13, 10), (14, 10), (15, 10), (16, 10);
 
 
 
-INSERT INTO `main_reports`
-  (id, template_id,file, nombre, precio, moneda,
-   sector_empresa, bono_ajustado, contenido, link_pago,
-   portada_id, activo, created_at, updated_at, deleted_at)
+INSERT INTO `main_reports` (
+        `id`,
+        `template_id`,
+        `file`,
+        `nombre`,
+        `precio`,
+        `moneda`,
+        `sector_empresa`,
+        `bono_ajustado`,
+        `contenido`,
+        `link_pago`,
+        `portada_id`,
+        `activo`,
+        `created_at`,
+        `updated_at`,
+        `deleted_at`
+    )
 VALUES
   (10,
    10,
-   'Reporte-10.pdf'
+   'Reporte-10.pdf',
    'Reporte WACC — Banca Perú 2026',
    1200.00,
    'USD',
