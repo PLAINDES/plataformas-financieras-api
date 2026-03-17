@@ -138,6 +138,7 @@ class Report(Base):
  
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     template_id = Column(MySQLBigInt(unsigned=True), ForeignKey("main_templates.id"), nullable=False)
+    file = Column(String(500), nullable=True)
     nombre = Column(String(255), nullable=False)
     precio = Column(Numeric(10, 2), nullable=True)
     moneda = Column(String(10), default="SOLES")

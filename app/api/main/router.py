@@ -1,5 +1,6 @@
 # app/api/main/router.py
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
 from typing import List, Optional
@@ -93,8 +94,6 @@ def list_template_complements(db: Session = Depends(get_db)):
         .where(TemplateComplement.deleted_at.is_(None))
         .order_by(TemplateComplement.created_at.desc())
     )
-    
-    # Solo retornar el más reciente
     complement = result.scalars().first()
     return [TemplateComplementResponse.model_validate(complement)] if complement else []
 
@@ -145,15 +144,14 @@ def delete_template_complement(complement_id: int, db: Session = Depends(get_db)
     return None
 
 
+# ==================== CALCULATIONS ====================
 @router.get("/calculations", response_model=List[CalculationResponse])
 def list_calculations(user_id: Optional[int] = None, db: Session = Depends(get_db)):
     query = select(Calculation)
     if user_id:
         query = query.where(Calculation.user_id == user_id)
-    
     result = db.execute(query)
     calculations = result.scalars().all()
-
     return [CalculationResponse.model_validate(c) for c in calculations]
 
 
@@ -264,24 +262,7 @@ def delete_template_code(template_code_id: int, db: Session = Depends(get_db)):
     return None
 
 
-def _get_template_codes(db: Session, template_code_ids: List[int]):
-    if not template_code_ids:
-        return []
-    result = db.execute(
-        select(TemplateCode).where(TemplateCode.id.in_(template_code_ids))
-    )
-    return list(result.scalars().all())
-
-
-def _get_templates(db: Session, template_ids: List[int]):
-    if not template_ids:
-        return []
-    result = db.execute(
-        select(Template).where(Template.id.in_(template_ids))
-    )
-    return list(result.scalars().all())
-
-# REPORTES
+# ==================== REPORTS ====================
 
 @router.get("/reports")
 def list_reports(db: Session = Depends(get_db)):
@@ -324,27 +305,30 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Report not found")
     return _report_to_response(report)
 
+
 @router.put("/reports/{report_id}")
 def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_db)):
+
     result = db.execute(
         select(Report)
-        .where(Report.id == report_id)
-        .options(joinedload(Report.portada)) 
+        .where(Report.id == report_id, Report.deleted_at.is_(None))
+        .options(joinedload(Report.portada))
     )
     report = result.unique().scalar_one_or_none()
-    
+
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
 
-    report_dict = data.model_dump(exclude_unset=True, exclude={"cover_data"})
-    for key, value in report_dict.items():
+    update_dict = data.model_dump(exclude_unset=True, exclude={"cover_data"})
+
+    for key, value in update_dict.items():
         setattr(report, key, value)
 
     if data.cover_data and report.portada:
         cover_dict = data.cover_data.model_dump(exclude_unset=True)
         for key, value in cover_dict.items():
             setattr(report.portada, key, value)
-    
+
     try:
         db.commit()
         db.refresh(report)
@@ -352,7 +336,57 @@ def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error al actualizar: {str(e)}")
 
-    return {"message": "Reporte y Cover actualizados correctamente"}
+    return {"message": "Reporte actualizado correctamente"}
+
+
+STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../files")
+
+
+@router.post("/reports/{report_id}/upload", status_code=status.HTTP_200_OK)
+async def upload_report_file(
+    report_id: int,
+    file: UploadFile = File(...),
+    html: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    report = db.get(Report, report_id)
+    if not report or report.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    print("STORAGE_DIR:", STORAGE_DIR)
+    print("STORAGE_DIR absoluto:", os.path.abspath(STORAGE_DIR))
+    print("__file__:", __file__)
+
+    os.makedirs(STORAGE_DIR, exist_ok=True)
+
+    filename = f"Reporte-{report_id}.pdf"              
+    pdf_path = os.path.join(STORAGE_DIR, filename)
+
+    with open(pdf_path, "wb") as f:
+        f.write(await file.read())
+
+    html_path = os.path.join(STORAGE_DIR, f"Reporte-{report_id}.html")
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    report.file = filename                                  
+    db.commit()
+    return {"message": "Archivo guardado", "file": filename}
+
+
+@router.get("/reports/{report_id}/content")
+def get_report_content(report_id: int, db: Session = Depends(get_db)):
+    report = db.get(Report, report_id)
+    if not report or report.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    html_path = os.path.join(STORAGE_DIR, f"Reporte-{report_id}.html")
+    if not os.path.exists(html_path):
+        return {"html": ""}
+
+    with open(html_path, "r", encoding="utf-8") as f:
+        return {"html": f.read()}
+
 
 # ==================== COVERS ====================
 
@@ -374,7 +408,7 @@ def list_covers(db: Session = Depends(get_db)):
     covers = result.unique().scalars().all()
     return [_cover_to_dict(c) for c in covers]
 
-#Cover/Portada
+
 @router.get("/covers/{cover_id}")
 def get_cover(cover_id: int, db: Session = Depends(get_db)):
     result = db.execute(
@@ -412,7 +446,6 @@ def create_cover(payload: dict, db: Session = Depends(get_db)):
     db.add(cover)
     db.commit()
     db.refresh(cover)
-    # reload with joins
     return get_cover(cover.id, db)
 
 
@@ -445,6 +478,27 @@ def delete_cover(cover_id: int, db: Session = Depends(get_db)):
     db.commit()
     return None
 
+
+# ==================== HELPER FUNCTIONS ====================
+
+def _get_template_codes(db: Session, template_code_ids: List[int]):
+    if not template_code_ids:
+        return []
+    result = db.execute(
+        select(TemplateCode).where(TemplateCode.id.in_(template_code_ids))
+    )
+    return list(result.scalars().all())
+
+
+def _get_templates(db: Session, template_ids: List[int]):
+    if not template_ids:
+        return []
+    result = db.execute(
+        select(Template).where(Template.id.in_(template_ids))
+    )
+    return list(result.scalars().all())
+
+
 def _template_to_response(template: Template) -> TemplateResponse:
     return TemplateResponse(
         id=template.id,
@@ -472,6 +526,7 @@ def _template_code_to_response(code: TemplateCode) -> TemplateCodeResponse:
         deleted_at=code.deleted_at,
     )
 
+
 def _media_to_dict(media: Media | None) -> dict | None:
     if not media:
         return None
@@ -483,6 +538,7 @@ def _media_to_dict(media: Media | None) -> dict | None:
         "mime_type": media.mime_type,
         "alt_text": media.alt_text,
     }
+
 
 def _cover_to_dict(cover: Cover | None) -> dict | None:
     if not cover:
@@ -506,6 +562,7 @@ def _report_to_response(report: Report) -> dict:
     return {
         "id": report.id,
         "nombre": report.nombre,
+        "file": report.file,
         "precio": float(report.precio) if report.precio is not None else None,
         "moneda": report.moneda,
         "sector_empresa": report.sector_empresa,
@@ -532,4 +589,3 @@ def _report_to_response(report: Report) -> dict:
         } if template else None,
         "portada": _cover_to_dict(report.portada),
     }
-

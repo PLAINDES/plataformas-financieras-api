@@ -219,12 +219,13 @@ VALUES
 
 
 INSERT INTO `main_reports`
-  (id, template_id, nombre, precio, moneda,
+  (id, template_id,file, nombre, precio, moneda,
    sector_empresa, bono_ajustado, contenido, link_pago,
    portada_id, activo, created_at, updated_at, deleted_at)
 VALUES
   (10,
    10,
+   'Reporte-10.pdf'
    'Reporte WACC — Banca Perú 2026',
    1200.00,
    'USD',
