@@ -55,13 +55,16 @@ class Settings(BaseSettings):
     # External APIs (from original code)
     API_URL_FINANCE: str = ""
     API_URL_MARGARITA: str = ""
-
-    # OneDrive Integration (Azure AD)
     AZURE_CLIENT_ID: str = ""
     AZURE_CLIENT_SECRET: str = ""
     AZURE_TENANT_ID: str = ""
     ONEDRIVE_USER_EMAIL: str = ""
 
+    # AWS S3 Settings
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_REGION_NAME: str = "us-east-1"
+    AWS_BUCKET_NAME: str = "plaindes"
     class Config:
         env_file = ".env"
         case_sensitive = True
