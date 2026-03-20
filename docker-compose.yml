@@ -51,6 +51,7 @@ services:
     volumes:
       - ./app:/app/app
       - ./migrations:/app/migrations
+      - ./public:/app/public
  
     networks:
       - financiera_network

@@ -143,7 +143,7 @@ class OneDriveService:
         Valida que la conexión a OneDrive funciona.
         Retorna info sobre la cuenta conectada y el drive accesible.
         
-        Con client_credentials grant, no se puede usar /me, entonces 
+        Con client_credentials grant no se puede usar /me, entonces 
         se verifica acceso directo al drive del usuario.
         """
         try:
@@ -446,7 +446,7 @@ class OneDriveService:
     async def delete_folder_recursive(self, item_id: str) -> dict:
         """
         Elimina una carpeta y TODO su contenido de forma recursiva.
-        ¡CUIDADO! Esta operación es destructiva.
+        Esta operación es destructiva.
         Retorna stats sobre lo que se eliminó.
         """
         token = await self._get_token()

@@ -1,0 +1,25 @@
+[MASTER]
+disable=
+    missing-docstring,
+    invalid-name,
+    line-too-long,
+    too-many-arguments,
+    too-few-public-methods,
+    too-many-instance-attributes,
+    no-member,
+    not-callable,
+    unsubscriptable-object,
+    use-dict-literal,
+    unused-import,
+    E0015,
+
+# Esto ignora los errores en módulos específicos
+ignore-patterns=
+    ^migrations/.*,
+    ^alembic/.*,
+
+# Extensiones de módulo a ignorar
+extension-pkg-allow-list=
+    sqlalchemy,
+    pydantic,
+    alembic

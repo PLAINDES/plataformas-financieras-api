@@ -1,20 +1,19 @@
 # app/api/main/router.py
 import os
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, func
-from typing import List, Optional
-from datetime import datetime
 from app.db.database import get_db
-from app.models.main import Template, TemplateComplement, Calculation, TemplateCode, Report, Cover
+from app.models.main import Calculation
+from app.models.templates.templates import Template, TemplateComplement, TemplateCode
+from app.models.main import Report, Cover
 from app.models.cms import Media
 from app.schemas.main import (
     ReportUpdate, TemplateCreate, TemplateUpdate, TemplateResponse,
     TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
     CalculationCreate, CalculationUpdate, CalculationResponse,
-    TemplateCodeCreate, TemplateCodeUpdate, TemplateCodeResponse,
 )
 
 router = APIRouter(prefix="/main", tags=["Main"])
@@ -210,73 +209,6 @@ def delete_calculation(calculation_id: int, db: Session = Depends(get_db)):
     return None
 
 
-# ==================== TEMPLATE CODES ====================
-@router.get("/template-codes", response_model=List[TemplateCodeResponse])
-def list_template_codes(db: Session = Depends(get_db)):
-    result = db.execute(
-        select(TemplateCode).where(TemplateCode.deleted_at.is_(None))
-    )
-    codes = result.scalars().all()
-    return [_template_code_to_response(c) for c in codes]
-
-
-@router.get("/template-codes/{template_code_id}", response_model=TemplateCodeResponse)
-def get_template_code(template_code_id: int, db: Session = Depends(get_db)):
-    code = db.get(TemplateCode, template_code_id)
-    if not code or code.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Template code not found")
-    return _template_code_to_response(code)
-
-
-@router.post("/template-codes", response_model=TemplateCodeResponse, status_code=status.HTTP_201_CREATED)
-def create_template_code(payload: TemplateCodeCreate, db: Session = Depends(get_db)):
-    code = TemplateCode(
-        template_code_image_id=payload.template_code_image_id,
-        type=payload.type,
-        hoja=payload.hoja,
-        nombre=payload.nombre,
-        code=payload.code,
-    )
-    if payload.template_ids:
-        code.templates = _get_templates(db, payload.template_ids)
-    db.add(code)
-    db.commit()
-    db.refresh(code)
-    return _template_code_to_response(code)
-
-
-@router.put("/template-codes/{template_code_id}", response_model=TemplateCodeResponse)
-def update_template_code(
-    template_code_id: int, payload: TemplateCodeUpdate, db: Session = Depends(get_db)
-):
-    code = db.get(TemplateCode, template_code_id)
-    if not code or code.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Template code not found")
-
-    update_data = payload.model_dump(exclude_unset=True)
-    template_ids = update_data.pop("template_ids", None)
-
-    for key, value in update_data.items():
-        setattr(code, key, value)
-
-    if template_ids is not None:
-        code.templates = _get_templates(db, template_ids)
-
-    db.commit()
-    db.refresh(code)
-    return _template_code_to_response(code)
-
-
-@router.delete("/template-codes/{template_code_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_template_code(template_code_id: int, db: Session = Depends(get_db)):
-    code = db.get(TemplateCode, template_code_id)
-    if not code or code.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Template code not found")
-    code.deleted_at = datetime.utcnow()
-    db.commit()
-    return None
-
-
 # ==================== REPORTS ====================
 
 @router.get("/reports")
@@ -367,14 +299,14 @@ async def upload_report_file(
     report = db.get(Report, report_id)
     if not report or report.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Report not found")
-    
+
     print("STORAGE_DIR:", STORAGE_DIR)
     print("STORAGE_DIR absoluto:", os.path.abspath(STORAGE_DIR))
     print("__file__:", __file__)
 
     os.makedirs(STORAGE_DIR, exist_ok=True)
 
-    filename = f"Reporte-{report_id}.pdf"              
+    filename = f"Reporte-{report_id}.pdf"
     pdf_path = os.path.join(STORAGE_DIR, filename)
 
     with open(pdf_path, "wb") as f:
@@ -384,7 +316,7 @@ async def upload_report_file(
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
 
-    report.file = filename                                  
+    report.file = filename
     db.commit()
     return {"message": "Archivo guardado", "file": filename}
 
@@ -505,15 +437,6 @@ def _get_template_codes(db: Session, template_code_ids: List[int]):
     return list(result.scalars().all())
 
 
-def _get_templates(db: Session, template_ids: List[int]):
-    if not template_ids:
-        return []
-    result = db.execute(
-        select(Template).where(Template.id.in_(template_ids))
-    )
-    return list(result.scalars().all())
-
-
 def _template_to_response(template: Template) -> TemplateResponse:
     return TemplateResponse(
         id=template.id,
@@ -525,22 +448,6 @@ def _template_to_response(template: Template) -> TemplateResponse:
         updated_at=template.updated_at,
         deleted_at=template.deleted_at,
     )
-
-
-def _template_code_to_response(code: TemplateCode) -> TemplateCodeResponse:
-    return TemplateCodeResponse(
-        id=code.id,
-        template_code_image_id=code.template_code_image_id,
-        type=code.type.value,
-        hoja=code.hoja,
-        nombre=code.nombre,
-        code=code.code,
-        template_ids=[template.id for template in code.templates],
-        created_at=code.created_at,
-        updated_at=code.updated_at,
-        deleted_at=code.deleted_at,
-    )
-
 
 def _media_to_dict(media: Media | None) -> dict | None:
     if not media:

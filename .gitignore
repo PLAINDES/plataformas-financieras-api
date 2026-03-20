@@ -47,3 +47,5 @@ htmlcov/
 # byte‑compiled / cache files
 __pycache__/
 *.py[cod]
+
+public/

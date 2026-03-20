@@ -1,7 +1,7 @@
 # app/schemas/main.py
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
+from typing import List, Optional, Dict, Any, Literal
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 # ==================== TEMPLATE SCHEMAS ====================
@@ -90,38 +90,6 @@ class CalculationResponse(CalculationBase):
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
 
-# ==================== TEMPLATE CODE SCHEMAS ====================
-class TemplateCodeBase(BaseModel):
-    template_code_image_id: Optional[int] = None
-    type: Literal["valora", "kapital"]
-    hoja: Optional[str] = Field(None, max_length=255)
-    nombre: str = Field(..., max_length=255)
-    code: str = Field(..., max_length=255)
-
-
-class TemplateCodeCreate(TemplateCodeBase):
-    template_ids: List[int] = []
-
-
-class TemplateCodeUpdate(BaseModel):
-    template_code_image_id: Optional[int] = None
-    type: Optional[Literal["valora", "kapital"]] = None
-    hoja: Optional[str] = Field(None, max_length=255)
-    nombre: Optional[str] = Field(None, max_length=255)
-    code: Optional[str] = Field(None, max_length=255)
-    template_ids: Optional[List[int]] = None
-
-
-class TemplateCodeResponse(TemplateCodeBase):
-    id: int
-    template_ids: List[int] = []
-    created_at: datetime
-    updated_at: datetime
-    deleted_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 # ==================== COVER CODE SCHEMAS ====================
 class CoverUpdate(BaseModel):
 
@@ -146,13 +114,13 @@ class ReportUpdate(BaseModel):
     bono_ajustado: Optional[str] = None
     link_pago: Optional[str] = None
     contenido: Optional[str] = None
- 
+
     # ── NEW ──────────────────────────────────────────────────────────────
     # Reassigns the Cover FK on the Report row.
     # Send null to detach the current cover.
     portada_id: Optional[int] = None
     # ─────────────────────────────────────────────────────────────────────
- 
+
     # Kept for backwards-compat: patches fields on the already-linked Cover.
     cover_data: Optional[CoverUpdate] = None
  
