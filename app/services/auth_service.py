@@ -5,9 +5,9 @@ from datetime import datetime, timedelta
 from passlib.context import CryptContext
 import jwt
 from jwt import PyJWTError
-from ..models.user import User
-from ..repositories.user_repository import UserRepository
-from ..schemas.user import UserCreate, UserLogin, TokenResponse, UserResponse
+from app.models.user import User
+from app.repositories.user_repository import UserRepository
+from app.schemas.user import UserCreate, UserLogin, TokenResponse, UserResponse
 
 # Configuración
 SECRET_KEY = "your-secret-key-here"  # Cambiar en producción
@@ -170,7 +170,9 @@ class AuthService:
 
     
     def verify_admin(self, user: User) -> bool:
-        return user.role in ("admin", "master")
+        role = getattr(user, "role", None)
+        role_value = getattr(role, "value", role)
+        return str(role_value).lower() in ("admin", "master")
 
     
     # ==================== PRIVATE METHODS ====================

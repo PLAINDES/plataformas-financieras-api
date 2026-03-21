@@ -1,72 +1,21 @@
 import hashlib
-from unicodedata import numeric
-
-from sqlalchemy import Column, String, DateTime, Numeric, Enum as SQLEnum, Boolean, JSON, ForeignKey, Table
+import enum
+from sqlalchemy import Column, String, DateTime, Numeric, Enum as SQLEnum, Boolean, JSON, ForeignKey, Text
 from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
-from ..db.base import Base
+from app.db.base import Base
+
 
 class CoverType(enum.Enum):
     IMAGEN_ADJUNTADA = "imagen_adjuntada"
     PERSONALIZADA = "personalizada"
 
+
+# pylint: disable=not-callable
 class CalculationType(enum.Enum):
     VALORA = "valora"
     KAPITAL = "kapital"
-
-
-class TemplateCodeType(enum.Enum):
-    VALORA = "valora"
-    KAPITAL = "kapital"
-
-
-main_template_code_templates = Table(
-    "main_template_codes_main_templates",
-    Base.metadata,
-    Column("template_code_id", MySQLBigInt(unsigned=True), ForeignKey("main_template_codes.id"), primary_key=True),
-    Column("template_id", MySQLBigInt(unsigned=True), ForeignKey("main_templates.id"), primary_key=True),
-)
-
-
-class Template(Base):
-    __tablename__ = "main_templates"
-
-    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
-    nombre = Column(String(255), nullable=False)
-    template_file_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_media.id"), nullable=True)
-    is_default = Column(Boolean, default=False, nullable=False)
-
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    deleted_at = Column(DateTime, nullable=True)
-
-    template_file = relationship("Media")
-    template_codes = relationship(
-        "TemplateCode",
-        secondary=main_template_code_templates,
-        back_populates="templates",
-    )
-
-    def __repr__(self):
-        return f"<Template {self.nombre}>"
-
-
-class TemplateComplement(Base):
-    __tablename__ = "main_template_complements"
-
-    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
-    nombre = Column(String(255), nullable=False)
-    fecha = Column(DateTime, nullable=False)
-    data = Column(JSON, nullable=True)
-
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    deleted_at = Column(DateTime, nullable=True)
-
-    def __repr__(self):
-        return f"<TemplateComplement {self.nombre}>"
 
 
 class Calculation(Base):
@@ -100,39 +49,6 @@ class Calculation(Base):
         return f"<Calculation {self.id} - {self.type.value}>"
 
 
-class TemplateCode(Base):
-    __tablename__ = "main_template_codes"
-
-    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
-    template_code_image_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_media.id"), nullable=True)
-    type = Column(
-        SQLEnum(
-            TemplateCodeType,
-            name="templatecodetype",
-            values_callable=lambda enum_cls: [e.value for e in enum_cls],
-            native_enum=True,
-            validate_strings=True,
-        ),
-        nullable=False,
-    )
-    hoja = Column(String(255), nullable=True)
-    nombre = Column(String(255), nullable=False)
-    code = Column(String(255), nullable=False)
-
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    deleted_at = Column(DateTime, nullable=True)
-
-    template_code_image = relationship("Media")
-    templates = relationship(
-        "Template",
-        secondary=main_template_code_templates,
-        back_populates="template_codes",
-    )
-
-    def __repr__(self):
-        return f"<TemplateCode {self.nombre}>"
-
 class Report(Base):
     __tablename__ = "main_reports"
  
@@ -154,17 +70,13 @@ class Report(Base):
 
     portada = relationship("Cover", foreign_keys=[portada_id])
     template = relationship("Template")
- 
-    
- 
+
     def __repr__(self):
         return f"<Report {self.nombre}>"
- 
-    
 
 class Cover(Base):
     __tablename__ = "main_covers"
- 
+
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     nombre = Column(String(255), nullable=False)
     tipo = Column(
@@ -196,6 +108,7 @@ class Cover(Base):
     imagen_central = relationship("Media", foreign_keys=[imagen_central_id])
     logo_inferior = relationship("Media", foreign_keys=[logo_inferior_id])
     imagen_fondo = relationship("Media", foreign_keys=[imagen_fondo_id])
-    
+
     def __repr__(self):
         return f"<Covers {self.nombre} ({self.tipo.value})>"
+

@@ -1,10 +1,10 @@
 # app/models/cms.py
+import enum
 from sqlalchemy import Column, BigInteger, String, DateTime, Enum as SQLEnum, Boolean, JSON, Text, Integer, ForeignKey
 from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
-from ..db.base import Base
+from app.db.base import Base
 
 
 class ContentStatus(enum.Enum):

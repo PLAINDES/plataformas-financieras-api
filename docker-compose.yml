@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   db:
     image: mysql:8.0
     container_name: financiera_db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword123}
       MYSQL_DATABASE: ${DATABASE_NAME:-financiera_db}
       MYSQL_USER: ${DATABASE_USER:-financiera_user}
       MYSQL_PASSWORD: ${DATABASE_PASSWORD:-financiera_password}
@@ -14,6 +12,7 @@ services:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    command: --sort_buffer_size=2M --max_sort_length=2048 --max_heap_table_size=32M --tmp_table_size=32M
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 10s
@@ -41,13 +40,18 @@ services:
       FIRST_ADMIN_EMAIL: ${FIRST_ADMIN_EMAIL:-admin@example.com}
       FIRST_ADMIN_PASSWORD: ${FIRST_ADMIN_PASSWORD:-changeme}
       DEBUG: ${DEBUG:-False}
-      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-'["http://localhost:5173","http://localhost:3000","http://localhost"]'}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-["http://localhost:5173","http://localhost:3000","http://localhost"]}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
+      ONEDRIVE_USER_EMAIL: ${ONEDRIVE_USER_EMAIL:-}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     #Desarrollo
     volumes:
       - ./app:/app/app
       - ./migrations:/app/migrations
+      - ./public:/app/public
  
     networks:
       - financiera_network

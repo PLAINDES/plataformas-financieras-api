@@ -1,16 +1,15 @@
 import os
-from dotenv import load_dotenv
 from logging.config import fileConfig
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
-from alembic import context
+from alembic import context  # pylint: disable=no-member
 
 from app.db.base import Base
-from  app.models import cms, user, main
 
 load_dotenv()
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-config = context.config
+config = context.config  # pylint: disable=no-member
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -71,7 +70,7 @@ def run_migrations_online() -> None:
 
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = url
-    
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

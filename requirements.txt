@@ -2,6 +2,7 @@ alembic==1.18.4
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.12.1
+aiohttp==3.9.0
 bcrypt==3.2.2
 cffi==2.0.0
 click==8.3.1
@@ -13,8 +14,10 @@ email-validator==2.3.0
 fastapi==0.128.0
 greenlet==3.3.0
 h11==0.16.0
+httpx==0.28.1
 idna==3.11
 passlib==1.7.4
+Pillow==10.0.0
 pyasn1==0.6.1
 pycparser==2.23
 pydantic==2.12.5
@@ -32,3 +35,4 @@ starlette==0.50.0
 typing_extensions==4.15.0
 typing-inspection==0.4.2
 uvicorn==0.40.0
+openpyxl==3.1.5
