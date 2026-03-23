@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from typing import Optional, List
 from app.models.main import Calculation
-from app.models.templates.templates import Template, TemplateComplement, TemplateCode
+from app.models.main import Template, TemplateComplement, TemplateCode
 
 
 class MainRepository:

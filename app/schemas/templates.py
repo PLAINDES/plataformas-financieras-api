@@ -68,6 +68,7 @@ class TemplateCodeUpdate(BaseModel):
 class TemplateCodeResponse(TemplateCodeBase):
     """Schema de respuesta para código de plantilla."""
     id: int
+    template_code_image_url: Optional[str] = None
     template_ids: List[int] = []
     created_at: datetime
     updated_at: datetime

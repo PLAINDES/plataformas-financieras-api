@@ -114,6 +114,11 @@ class ReportUpdate(BaseModel):
     bono_ajustado: Optional[str] = None
     link_pago: Optional[str] = None
     contenido: Optional[str] = None
+    # HTML content produced by the rich text editor
+    contentEditor: Optional[str] = None
+
+    # Tipo de reporte: 'valora' o 'kapital'
+    type: Optional[Literal["valora", "kapital"]] = None
 
     # ── NEW ──────────────────────────────────────────────────────────────
     # Reassigns the Cover FK on the Report row.
