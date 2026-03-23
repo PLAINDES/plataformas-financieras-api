@@ -1,6 +1,6 @@
 import hashlib
 import enum
-from sqlalchemy import Column, String, DateTime, Numeric, Enum as SQLEnum, Boolean, JSON, ForeignKey, Text
+from sqlalchemy import Column, String, DateTime, Numeric, Enum as SQLEnum, Boolean, JSON, ForeignKey, Text, Table
 from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -152,6 +152,7 @@ class Report(Base):
     bono_ajustado = Column(String(50), nullable=True)
     link_pago = Column(String(555), nullable=True)
     contenido = Column(String(255), nullable=True)
+    contentEditor = Column(Text, nullable=True)
     portada_id = Column(MySQLBigInt(unsigned=True), ForeignKey("main_covers.id"), nullable=True)
     activo = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
