@@ -1,6 +1,11 @@
 # app/api/main/router.py
 import os
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import JSONResponse, Response
+import json
+from fastapi.encoders import jsonable_encoder
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, or_
 from typing import List, Optional
@@ -23,6 +28,8 @@ from ...schemas.main import (
     TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
     CalculationCreate, CalculationUpdate, CalculationResponse,
 )
+from app.models.templates.master_templates import MasterTemplate
+
 
 router = APIRouter(prefix="/main", tags=["Main"])
 
@@ -269,9 +276,98 @@ def list_reports(
         eager_loads=eager,
     )
 
+    # order newest first
+    query = query.order_by(Report.created_at.desc(), Report.id.desc())
+
     result = db.execute(query)
     reports = result.unique().scalars().all()
     return [_report_to_response(r) for r in reports]
+
+
+@router.get("/reports/get-current-codes")
+async def get_current_codes(db: Session = Depends(get_db)):
+    """
+    Obtiene la plantilla maestra más reciente (no borrada) y devuelve sus códigos
+    reusando la lógica de `get_template_codes`.
+    """
+    obj = db.execute(
+        select(MasterTemplate)
+        .where(MasterTemplate.deleted_at.is_(None))
+        .order_by(MasterTemplate.created_at.desc())
+    ).scalars().first()
+
+    if not obj:
+        raise HTTPException(status_code=404, detail="No master template found")
+
+    from . import master_templates_router
+
+    # Get template codes (async) and chart images (sync) from the master templates router
+    codes_payload = await master_templates_router.get_template_codes(obj.id, db)
+    images_payload = master_templates_router.get_template_chart_images(obj.id, db)
+
+    # Build a map code -> image url (codes are returned as strings like $$CODE$$)
+    image_map = {}
+    for t in ("valora", "kapital"):
+        for img in images_payload.get(t, []):
+            code = img.get("code")
+            if code:
+                image_map[code] = img.get("url")
+
+    # Attach image url to each template code if available
+    def attach_urls(codes_list, t):
+        # Return a minimal object for each code with only the fields the frontend expects
+        result = []
+        for c in codes_list:
+            # c may be a Pydantic model or dict or a plain string
+            if not c:
+                continue
+            if isinstance(c, str):
+                code_val = c
+                entry = {
+                    "id": -1,
+                    "nombre": c,
+                    "code": code_val,
+                    "type": t,
+                    "hoja": None,
+                }
+            else:
+                try:
+                    c_dict = c.model_dump() if hasattr(c, "model_dump") else dict(c)
+                except Exception:
+                    c_dict = dict(c)
+                entry = {
+                    "id": c_dict.get("id", -1),
+                    "nombre": c_dict.get("nombre") or c_dict.get("original_name") or c_dict.get("filename") or c_dict.get("code"),
+                    "code": c_dict.get("code"),
+                    "type": t,
+                    "hoja": c_dict.get("hoja"),
+                }
+
+            img_url = image_map.get(entry.get("code"))
+            if img_url:
+                entry["template_code_image_url"] = img_url
+
+            result.append(entry)
+        return result
+
+    # `get_template_codes` returns keys: template_id, template_name, codes, statistics
+    codes_block = codes_payload.get("codes", {}) if isinstance(codes_payload, dict) else {}
+
+    return {
+        "template_id": codes_payload.get("template_id"),
+        "template_name": codes_payload.get("template_name"),
+        "extracted_codes": {
+            "valora": attach_urls(codes_block.get("valora", []), "valora"),
+            "kapital": attach_urls(codes_block.get("kapital", []), "kapital"),
+        },
+        "extracted_chart_codes": None,
+        "extracted_chart_images": images_payload,
+        "chart_extraction_stats": None,
+        "statistics": codes_payload.get("statistics"),
+        "processed_sheets": None,
+    }
+
+
 
 
 @router.get("/reports/{report_id}")
@@ -280,7 +376,6 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
         select(Report)
         .where(Report.id == report_id, Report.deleted_at.is_(None))
         .options(
-            joinedload(Report.template).joinedload(Template.template_codes),
             joinedload(Report.portada).joinedload(Cover.portada),
             joinedload(Report.portada).joinedload(Cover.primer_imagen_footer),
             joinedload(Report.portada).joinedload(Cover.segundo_imagen_footer),
@@ -294,6 +389,44 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     return _report_to_response(report)
+
+
+@router.post("/reports")
+def create_report(data: ReportUpdate, db: Session = Depends(get_db)):
+    # Require at least a nombre for creation
+    if not data.nombre:
+        raise HTTPException(status_code=400, detail="Field 'nombre' is required")
+
+    # Try to pick a default template for new reports
+    template = db.execute(
+        select(Template).where(Template.deleted_at.is_(None), Template.is_default.is_(True))
+    ).scalars().first()
+    if not template:
+        template = db.execute(select(Template).where(Template.deleted_at.is_(None))).scalars().first()
+    if not template:
+        raise HTTPException(status_code=400, detail="No template available to assign to the report")
+
+    report = Report(
+        template_id=template.id,
+        nombre=data.nombre,
+        precio=data.precio,
+        moneda=data.moneda or "SOLES",
+        sector_empresa=data.sector_empresa,
+        bono_ajustado=data.bono_ajustado,
+        link_pago=data.link_pago,
+        contenido=data.contenido,
+        contentEditor=data.contentEditor,
+        portada_id=data.portada_id,
+        activo=data.activo if data.activo is not None else True,
+        type=CalculationType(data.type) if getattr(data, "type", None) else CalculationType.KAPITAL,
+    )
+
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    logger.info(f"_report_to_response(report): {_report_to_response(report)}")
+    response =_report_to_response(report)
+    return jsonable_encoder(response)
 
 
 @router.put("/reports/{report_id}")
@@ -312,7 +445,13 @@ def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_
     update_dict = data.model_dump(exclude_unset=True, exclude={"cover_data"})
 
     for key, value in update_dict.items():
-        setattr(report, key, value)
+        if key == "type" and value is not None:
+            try:
+                setattr(report, key, CalculationType(value))
+            except Exception:
+                setattr(report, key, value)
+        else:
+            setattr(report, key, value)
 
     if data.cover_data and report.portada:
         cover_dict = data.cover_data.model_dump(exclude_unset=True)
@@ -326,11 +465,10 @@ def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error al actualizar: {str(e)}")
 
-    return {"message": "Reporte actualizado correctamente"}
+    return _report_to_response(report)
 
 
 STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../files")
-
 
 @router.post("/reports/{report_id}/upload", status_code=status.HTTP_200_OK)
 async def upload_report_file(
@@ -360,6 +498,11 @@ async def upload_report_file(
         f.write(html)
 
     report.file = filename
+    # persist editor content to the DB as well
+    try:
+        report.contentEditor = html
+    except Exception:
+        pass
     db.commit()
     return {"message": "Archivo guardado", "file": filename}
 
@@ -735,6 +878,11 @@ def _cover_to_dict(cover: Cover | None) -> dict | None:
 
 def _report_to_response(report: Report) -> dict:
     template = report.template
+    def _iso(v):
+        try:
+            return v.isoformat() if v is not None and hasattr(v, "isoformat") else v
+        except Exception:
+            return str(v)
     return {
         "id": report.id,
         "nombre": report.nombre,
@@ -745,23 +893,11 @@ def _report_to_response(report: Report) -> dict:
         "bono_ajustado": report.bono_ajustado,
         "link_pago": report.link_pago,
         "contenido": report.contenido,
+        "contentEditor": report.contentEditor,
         "activo": report.activo,
-        "created_at": report.created_at,
-        "updated_at": report.updated_at,
-        "template": {
-            "id": template.id,
-            "nombre": template.nombre,
-            "is_default": template.is_default,
-            "template_codes": [
-                {
-                    "id": tc.id,
-                    "nombre": tc.nombre,
-                    "code": tc.code,
-                    "type": tc.type.value,
-                    "hoja": tc.hoja,
-                }
-                for tc in template.template_codes
-            ],
-        } if template else None,
+        "created_at": _iso(report.created_at),
+        "updated_at": _iso(report.updated_at),
+        # `template` removed from response to avoid sending template metadata
+        # (previously included template id, nombre, is_default and template_codes)
         "portada": _cover_to_dict(report.portada),
     }
