@@ -1,3 +1,4 @@
+from app.services.aws_service import s3_service
 # app/api/main/master_templates_router.py
 """
 CRUD de Plantillas Maestras + integración OneDrive + Extracción automática de Template Codes.
@@ -20,7 +21,8 @@ import openpyxl
 from app.db.database import get_db
 from app.api.deps import get_current_admin
 from app.models.templates.master_templates import MasterTemplate
-from app.models.templates.templates import TemplateCode, TemplateCodeType
+from app.models.main import TemplateCode
+from app.models.templates import CalculationType
 from app.models.cms import Media
 from app.schemas.templates import (
     MasterTemplateCreate, MasterTemplateUpdate, MasterTemplateResponse,
@@ -301,7 +303,7 @@ async def upload_and_extract_codes(
 
         for code_data in codes_data:
             try:
-                code_enum = TemplateCodeType(template_type)
+                code_enum = CalculationType(template_type)
                 
                 existing = db.execute(
                     select(TemplateCode).where(
@@ -421,7 +423,7 @@ async def upload_and_extract_codes(
                 # ========== GUARDAR COMO TEMPLATE CODE EN BD ==========
                 # Los códigos de gráficos deben guardarse como TemplateCode para que se retornen correctamente
                 try:
-                    code_enum = TemplateCodeType(template_type)
+                    code_enum = CalculationType(template_type)
                     
                     existing_template_code = db.execute(
                         select(TemplateCode).where(
@@ -468,23 +470,26 @@ async def upload_and_extract_codes(
                 prefixed_filename = f"{template_prefix}-{template_type.upper()}-{code_without_dollars}.jpg"
                 prefixed_stem = prefixed_filename.replace('.jpg', '').replace('.png', '')
 
-                chart_path = chart.get("path", "")
-                final_storage_path = chart_path
 
-                # Renombrar archivo físico para mantener orden por plantilla
-                if chart_path:
+                # Determinar file_url y object_key (de subida o de chart existente)
+                file_url = chart.get("url")
+                object_key = chart.get("path")
+                # Si la subida a S3 fue exitosa, sobreescribir con los nuevos valores
+                if chart.get("_s3_upload_result"):
+                    file_url = chart["_s3_upload_result"].get("file_url", file_url)
+                    object_key = chart["_s3_upload_result"].get("object_key", object_key)
+
+                # Eliminar imagen anterior en S3 si existe y el object_key es diferente
+                chart_object_key = chart.get("path", None)
+                if chart_object_key and chart_object_key != object_key:
                     try:
-                        source_path = Path(chart_path)
-                        target_path = source_path.with_name(prefixed_filename)
-                        if source_path.exists() and source_path.name != prefixed_filename:
-                            source_path.rename(target_path)
-                            final_storage_path = str(target_path)
-                    except Exception as rename_err:
-                        logger.warning(f"[Upload] Could not rename chart file {chart_path}: {rename_err}")
+                        s3_service.delete_file(chart_object_key)
+                        logger.info(f"[Upload] Deleted old chart from S3: {chart_object_key}")
+                    except Exception as exc:
+                        logger.warning(f"[Upload] Could not delete old chart from S3: {exc}")
 
                 stored_size = chart.get("size", 0)
-                if final_storage_path and Path(final_storage_path).exists():
-                    stored_size = Path(final_storage_path).stat().st_size
+
 
                 existing_media = db.execute(
                     select(Media).where(
@@ -493,15 +498,15 @@ async def upload_and_extract_codes(
                         (Media.deleted_at.is_(None))
                     )
                 ).scalars().first()
-                
+
                 if not existing_media:
                     media = Media(
                         filename=prefixed_filename,
                         original_name=chart_title,
                         mime_type="image/jpeg",
                         size=stored_size,
-                        url=f"/api/v1/main/master-templates/chart-file/{prefixed_stem}",
-                        storage_path=final_storage_path,
+                        url=file_url,
+                        storage_path=object_key,
                         folder=f"master-templates/{template_id}/{template_type}",
                         meta={
                             "chart_code": chart_code_normalized,
@@ -593,6 +598,7 @@ async def upload_and_extract_codes(
         "statistics": extractor.get_statistics(extraction_result),
         "processed_sheets": extraction_result.get("processed_sheets", []),
     }
+
 
 
 # === RE-UPLOAD + AUTO EXTRACT (for updating existing masterplatforms) =======================
@@ -740,7 +746,7 @@ async def re_upload_and_extract_codes(
     restored_or_inserted_codes = {"valora": set(), "kapital": set()}
 
     for template_type in ["valora", "kapital"]:
-        code_enum = TemplateCodeType(template_type)
+        code_enum = CalculationType(template_type)
         for code_data in extraction_result.get(template_type, []):
             raw = str(code_data.get("code", "")).replace("$$", "").upper()
             if not raw:
@@ -799,7 +805,7 @@ async def re_upload_and_extract_codes(
             code_without_dollars = code_norm.replace("$$", "")
 
             # Guardar/rehabilitar TemplateCode del gráfico
-            code_enum = TemplateCodeType(template_type)
+            code_enum = CalculationType(template_type)
             existing_chart_code = db.execute(
                 select(TemplateCode).where(
                     (TemplateCode.code == code_norm)
@@ -829,20 +835,24 @@ async def re_upload_and_extract_codes(
             prefixed_stem = prefixed_filename.replace(".jpg", "")
 
             chart_path = chart.get("path", "")
-            final_storage_path = chart_path
-            if chart_path:
+
+            # Determinar file_url y object_key (de subida o de chart existente)
+            file_url = chart.get("url")
+            object_key = chart.get("path")
+            if chart.get("_s3_upload_result"):
+                file_url = chart["_s3_upload_result"].get("file_url", file_url)
+                object_key = chart["_s3_upload_result"].get("object_key", object_key)
+
+            # Eliminar imagen anterior en S3 si existe y el object_key es diferente
+            chart_object_key = chart.get("path", None)
+            if chart_object_key and chart_object_key != object_key:
                 try:
-                    source_path = Path(chart_path)
-                    target_path = source_path.with_name(prefixed_filename)
-                    if source_path.exists() and source_path.name != prefixed_filename:
-                        source_path.rename(target_path)
-                        final_storage_path = str(target_path)
-                except Exception as rename_err:
-                    logger.warning(f"[ReUpload] Could not rename chart file {chart_path}: {rename_err}")
+                    s3_service.delete_file(chart_object_key)
+                    logger.info(f"[ReUpload] Deleted old chart from S3: {chart_object_key}")
+                except Exception as exc:
+                    logger.warning(f"[ReUpload] Could not delete old chart from S3: {exc}")
 
             stored_size = chart.get("size", 0)
-            if final_storage_path and Path(final_storage_path).exists():
-                stored_size = Path(final_storage_path).stat().st_size
 
             existing_media_any = db.execute(
                 select(Media).where(
@@ -856,8 +866,8 @@ async def re_upload_and_extract_codes(
                 existing_media_any.original_name = chart_title
                 existing_media_any.mime_type = "image/jpeg"
                 existing_media_any.size = stored_size
-                existing_media_any.url = f"/api/v1/main/master-templates/chart-file/{prefixed_stem}"
-                existing_media_any.storage_path = final_storage_path
+                existing_media_any.url = file_url
+                existing_media_any.storage_path = object_key
                 existing_media_any.folder = f"master-templates/{template_id}/{template_type}"
                 existing_media_any.meta = {
                     "chart_code": code_norm,
@@ -874,8 +884,8 @@ async def re_upload_and_extract_codes(
                         original_name=chart_title,
                         mime_type="image/jpeg",
                         size=stored_size,
-                        url=f"/api/v1/main/master-templates/chart-file/{prefixed_stem}",
-                        storage_path=final_storage_path,
+                        url=file_url,
+                        storage_path=object_key,
                         folder=f"master-templates/{template_id}/{template_type}",
                         meta={
                             "chart_code": code_norm,
@@ -974,7 +984,7 @@ async def extract_template_codes(
                 logger.debug(f"[ExtractCodes] Code data: {code_data}")
                 try:
                     # Buscar si ya existe
-                    code_enum = TemplateCodeType(template_type)
+                    code_enum = CalculationType(template_type)
                     logger.debug(f"[ExtractCodes] Created enum: {code_enum}")
 
                     existing = db.execute(
@@ -1206,9 +1216,9 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
             "deleted_at": code.deleted_at,
         }
         code_response = TemplateCodeResponse.model_validate(code_data)
-        if code.type == TemplateCodeType.VALORA:
+        if code.type == CalculationType.VALORA:
             valora_codes.append(code_response)
-        elif code.type == TemplateCodeType.KAPITAL:
+        elif code.type == CalculationType.KAPITAL:
             kapital_codes.append(code_response)
 
     return {
