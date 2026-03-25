@@ -1,3 +1,6 @@
+import logging
+# Configura logging global para mostrar INFO y superior
+logging.basicConfig(level=logging.INFO)
 # app/services/libreoffice_chart_extractor_service.py
 """
 Servicio para extraer gráficos de archivos Excel usando LibreOffice Headless.
@@ -19,7 +22,10 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from zipfile import ZIP_DEFLATED, ZipFile
 
+
 from PIL import Image
+from io import BytesIO
+from app.services.aws_service import s3_service
 
 from app.services.template_code_utils import normalize_code
 
@@ -271,22 +277,38 @@ class LibreOfficeChartExtractorService:
     def _extract_single_chart(self, excel_bytes: bytes, chart_info: Dict, temp_dir: Path) -> Optional[bytes]:
         # Convierte el XLSX temporal a HTML con LibreOffice y toma el PNG más grande,
         # que suele corresponder al gráfico renderizado.
+        import platform
         work_dir = temp_dir / uuid.uuid4().hex[:8]
         work_dir.mkdir(parents=True, exist_ok=True)
 
         single_xlsx = work_dir / "chart.xlsx"
         self._build_single_chart_xlsx(excel_bytes, chart_info, single_xlsx)
 
+        # Verifica existencia y tamaño del archivo generado
+        if not single_xlsx.exists():
+            return None
+        file_size = single_xlsx.stat().st_size
+        if file_size == 0:
+            return None
+
+        # Detecta el ejecutable correcto según el sistema operativo
+        libreoffice_cmd = "libreoffice"
+        if platform.system() == "Windows":
+            libreoffice_cmd = "soffice"
+
+        # Usar rutas absolutas y formato POSIX para evitar problemas en Windows
+        single_xlsx_posix = single_xlsx.resolve().as_posix()
+        work_dir_posix = work_dir.resolve().as_posix()
         try:
             proc = subprocess.run(
                 [
-                    "libreoffice",
+                    libreoffice_cmd,
                     "--headless",
                     "--convert-to",
                     "html",
-                    str(single_xlsx),
+                    single_xlsx_posix,
                     "--outdir",
-                    str(work_dir),
+                    work_dir_posix,
                 ],
                 capture_output=True,
                 text=True,
@@ -352,9 +374,26 @@ class LibreOfficeChartExtractorService:
 
                 clean_name = normalize_code(name).replace("$", "")
                 jpg_filename = f"{clean_name}.jpg"
-                jpg_filepath = self.storage_path / jpg_filename
-                jpg_filepath.write_bytes(jpg_bytes)
-                file_size = jpg_filepath.stat().st_size
+                # Subir a S3 en la carpeta 'graphs'
+                s3_key = f"graphs/{jpg_filename}"
+
+                jpg_buffer = BytesIO(jpg_bytes)
+                file_size = jpg_buffer.getbuffer().nbytes  # Calcular antes de subir
+                # Simular un objeto tipo UploadFile para el método upload_file
+                class SimpleUploadFile:
+                    def __init__(self, filename, file_bytes):
+                        self.filename = filename
+                        self.file = file_bytes
+                        self.content_type = "image/jpeg"
+                upload_file = SimpleUploadFile(jpg_filename, jpg_buffer)
+                try:
+                    s3_result = s3_service.upload_file(upload_file, folder="graphs")
+                    file_url = s3_result["file_url"]
+                    object_key = s3_result["object_key"]
+                except Exception as exc:
+                    file_url = None
+                    object_key = None
+                    errors.append(f"S3 upload failed for '{jpg_filename}': {exc}")
 
                 charts.append(
                     {
@@ -364,11 +403,11 @@ class LibreOfficeChartExtractorService:
                         "original_name": name,
                         "template_type": template_type,
                         "sheet": sheet,
-                        "path": str(jpg_filepath),
-                        "url": f"/api/v1/main/master-templates/charts/{clean_name}",
+                        "path": object_key,
+                        "url": file_url,
                         "size": file_size,
                         "created_at": datetime.utcnow().isoformat(),
-                        "error": None,
+                        "error": None if file_url else f"S3 upload failed for '{jpg_filename}'",
                     }
                 )
 

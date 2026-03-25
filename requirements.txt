@@ -17,7 +17,7 @@ h11==0.16.0
 httpx==0.28.1
 idna==3.11
 passlib==1.7.4
-Pillow==10.0.0
+Pillow==12.1.1
 pyasn1==0.6.1
 pycparser==2.23
 pydantic==2.12.5

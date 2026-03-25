@@ -25,7 +25,7 @@ dist-ssr
 *.pyo
 *.pyd
 .Python
-
+app/files/*
 # Alembic (no ignorar versions/, solo estos)
 alembic.ini.bak
 

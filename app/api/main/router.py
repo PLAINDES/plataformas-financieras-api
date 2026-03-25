@@ -1,20 +1,35 @@
 # app/api/main/router.py
 import os
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import JSONResponse, Response
+import json
+from fastapi.encoders import jsonable_encoder
+logger = logging.getLogger(__name__)
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select, or_
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select, func
-from app.db.database import get_db
-from app.models.main import Calculation
-from app.models.templates.templates import Template, TemplateComplement, TemplateCode
-from app.models.main import Report, Cover
-from app.models.cms import Media
-from app.schemas.main import (
+from ...db.database import get_db
+from ...models.main import (
+    Template,
+    TemplateComplement,
+    Calculation,
+    TemplateCode,
+    Report,
+    Cover,
+    CalculationType,
+)
+from ...services.query_service import apply_filters
+from ...models.cms import Media
+from ...services.aws_service import s3_service
+from ...schemas.main import (
     ReportUpdate, TemplateCreate, TemplateUpdate, TemplateResponse,
     TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
     CalculationCreate, CalculationUpdate, CalculationResponse,
 )
+from app.models.templates.master_templates import MasterTemplate
+
 
 router = APIRouter(prefix="/main", tags=["Main"])
 
@@ -97,13 +112,24 @@ def list_template_complements(db: Session = Depends(get_db)):
     complement = result.scalars().first()
     return [TemplateComplementResponse.model_validate(complement)] if complement else []
 
-
 @router.get("/template-complements/{complement_id}", response_model=TemplateComplementResponse)
-def get_template_complement(complement_id: int, db: Session = Depends(get_db)):
+def get_template_complement_by_id(complement_id: int, db: Session = Depends(get_db)):
     complement = db.get(TemplateComplement, complement_id)
     if not complement or complement.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Template complement not found")
     return TemplateComplementResponse.model_validate(complement)
+
+
+@router.get("/template-complements/by-name/{complement_name}", response_model=List[TemplateComplementResponse])
+def get_template_complement(complement_name: str, db: Session = Depends(get_db)):
+    result = db.execute(
+        select(TemplateComplement)
+        .where(TemplateComplement.nombre == complement_name)
+        .where(TemplateComplement.deleted_at.is_(None))
+        .order_by(TemplateComplement.created_at.desc())
+    )
+    complement = result.scalars().first()
+    return [TemplateComplementResponse.model_validate(complement)] if complement else []
 
 
 @router.post(
@@ -212,23 +238,136 @@ def delete_calculation(calculation_id: int, db: Session = Depends(get_db)):
 # ==================== REPORTS ====================
 
 @router.get("/reports")
-def list_reports(db: Session = Depends(get_db)):
-    result = db.execute(
-        select(Report)
-        .where(Report.deleted_at.is_(None))
-        .options(
-            joinedload(Report.template).joinedload(Template.template_codes),
-            joinedload(Report.portada).joinedload(Cover.portada),
-            joinedload(Report.portada).joinedload(Cover.primer_imagen_footer),
-            joinedload(Report.portada).joinedload(Cover.segundo_imagen_footer),
-            joinedload(Report.portada).joinedload(Cover.logo_superior),
-            joinedload(Report.portada).joinedload(Cover.imagen_central),
-            joinedload(Report.portada).joinedload(Cover.logo_inferior),
-            joinedload(Report.portada).joinedload(Cover.imagen_fondo),
-        )
+def list_reports(
+    limit: Optional[int] = None,
+    page: Optional[int] = None,
+    search: Optional[str] = None,
+    type: Optional[str] = None,
+    activo: Optional[bool] = 1,
+    db: Session = Depends(get_db),
+):
+    base_query = select(Report)
+
+    eager = [
+        joinedload(Report.template).joinedload(Template.template_codes),
+        joinedload(Report.portada).joinedload(Cover.portada),
+        joinedload(Report.portada).joinedload(Cover.primer_imagen_footer),
+        joinedload(Report.portada).joinedload(Cover.segundo_imagen_footer),
+        joinedload(Report.portada).joinedload(Cover.logo_superior),
+        joinedload(Report.portada).joinedload(Cover.imagen_central),
+        joinedload(Report.portada).joinedload(Cover.logo_inferior),
+        joinedload(Report.portada).joinedload(Cover.imagen_fondo),
+    ]
+
+    params = {
+        "limit": limit,
+        "page": page,
+        "search": search,
+        "type": type,
+        "activo": activo,
+    }
+
+    query = apply_filters(
+        base_query,
+        Report,
+        params,
+        search_fields=["nombre", "contenido", "sector_empresa"],
+        enum_fields={"type": CalculationType},
+        eager_loads=eager,
     )
+
+    # order newest first
+    query = query.order_by(Report.created_at.desc(), Report.id.desc())
+
+    result = db.execute(query)
     reports = result.unique().scalars().all()
     return [_report_to_response(r) for r in reports]
+
+
+@router.get("/reports/get-current-codes")
+async def get_current_codes(db: Session = Depends(get_db)):
+    """
+    Obtiene la plantilla maestra más reciente (no borrada) y devuelve sus códigos
+    reusando la lógica de `get_template_codes`.
+    """
+    obj = db.execute(
+        select(MasterTemplate)
+        .where(MasterTemplate.deleted_at.is_(None))
+        .order_by(MasterTemplate.created_at.desc())
+    ).scalars().first()
+
+    if not obj:
+        raise HTTPException(status_code=404, detail="No master template found")
+
+    from . import master_templates_router
+
+    # Get template codes (async) and chart images (sync) from the master templates router
+    codes_payload = await master_templates_router.get_template_codes(obj.id, db)
+    images_payload = master_templates_router.get_template_chart_images(obj.id, db)
+
+    # Build a map code -> image url (codes are returned as strings like $$CODE$$)
+    image_map = {}
+    for t in ("valora", "kapital"):
+        for img in images_payload.get(t, []):
+            code = img.get("code")
+            if code:
+                image_map[code] = img.get("url")
+
+    # Attach image url to each template code if available
+    def attach_urls(codes_list, t):
+        # Return a minimal object for each code with only the fields the frontend expects
+        result = []
+        for c in codes_list:
+            # c may be a Pydantic model or dict or a plain string
+            if not c:
+                continue
+            if isinstance(c, str):
+                code_val = c
+                entry = {
+                    "id": -1,
+                    "nombre": c,
+                    "code": code_val,
+                    "type": t,
+                    "hoja": None,
+                }
+            else:
+                try:
+                    c_dict = c.model_dump() if hasattr(c, "model_dump") else dict(c)
+                except Exception:
+                    c_dict = dict(c)
+                entry = {
+                    "id": c_dict.get("id", -1),
+                    "nombre": c_dict.get("nombre") or c_dict.get("original_name") or c_dict.get("filename") or c_dict.get("code"),
+                    "code": c_dict.get("code"),
+                    "type": t,
+                    "hoja": c_dict.get("hoja"),
+                }
+
+            img_url = image_map.get(entry.get("code"))
+            if img_url:
+                entry["template_code_image_url"] = img_url
+
+            result.append(entry)
+        return result
+
+    # `get_template_codes` returns keys: template_id, template_name, codes, statistics
+    codes_block = codes_payload.get("codes", {}) if isinstance(codes_payload, dict) else {}
+
+    return {
+        "template_id": codes_payload.get("template_id"),
+        "template_name": codes_payload.get("template_name"),
+        "extracted_codes": {
+            "valora": attach_urls(codes_block.get("valora", []), "valora"),
+            "kapital": attach_urls(codes_block.get("kapital", []), "kapital"),
+        },
+        "extracted_chart_codes": None,
+        "extracted_chart_images": images_payload,
+        "chart_extraction_stats": None,
+        "statistics": codes_payload.get("statistics"),
+        "processed_sheets": None,
+    }
+
+
 
 
 @router.get("/reports/{report_id}")
@@ -237,7 +376,6 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
         select(Report)
         .where(Report.id == report_id, Report.deleted_at.is_(None))
         .options(
-            joinedload(Report.template).joinedload(Template.template_codes),
             joinedload(Report.portada).joinedload(Cover.portada),
             joinedload(Report.portada).joinedload(Cover.primer_imagen_footer),
             joinedload(Report.portada).joinedload(Cover.segundo_imagen_footer),
@@ -251,6 +389,44 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     return _report_to_response(report)
+
+
+@router.post("/reports")
+def create_report(data: ReportUpdate, db: Session = Depends(get_db)):
+    # Require at least a nombre for creation
+    if not data.nombre:
+        raise HTTPException(status_code=400, detail="Field 'nombre' is required")
+
+    # Try to pick a default template for new reports
+    template = db.execute(
+        select(Template).where(Template.deleted_at.is_(None), Template.is_default.is_(True))
+    ).scalars().first()
+    if not template:
+        template = db.execute(select(Template).where(Template.deleted_at.is_(None))).scalars().first()
+    if not template:
+        raise HTTPException(status_code=400, detail="No template available to assign to the report")
+
+    report = Report(
+        template_id=template.id,
+        nombre=data.nombre,
+        precio=data.precio,
+        moneda=data.moneda or "SOLES",
+        sector_empresa=data.sector_empresa,
+        bono_ajustado=data.bono_ajustado,
+        link_pago=data.link_pago,
+        contenido=data.contenido,
+        contentEditor=data.contentEditor,
+        portada_id=data.portada_id,
+        activo=data.activo if data.activo is not None else True,
+        type=CalculationType(data.type) if getattr(data, "type", None) else CalculationType.KAPITAL,
+    )
+
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    logger.info(f"_report_to_response(report): {_report_to_response(report)}")
+    response =_report_to_response(report)
+    return jsonable_encoder(response)
 
 
 @router.put("/reports/{report_id}")
@@ -269,7 +445,13 @@ def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_
     update_dict = data.model_dump(exclude_unset=True, exclude={"cover_data"})
 
     for key, value in update_dict.items():
-        setattr(report, key, value)
+        if key == "type" and value is not None:
+            try:
+                setattr(report, key, CalculationType(value))
+            except Exception:
+                setattr(report, key, value)
+        else:
+            setattr(report, key, value)
 
     if data.cover_data and report.portada:
         cover_dict = data.cover_data.model_dump(exclude_unset=True)
@@ -283,11 +465,10 @@ def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error al actualizar: {str(e)}")
 
-    return {"message": "Reporte actualizado correctamente"}
+    return _report_to_response(report)
 
 
 STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../files")
-
 
 @router.post("/reports/{report_id}/upload", status_code=status.HTTP_200_OK)
 async def upload_report_file(
@@ -317,6 +498,11 @@ async def upload_report_file(
         f.write(html)
 
     report.file = filename
+    # persist editor content to the DB as well
+    try:
+        report.contentEditor = html
+    except Exception:
+        pass
     db.commit()
     return {"message": "Archivo guardado", "file": filename}
 
@@ -377,18 +563,78 @@ def get_cover(cover_id: int, db: Session = Depends(get_db)):
     return _cover_to_dict(cover)
 
 
+def _create_media_from_upload(db: Session, file: UploadFile) -> Optional[int]:
+    if not file or not file.filename:
+        return None
+        
+    try:
+        s3_result = s3_service.upload_file(file, folder="covers")
+    except Exception as e:
+        # Si falla AWS S3, lanzamos un 400 para que el frontend lo pueda mostrar
+        # y no cause un 500 que rompe los headers CORS.
+        raise HTTPException(status_code=400, detail=f"Error subiendo archivo a AWS S3: {str(e)}")
+    
+    media = Media(
+        filename=s3_result["object_key"].split("/")[-1],
+        original_name=file.filename,
+        mime_type=file.content_type or "application/octet-stream",
+        url=s3_result["file_url"],
+        storage_path=s3_result["object_key"],
+        folder="/covers"
+    )
+    db.add(media)
+    db.flush()  # Para obtener el ID generado
+    return media.id
+
+
 @router.post("/covers", status_code=status.HTTP_201_CREATED)
-def create_cover(payload: dict, db: Session = Depends(get_db)):
+def create_cover(
+    nombre: str = Form(...),
+    tipo: str = Form(...),
+    portada_id: Optional[int] = Form(None),
+    primer_imagen_footer_id: Optional[int] = Form(None),
+    segundo_imagen_footer_id: Optional[int] = Form(None),
+    logo_superior_id: Optional[int] = Form(None),
+    imagen_central_id: Optional[int] = Form(None),
+    logo_inferior_id: Optional[int] = Form(None),
+    imagen_fondo_id: Optional[int] = Form(None),
+    
+    portada: Optional[UploadFile] = File(None),
+    primer_imagen_footer: Optional[UploadFile] = File(None),
+    segundo_imagen_footer: Optional[UploadFile] = File(None),
+    logo_superior: Optional[UploadFile] = File(None),
+    imagen_central: Optional[UploadFile] = File(None),
+    logo_inferior: Optional[UploadFile] = File(None),
+    imagen_fondo: Optional[UploadFile] = File(None),
+    
+    db: Session = Depends(get_db)
+):
+    # Subir nuevos archivos a S3 y crear los Media correspondientes si existen
+    if portada and portada.filename:
+        portada_id = _create_media_from_upload(db, portada)
+    if primer_imagen_footer and primer_imagen_footer.filename:
+        primer_imagen_footer_id = _create_media_from_upload(db, primer_imagen_footer)
+    if segundo_imagen_footer and segundo_imagen_footer.filename:
+        segundo_imagen_footer_id = _create_media_from_upload(db, segundo_imagen_footer)
+    if logo_superior and logo_superior.filename:
+        logo_superior_id = _create_media_from_upload(db, logo_superior)
+    if imagen_central and imagen_central.filename:
+        imagen_central_id = _create_media_from_upload(db, imagen_central)
+    if logo_inferior and logo_inferior.filename:
+        logo_inferior_id = _create_media_from_upload(db, logo_inferior)
+    if imagen_fondo and imagen_fondo.filename:
+        imagen_fondo_id = _create_media_from_upload(db, imagen_fondo)
+
     cover = Cover(
-        nombre=payload["nombre"],
-        tipo=payload["tipo"],
-        portada_id=payload.get("portada_id"),
-        primer_imagen_footer_id=payload.get("primer_imagen_footer_id"),
-        segundo_imagen_footer_id=payload.get("segundo_imagen_footer_id"),
-        logo_superior_id=payload.get("logo_superior_id"),
-        imagen_central_id=payload.get("imagen_central_id"),
-        logo_inferior_id=payload.get("logo_inferior_id"),
-        imagen_fondo_id=payload.get("imagen_fondo_id"),
+        nombre=nombre,
+        tipo=tipo,
+        portada_id=portada_id,
+        primer_imagen_footer_id=primer_imagen_footer_id,
+        segundo_imagen_footer_id=segundo_imagen_footer_id,
+        logo_superior_id=logo_superior_id,
+        imagen_central_id=imagen_central_id,
+        logo_inferior_id=logo_inferior_id,
+        imagen_fondo_id=imagen_fondo_id,
     )
     db.add(cover)
     db.commit()
@@ -397,19 +643,141 @@ def create_cover(payload: dict, db: Session = Depends(get_db)):
 
 
 @router.put("/covers/{cover_id}")
-def update_cover(cover_id: int, payload: dict, db: Session = Depends(get_db)):
+def update_cover(
+    cover_id: int,
+    nombre: Optional[str] = Form(None),
+    tipo: Optional[str] = Form(None),
+    portada_id: Optional[int] = Form(None),
+    primer_imagen_footer_id: Optional[int] = Form(None),
+    segundo_imagen_footer_id: Optional[int] = Form(None),
+    logo_superior_id: Optional[int] = Form(None),
+    imagen_central_id: Optional[int] = Form(None),
+    logo_inferior_id: Optional[int] = Form(None),
+    imagen_fondo_id: Optional[int] = Form(None),
+
+    portada: Optional[UploadFile] = File(None),
+    primer_imagen_footer: Optional[UploadFile] = File(None),
+    segundo_imagen_footer: Optional[UploadFile] = File(None),
+    logo_superior: Optional[UploadFile] = File(None),
+    imagen_central: Optional[UploadFile] = File(None),
+    logo_inferior: Optional[UploadFile] = File(None),
+    imagen_fondo: Optional[UploadFile] = File(None),
+
+    db: Session = Depends(get_db),
+):
     cover = db.get(Cover, cover_id)
     if not cover or cover.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Cover not found")
 
-    allowed = {
-        "nombre", "tipo",
-        "portada_id", "primer_imagen_footer_id", "segundo_imagen_footer_id",
-        "logo_superior_id", "imagen_central_id", "logo_inferior_id", "imagen_fondo_id",
-    }
-    for key, value in payload.items():
-        if key in allowed:
-            setattr(cover, key, value)
+    now = datetime.utcnow()
+
+    # Si vienen nuevos archivos, intentar eliminar los antiguos en S3
+    # y marcar los Media existentes como borrados (soft-delete) antes de subir
+    if portada and portada.filename:
+        existing = getattr(cover, "portada")
+        if existing:
+            try:
+                s3_service.delete_file(existing.storage_path)
+            except Exception:
+                pass
+            existing.deleted_at = now
+            db.add(existing)
+            cover.portada_id = None
+        portada_id = _create_media_from_upload(db, portada)
+
+    if primer_imagen_footer and primer_imagen_footer.filename:
+        existing = getattr(cover, "primer_imagen_footer")
+        if existing:
+            try:
+                s3_service.delete_file(existing.storage_path)
+            except Exception:
+                pass
+            existing.deleted_at = now
+            db.add(existing)
+            cover.primer_imagen_footer_id = None
+        primer_imagen_footer_id = _create_media_from_upload(db, primer_imagen_footer)
+
+    if segundo_imagen_footer and segundo_imagen_footer.filename:
+        existing = getattr(cover, "segundo_imagen_footer")
+        if existing:
+            try:
+                s3_service.delete_file(existing.storage_path)
+            except Exception:
+                pass
+            existing.deleted_at = now
+            db.add(existing)
+            cover.segundo_imagen_footer_id = None
+        segundo_imagen_footer_id = _create_media_from_upload(db, segundo_imagen_footer)
+
+    if logo_superior and logo_superior.filename:
+        existing = getattr(cover, "logo_superior")
+        if existing:
+            try:
+                s3_service.delete_file(existing.storage_path)
+            except Exception:
+                pass
+            existing.deleted_at = now
+            db.add(existing)
+            cover.logo_superior_id = None
+        logo_superior_id = _create_media_from_upload(db, logo_superior)
+
+    if imagen_central and imagen_central.filename:
+        existing = getattr(cover, "imagen_central")
+        if existing:
+            try:
+                s3_service.delete_file(existing.storage_path)
+            except Exception:
+                pass
+            existing.deleted_at = now
+            db.add(existing)
+            cover.imagen_central_id = None
+        imagen_central_id = _create_media_from_upload(db, imagen_central)
+
+    if logo_inferior and logo_inferior.filename:
+        existing = getattr(cover, "logo_inferior")
+        if existing:
+            try:
+                s3_service.delete_file(existing.storage_path)
+            except Exception:
+                pass
+            existing.deleted_at = now
+            db.add(existing)
+            cover.logo_inferior_id = None
+        logo_inferior_id = _create_media_from_upload(db, logo_inferior)
+
+    if imagen_fondo and imagen_fondo.filename:
+        existing = getattr(cover, "imagen_fondo")
+        if existing:
+            try:
+                s3_service.delete_file(existing.storage_path)
+            except Exception:
+                pass
+            existing.deleted_at = now
+            db.add(existing)
+            cover.imagen_fondo_id = None
+        imagen_fondo_id = _create_media_from_upload(db, imagen_fondo)
+
+    # Actualizar campos si se proporcionaron
+    if nombre is not None:
+        cover.nombre = nombre
+    if tipo is not None:
+        cover.tipo = tipo
+
+    # Asociar nuevos media ids si fueron proporcionados
+    if portada_id is not None:
+        cover.portada_id = portada_id
+    if primer_imagen_footer_id is not None:
+        cover.primer_imagen_footer_id = primer_imagen_footer_id
+    if segundo_imagen_footer_id is not None:
+        cover.segundo_imagen_footer_id = segundo_imagen_footer_id
+    if logo_superior_id is not None:
+        cover.logo_superior_id = logo_superior_id
+    if imagen_central_id is not None:
+        cover.imagen_central_id = imagen_central_id
+    if logo_inferior_id is not None:
+        cover.logo_inferior_id = logo_inferior_id
+    if imagen_fondo_id is not None:
+        cover.imagen_fondo_id = imagen_fondo_id
 
     db.commit()
     db.refresh(cover)
@@ -421,7 +789,36 @@ def delete_cover(cover_id: int, db: Session = Depends(get_db)):
     cover = db.get(Cover, cover_id)
     if not cover or cover.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Cover not found")
-    cover.deleted_at = datetime.utcnow()
+    now = datetime.utcnow()
+
+    # Campos de Media relacionados con la cover
+    media_fields = [
+        "portada",
+        "primer_imagen_footer",
+        "segundo_imagen_footer",
+        "logo_superior",
+        "imagen_central",
+        "logo_inferior",
+        "imagen_fondo",
+    ]
+
+    # Intentar eliminar objetos en S3 y marcar los Media como borrados (soft-delete)
+    for field in media_fields:
+        media = getattr(cover, field)
+        if media:
+            try:
+                # storage_path contiene el object key
+                s3_service.delete_file(media.storage_path)
+            except Exception:
+                # No interrumpimos si falla la eliminación en S3; marcamos el media como borrado de todos modos
+                pass
+
+            media.deleted_at = now
+            db.add(media)
+            # Desasociar la media de la cover
+            setattr(cover, f"{field}_id", None)
+
+    cover.deleted_at = now
     db.commit()
     return None
 
@@ -481,6 +878,11 @@ def _cover_to_dict(cover: Cover | None) -> dict | None:
 
 def _report_to_response(report: Report) -> dict:
     template = report.template
+    def _iso(v):
+        try:
+            return v.isoformat() if v is not None and hasattr(v, "isoformat") else v
+        except Exception:
+            return str(v)
     return {
         "id": report.id,
         "nombre": report.nombre,
@@ -491,23 +893,11 @@ def _report_to_response(report: Report) -> dict:
         "bono_ajustado": report.bono_ajustado,
         "link_pago": report.link_pago,
         "contenido": report.contenido,
+        "contentEditor": report.contentEditor,
         "activo": report.activo,
-        "created_at": report.created_at,
-        "updated_at": report.updated_at,
-        "template": {
-            "id": template.id,
-            "nombre": template.nombre,
-            "is_default": template.is_default,
-            "template_codes": [
-                {
-                    "id": tc.id,
-                    "nombre": tc.nombre,
-                    "code": tc.code,
-                    "type": tc.type.value,
-                    "hoja": tc.hoja,
-                }
-                for tc in template.template_codes
-            ],
-        } if template else None,
+        "created_at": _iso(report.created_at),
+        "updated_at": _iso(report.updated_at),
+        # `template` removed from response to avoid sending template metadata
+        # (previously included template id, nombre, is_default and template_codes)
         "portada": _cover_to_dict(report.portada),
     }

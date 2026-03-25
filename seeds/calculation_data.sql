@@ -272,14 +272,13 @@ VALUES
   (10, 10), (11, 10), (12, 10),
   (13, 10), (14, 10), (15, 10), (16, 10);
 
-
-
 INSERT INTO `main_reports` (
         `id`,
         `template_id`,
         `file`,
         `nombre`,
         `precio`,
+        `type`,
         `moneda`,
         `sector_empresa`,
         `bono_ajustado`,
@@ -297,6 +296,7 @@ VALUES
    'Reporte-10.pdf',
    'Reporte WACC — Banca Perú 2026',
    1200.00,
+   'kapital',
    'USD',
    'Banca',
    'Bono EE.UU. 2Y',
