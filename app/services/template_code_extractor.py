@@ -13,6 +13,7 @@ from typing import List, Dict, Literal, Optional
 from io import BytesIO
 import openpyxl
 from openpyxl.worksheet.worksheet import Worksheet
+from app.core.constants import TEMPLATE_SHEET_TO_TYPE
 
 
 logger = logging.getLogger(__name__)
@@ -22,8 +23,8 @@ SheetMapping = Dict[str, TemplateType]
 
 # Mapeo de hojas a tipos de template
 DEFAULT_SHEET_MAPPING: SheetMapping = {
-    "Plantilla Usuario": "valora",
-    "WACC": "kapital",
+    sheet_name: template_type
+    for sheet_name, template_type in TEMPLATE_SHEET_TO_TYPE.items()
 }
 
 # Patrón para detectar códigos de template

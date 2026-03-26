@@ -26,6 +26,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from PIL import Image
 from io import BytesIO
 from app.services.aws_service import s3_service
+from app.core.constants import TEMPLATE_SHEET_TO_TYPE
 
 from app.services.template_code_utils import normalize_code
 
@@ -63,10 +64,7 @@ def _norm(path: str) -> str:
 
 
 class LibreOfficeChartExtractorService:
-    TARGET_SHEETS = {
-        "Plantilla Usuario": "valora",
-        "WACC": "kapital",
-    }
+    TARGET_SHEETS = dict(TEMPLATE_SHEET_TO_TYPE)
 
     def __init__(self, storage_path: Optional[str] = None, temp_path: Optional[str] = None):
         if storage_path is None:

@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from typing import Optional, List
 from app.models.main import Calculation
-from app.models.main import Template, TemplateComplement, TemplateCode
+from app.models.main import TemplateComplement, TemplateCode
+from app.models.templates import MasterTemplate
+
 
 
 class MainRepository:
@@ -12,14 +14,14 @@ class MainRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_template_by_id(self, template_id: int) -> Optional[Template]:
+    def get_template_by_id(self, template_id: int) -> Optional[MasterTemplate]:
         result = self.db.execute(
-            select(Template).where(Template.id == template_id)
+            select(MasterTemplate).where(MasterTemplate.id == template_id)
         )
         return result.scalar_one_or_none()
 
-    def get_all_templates(self) -> List[Template]:
-        result = self.db.execute(select(Template))
+    def get_all_templates(self) -> List[MasterTemplate]:
+        result = self.db.execute(select(MasterTemplate))
         return list(result.scalars().all())
 
     def get_template_complement_by_id(self, complement_id: int) -> Optional[TemplateComplement]:
