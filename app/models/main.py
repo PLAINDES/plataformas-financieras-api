@@ -125,13 +125,18 @@ class TemplateCode(Base):
         secondary=main_template_code_templates,
         back_populates="template_codes",
     )
+    master_templates = relationship(
+        "MasterTemplate",
+        secondary="main_template_codes_master_templates",
+        back_populates="template_codes",
+    )
 
     def __repr__(self):
         return f"<TemplateCode {self.nombre}>"
 
 class Report(Base):
     __tablename__ = "main_reports"
- 
+
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     template_id = Column(MySQLBigInt(unsigned=True), ForeignKey("main_templates.id"), nullable=False)
     file = Column(String(500), nullable=True)
@@ -202,4 +207,3 @@ class Cover(Base):
 
     def __repr__(self):
         return f"<Covers {self.nombre} ({self.tipo.value})>"
-

@@ -66,6 +66,80 @@ frontend/
 - Admin panel for content editing
 - Responsive frontend with modern UI
 
+## Extraccion de Plantillas Maestras
+
+Este proyecto incluye un flujo dedicado para plantillas maestras (`main_master_templates`) que extrae codigos de plantilla y graficos desde archivos Excel.
+
+### Por que se usa LibreOffice
+
+LibreOffice se usa para extraer graficos porque los charts de Excel no viven como datos simples de celdas. Se almacenan como relaciones de dibujo/chart dentro del XLSX, y para obtener la imagen final se necesita un motor de hoja de calculo que renderice esas estructuras.
+
+Se eligio LibreOffice sobre un parser XML puro por estas razones:
+
+- Renderiza charts en modo headless dentro de Docker.
+- Conserva mejor el resultado visual final de los graficos.
+- Funciona en el mismo entorno containerizado del backend.
+- Evita dependencia de runtime de Excel en Windows.
+
+Para extraccion de codigos se mantiene `openpyxl`, porque los codigos son marcadores de texto en celdas y pueden leerse directamente del contenido del workbook.
+
+### Como funciona la extraccion de codigos
+
+El extractor revisa solo las hojas definidas por el mapeo:
+
+- `Plantilla Usuario` -> `valora`
+- `WACC` -> `kapital`
+
+Pasos del proceso:
+
+1. Carga el workbook desde bytes con `openpyxl`.
+2. Recorre celdas en las hojas mapeadas.
+3. Detecta codigos con patron `$$CODIGO$$`.
+4. Normaliza cada codigo a formato consistente.
+5. Lee el nombre asociado desde la celda contigua.
+6. Devuelve resultados agrupados por tipo (`valora` y `kapital`).
+
+Persistencia en BD:
+
+- Cada codigo se guarda en `main_template_codes`.
+- Se relaciona al master template por `main_template_codes_master_templates`.
+- Si el codigo corresponde a grafico, se referencia su imagen por `template_code_image_id` (FK a `cms_media.id`).
+
+### Como funciona la extraccion de graficos
+
+La extraccion de charts la realiza `LibreOfficeChartExtractorService`.
+
+Flujo:
+
+1. Abre el XLSX como ZIP.
+2. Inspecciona XML de workbook y drawings para ubicar charts en hojas objetivo.
+3. Identifica cada chart por ancla y hoja origen.
+4. Construye un workbook temporal con un chart por iteracion.
+5. Renderiza con LibreOffice headless.
+6. Convierte PNG a JPG.
+7. Persiste metadatos en `cms_media` y, cuando aplica, sube a S3.
+
+Relacion con master template y almacenamiento:
+
+- Cada imagen se guarda con `folder` tipo `master-templates/{template_id}/{template_type}`.
+- `cms_media.url` guarda la URL (S3 o endpoint interno de fallback).
+- `cms_media.storage_path` guarda el `object_key` del bucket o ruta de respaldo.
+- El `TemplateCode` del chart guarda `template_code_image_id` para enlazar codigo e imagen de forma persistente.
+
+### Comportamiento ante fallas parciales
+
+El pipeline tolera fallas parciales:
+
+- Si falta credencial S3, la extraccion de codigos no se bloquea.
+- Si un chart falla al renderizar/subir, el proceso puede responder igual con codigos disponibles.
+- Si OneDrive no esta configurado, el endpoint corta temprano con error controlado.
+
+Esta separacion evita que la ruta textual (codigos) dependa de la ruta de entrega de imagenes.
+
+### Compatibilidad de formatos xlsx
+
+El extractor esta diseñado para ser compatible con XLSX generados por Excel, se recomienda usar Excel durante desarrollo si se planea modificar el archivo xlsx de prueba, ya que editar la plantilla maestra con otro software (LibreOffice, OnlyOffice) puede causar incompatibilidades y perdida de información.
+
 ## Technical Debt
 
 ### 1. Database Type Mismatch in CMS Auditory Logs

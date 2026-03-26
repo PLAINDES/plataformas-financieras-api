@@ -3,15 +3,14 @@ import os
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import JSONResponse, Response
-import json
 from fastapi.encoders import jsonable_encoder
 logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, or_
 from typing import List, Optional
 from datetime import datetime
-from ...db.database import get_db
-from ...models.main import (
+from app.db.database import get_db
+from app.models.main import (
     Template,
     TemplateComplement,
     Calculation,
@@ -20,15 +19,15 @@ from ...models.main import (
     Cover,
     CalculationType,
 )
-from ...services.query_service import apply_filters
-from ...models.cms import Media
-from ...services.aws_service import s3_service
-from ...schemas.main import (
+from app.services.query_service import apply_filters
+from app.models.cms import Media
+from app.services.aws_service import s3_service
+from app.schemas.main import (
     ReportUpdate, TemplateCreate, TemplateUpdate, TemplateResponse,
     TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
     CalculationCreate, CalculationUpdate, CalculationResponse,
 )
-from app.models.templates.master_templates import MasterTemplate
+from app.models.templates import MasterTemplate
 
 
 router = APIRouter(prefix="/main", tags=["Main"])
@@ -299,11 +298,11 @@ async def get_current_codes(db: Session = Depends(get_db)):
     if not obj:
         raise HTTPException(status_code=404, detail="No master template found")
 
-    from . import master_templates_router
+    from .master_templates import router
 
     # Get template codes (async) and chart images (sync) from the master templates router
-    codes_payload = await master_templates_router.get_template_codes(obj.id, db)
-    images_payload = master_templates_router.get_template_chart_images(obj.id, db)
+    codes_payload = await router.get_template_codes(obj.id, db)
+    images_payload = router.get_template_chart_images(obj.id, db)
 
     # Build a map code -> image url (codes are returned as strings like $$CODE$$)
     image_map = {}
