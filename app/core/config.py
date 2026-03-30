@@ -65,9 +65,11 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_REGION_NAME: str = "us-east-1"
     AWS_BUCKET_NAME: str = "plaindes"
+
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore unknown env vars (e.g., docker-compose settings)
 
 
 @lru_cache()

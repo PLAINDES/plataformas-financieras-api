@@ -63,6 +63,45 @@ services:
       interval: 10s
       start_period: 30s
 
+  frontend_dev:
+    profiles: ["development"]
+    build:
+      context: ${FRONTEND_LOCAL_PATH:-../plataformas-financieras}
+      dockerfile: Dockerfile
+      target: development
+    container_name: financiera_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://backend:8000}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ${FRONTEND_LOCAL_PATH:-../plataformas-financieras}:/app
+      - /app/node_modules
+    networks:
+      - financiera_network
+
+  frontend_prod:
+    profiles: ["production"]
+    build:
+      context: ${FRONTEND_GIT_CONTEXT:-https://github.com/your-org/plataformas-financieras.git#dev}
+      dockerfile: Dockerfile
+      target: production
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    container_name: financiera_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks:
+      - financiera_network
+
 volumes:
   mysql_data:
     driver: local
