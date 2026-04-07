@@ -1,4 +1,4 @@
-INSERT INTO `cms_content_types` (
+INSERT IGNORE INTO `cms_content_types` (
         `id`,
         `name`,
         `label`,
@@ -118,7 +118,7 @@ VALUES (
         1,
         NULL
     );
-INSERT INTO `cms_pages`
+INSERT IGNORE INTO `cms_pages`
 VALUES (
         1,
         'Inicio',
@@ -136,7 +136,7 @@ VALUES (
         '2026-01-21 09:27:58',
         NULL
     );
-INSERT INTO `cms_sections`
+INSERT IGNORE INTO `cms_sections`
 VALUES (
         1,
         1,
@@ -236,7 +236,7 @@ VALUES (
         '2026-02-02 13:43:04',
         NULL
     );
-INSERT INTO `cms_contents` (
+INSERT IGNORE INTO `cms_contents` (
         `id`,
         `page_id`,
         `content_type_id`,
@@ -604,7 +604,7 @@ VALUES (
         '2026-03-05 12:12:03',
         NULL
     );
-INSERT INTO `cms_section_contents`
+INSERT IGNORE INTO `cms_section_contents`
 VALUES (
         1,
         1,
@@ -758,7 +758,7 @@ VALUES (
         '2026-01-30 12:19:41',
         '2026-01-30 12:19:41'
     );
-INSERT INTO `cms_media`
+INSERT IGNORE INTO `cms_media`
 VALUES (
         1,
         'logo.png',
@@ -793,7 +793,7 @@ VALUES (
         '2026-01-20 14:13:29',
         NULL
     );
-INSERT INTO `cms_site_settings`
+INSERT IGNORE INTO `cms_site_settings`
 VALUES (
         1,
         'main',
@@ -804,7 +804,7 @@ VALUES (
         '2026-01-20 15:33:07',
         '2026-01-20 15:33:07'
     );
-INSERT INTO `sys_users`
+INSERT IGNORE INTO `sys_users`
 VALUES (
         1,
         'admin@kapitals.com',
@@ -861,7 +861,7 @@ VALUES (
         '2026-01-19 19:14:47',
         NULL
     );
-INSERT INTO `sys_sessions`
+INSERT IGNORE INTO `sys_sessions`
 VALUES (
         1,
         16,

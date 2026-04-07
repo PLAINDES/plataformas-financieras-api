@@ -1,0 +1,24 @@
+services:
+  db:
+    container_name: ${DB_CONTAINER_NAME:-new-financieras-db}
+    env_file:
+      - .env.prod
+    restart: unless-stopped
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - backend_network
+      - npm_network
+  backend:
+    container_name: ${BACKEND_CONTAINER_NAME:-new-financieras-api}
+    env_file:
+      - .env.prod
+    restart: always
+    networks:
+      - backend_network
+      - npm_network
+
+networks:
+  npm_network:
+    external: true
+    name: ${NPM_EXTERNAL_NETWORK:-npm_network}

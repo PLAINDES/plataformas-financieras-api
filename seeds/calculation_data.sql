@@ -1,5 +1,5 @@
 -- ─── cms_media ────────────────────────────────────────────────────────────────
-INSERT INTO `cms_media` (
+INSERT IGNORE INTO `cms_media` (
         `id`,
         `filename`,
         `original_name`,
@@ -84,7 +84,7 @@ VALUES
 
 
 -- ─── main_calculations (valora) ───────────────────────────────────────────────
-INSERT INTO `main_calculations` (
+INSERT IGNORE INTO `main_calculations` (
         `id`,
         `calculation_file_id`,
         `user_id`,
@@ -127,7 +127,7 @@ VALUES
 
 
 -- ─── main_calculations (kapital) ─────────────────────────────────────────────
-INSERT INTO `main_calculations` (
+INSERT IGNORE INTO `main_calculations` (
         `id`,
         `calculation_file_id`,
         `user_id`,
@@ -200,7 +200,7 @@ VALUES
 
 
 -- ─── main_covers ─────────────────────────────────────────────────────────────
-INSERT INTO `main_covers` (
+INSERT IGNORE INTO `main_covers` (
         `id`,
         `nombre`,
         `tipo`,
@@ -225,7 +225,7 @@ VALUES
 
 
 -- ─── main_master_templates ───────────────────────────────────────────────────
-INSERT INTO `main_master_templates` (
+INSERT IGNORE INTO `main_master_templates` (
         `id`,
         `nombre`,
         `description`,
@@ -259,7 +259,7 @@ VALUES
 
 
 -- ─── main_template_codes ─────────────────────────────────────────────────────
-INSERT INTO `main_template_codes` (
+INSERT IGNORE INTO `main_template_codes` (
         `id`,
         `template_code_image_id`,
         `type`,
@@ -281,7 +281,7 @@ VALUES
 
 
 -- ─── main_template_codes_master_templates ────────────────────────────────────
-INSERT INTO `main_template_codes_master_templates` (
+INSERT IGNORE INTO `main_template_codes_master_templates` (
         `template_code_id`,
   `master_template_id`
     )
@@ -289,7 +289,7 @@ VALUES
   (10, 10), (11, 10), (12, 10),
   (13, 10), (14, 10), (15, 10), (16, 10);
 
-INSERT INTO `main_reports` (
+INSERT IGNORE INTO `main_reports` (
         `id`,
         `template_id`,
         `file`,
