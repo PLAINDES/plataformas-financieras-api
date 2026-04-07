@@ -1,11 +1,9 @@
 from sqlalchemy.orm import Session
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-from ..models.user import User
-from ..models.cms import Content, Page, Section, Media, ContactMessage, Auditory
-from ..schemas.cms import (ContentUpdate,PageWithContents, ContentResponse,LandingDataResponse)
-from ..repositories.cms_repository import CMSRepository
-from ..repositories.auditory_repository import AuditoryRepository
+from typing import Optional, List
+from app.models.cms import Content, Page, Auditory
+from app.schemas.cms import (ContentUpdate,PageWithContents, ContentResponse,LandingDataResponse)
+from app.repositories.cms_repository import CMSRepository
+from app.repositories.auditory_repository import AuditoryRepository
 
 class CMSService:
 
@@ -16,6 +14,9 @@ class CMSService:
 
     def get_landing_page(self, slug: str = None) -> LandingDataResponse:
         page = self.repository.get_homepage()
+
+        if not page:
+            raise ValueError("Homepage not found. Please ensure the database is seeded with initial data.")
 
         contents = self.repository.get_contents_by_page_id(page.id)
 
@@ -40,9 +41,6 @@ class CMSService:
                 },
                 "meta": site_settings.meta
             }
-
-        if not page:
-            raise ValueError("Page not found")
 
         page.contents = contents
 
@@ -184,7 +182,7 @@ class CMSService:
             updated_at=page.updated_at,
             contents=[
                 self._content_to_response(content)
-                for content in sorted(page.contents, key=lambda c: c.sort_order)
+                for content in sorted(page.contents, key=lambda c: c.sort_order or 0)
                 if content.is_visible
             ]
         )

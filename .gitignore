@@ -11,8 +11,42 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 .idea
-.env
 
+# Environment
+.env
+.env.local
+.env.*.local
+.env.prod
+
+# Python
 **/__pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+app/files/*
+# Alembic (no ignorar versions/, solo estos)
+alembic.ini.bak
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+
+# byte‑compiled / cache files
+__pycache__/
+*.py[cod]
+
+public/

@@ -1,0 +1,42 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: ${DB_CONTAINER_NAME:-financiera-db}
+    command: --sort_buffer_size=2M --max_sort_length=2048 --max_heap_table_size=32M --tmp_table_size=32M
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword123}
+      MYSQL_DATABASE: ${DATABASE_NAME:-financiera_db}
+      MYSQL_USER: ${DATABASE_USER:-financiera_user}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD:-financiera_password}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      timeout: 10s
+      retries: 5
+      interval: 10s
+    networks:
+      - backend_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${BACKEND_CONTAINER_NAME:-financiera-api}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      timeout: 10s
+      retries: 5
+      interval: 10s
+      start_period: 30s
+    networks:
+      - backend_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  backend_network:
+    driver: bridge

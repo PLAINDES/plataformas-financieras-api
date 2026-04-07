@@ -2,9 +2,11 @@
 from fastapi import APIRouter
 from .auth.router import router as auth_router
 from .cms.router import router as cms_router
+from .main.router import router as main_router
 
 api_router = APIRouter()
 
 # Incluir routers
 api_router.include_router(auth_router)
 api_router.include_router(cms_router)
+api_router.include_router(main_router)

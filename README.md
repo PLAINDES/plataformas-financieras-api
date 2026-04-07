@@ -66,6 +66,46 @@ frontend/
 - Admin panel for content editing
 - Responsive frontend with modern UI
 
+## Extraccion de Plantillas Maestras
+
+Este proyecto incluye un flujo dedicado para plantillas maestras (`main_master_templates`) que extrae codigos de plantilla y graficos desde archivos Excel.
+
+### Como funciona la extraccion de codigos
+
+El extractor revisa solo las hojas definidas por el mapeo:
+
+- `Plantilla Usuario` -> `valora`
+- `WACC` -> `kapital`
+
+Pasos del proceso:
+
+1. Carga el workbook desde bytes con `openpyxl`.
+2. Recorre celdas en las hojas mapeadas.
+3. Detecta codigos con patron `$$CODIGO$$`.
+4. Normaliza cada codigo a formato consistente.
+5. Lee el nombre asociado desde la celda contigua.
+6. Devuelve resultados agrupados por tipo (`valora` y `kapital`).
+
+Persistencia en BD:
+
+- Cada codigo se guarda en `main_template_codes`.
+- Se relaciona al master template por `main_template_codes_master_templates`.
+- Si el codigo corresponde a grafico, se referencia su imagen por `template_code_image_id` (FK a `cms_media.id`).
+
+### Comportamiento ante fallas parciales
+
+El pipeline tolera fallas parciales:
+
+- Si falta credencial S3, la extraccion de codigos no se bloquea.
+- Si un chart falla al renderizar/subir, el proceso puede responder igual con codigos disponibles.
+- Si OneDrive no esta configurado, el endpoint corta temprano con error controlado.
+
+Esta separacion evita que la ruta textual (codigos) dependa de la ruta de entrega de imagenes.
+
+### Compatibilidad de formatos xlsx
+
+El extractor esta diseñado para ser compatible con XLSX generados por Excel, se recomienda usar Excel durante desarrollo si se planea modificar el archivo xlsx de prueba, ya que editar la plantilla maestra con otro software (LibreOffice, OnlyOffice) puede causar incompatibilidades y perdida de información.
+
 ## Technical Debt
 
 ### 1. Database Type Mismatch in CMS Auditory Logs
