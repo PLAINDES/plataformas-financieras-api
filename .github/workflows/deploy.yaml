@@ -1,0 +1,30 @@
+name: Deploy Backend - New Financieras
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create .env.prod
+        run: echo "${{ secrets.ENV_PROD }}" > .env.prod
+
+      - name: Sync project to server folder
+        run: |
+          mkdir -p /home/ubuntu/projects/new_financieras/plataformas-financieras-api
+          rsync -av --delete ./ /home/ubuntu/projects/new_financieras/plataformas-financieras-api
+
+      - name: Build and run
+        run: |
+          cd /home/ubuntu/projects/new_financieras/plataformas-financieras-api
+          docker compose -f compose.yaml -f compose.prod.yaml --env-file .env.prod build --no-cache
+          docker compose -f compose.yaml -f compose.prod.yaml --env-file .env.prod up -d
+
+      - name: Cleanup
+        run: docker image prune -f

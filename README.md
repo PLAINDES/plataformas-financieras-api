@@ -70,19 +70,6 @@ frontend/
 
 Este proyecto incluye un flujo dedicado para plantillas maestras (`main_master_templates`) que extrae codigos de plantilla y graficos desde archivos Excel.
 
-### Por que se usa LibreOffice
-
-LibreOffice se usa para extraer graficos porque los charts de Excel no viven como datos simples de celdas. Se almacenan como relaciones de dibujo/chart dentro del XLSX, y para obtener la imagen final se necesita un motor de hoja de calculo que renderice esas estructuras.
-
-Se eligio LibreOffice sobre un parser XML puro por estas razones:
-
-- Renderiza charts en modo headless dentro de Docker.
-- Conserva mejor el resultado visual final de los graficos.
-- Funciona en el mismo entorno containerizado del backend.
-- Evita dependencia de runtime de Excel en Windows.
-
-Para extraccion de codigos se mantiene `openpyxl`, porque los codigos son marcadores de texto en celdas y pueden leerse directamente del contenido del workbook.
-
 ### Como funciona la extraccion de codigos
 
 El extractor revisa solo las hojas definidas por el mapeo:
@@ -104,27 +91,6 @@ Persistencia en BD:
 - Cada codigo se guarda en `main_template_codes`.
 - Se relaciona al master template por `main_template_codes_master_templates`.
 - Si el codigo corresponde a grafico, se referencia su imagen por `template_code_image_id` (FK a `cms_media.id`).
-
-### Como funciona la extraccion de graficos
-
-La extraccion de charts la realiza `LibreOfficeChartExtractorService`.
-
-Flujo:
-
-1. Abre el XLSX como ZIP.
-2. Inspecciona XML de workbook y drawings para ubicar charts en hojas objetivo.
-3. Identifica cada chart por ancla y hoja origen.
-4. Construye un workbook temporal con un chart por iteracion.
-5. Renderiza con LibreOffice headless.
-6. Convierte PNG a JPG.
-7. Persiste metadatos en `cms_media` y, cuando aplica, sube a S3.
-
-Relacion con master template y almacenamiento:
-
-- Cada imagen se guarda con `folder` tipo `master-templates/{template_id}/{template_type}`.
-- `cms_media.url` guarda la URL (S3 o endpoint interno de fallback).
-- `cms_media.storage_path` guarda el `object_key` del bucket o ruta de respaldo.
-- El `TemplateCode` del chart guarda `template_code_image_id` para enlazar codigo e imagen de forma persistente.
 
 ### Comportamiento ante fallas parciales
 

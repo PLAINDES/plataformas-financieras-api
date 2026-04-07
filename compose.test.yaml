@@ -1,0 +1,15 @@
+services:
+  db:
+    env_file:
+      - .env.test
+    ports: []
+    volumes: []
+
+  backend:
+    env_file:
+      - .env.test
+    ports: []
+    volumes: []
+    environment:
+      DEBUG: "True"
+      DATABASE_HOST: db
