@@ -1,15 +1,24 @@
 services:
   db:
+    container_name: ${DB_CONTAINER_NAME:-new-financieras-db-test}
     env_file:
       - .env.test
-    ports: []
-    volumes: []
-
+    restart: unless-stopped
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - backend_network
+      - npm_network
   backend:
+    container_name: ${BACKEND_CONTAINER_NAME:-new-financieras-api-test}
     env_file:
       - .env.test
-    ports: []
-    volumes: []
-    environment:
-      DEBUG: "True"
-      DATABASE_HOST: db
+    restart: always
+    networks:
+      - backend_network
+      - npm_network
+
+networks:
+  npm_network:
+    external: true
+    name: ${NPM_EXTERNAL_NETWORK:-npm_network}
