@@ -224,20 +224,37 @@ VALUES
    '2026-03-10 09:10:00', '2026-03-10 09:10:00', NULL);
 
 
--- ─── main_templates ──────────────────────────────────────────────────────────
-INSERT INTO `main_templates` (
+-- ─── main_master_templates ───────────────────────────────────────────────────
+INSERT INTO `main_master_templates` (
         `id`,
         `nombre`,
-        `template_file_id`,
+        `description`,
+        `onedrive_env`,
+        `onedrive_folder`,
+        `onedrive_item_id`,
+        `onedrive_filename`,
+        `onedrive_path`,
+        `is_active`,
         `is_default`,
+        `hojas_config`,
+        `created_by_user_id`,
         `created_at`,
         `updated_at`,
         `deleted_at`
     )
 VALUES
   (10,
-   'Template Kapital WACC — Estándar',
-   NULL, 1,
+   'Master Template Kapital WACC — Estándar',
+   NULL,
+   NULL,
+   NULL,
+   NULL,
+   NULL,
+   NULL,
+   1,
+   0,
+   NULL,
+   NULL,
    '2026-03-10 09:15:00', '2026-03-10 09:15:00', NULL);
 
 
@@ -263,10 +280,10 @@ VALUES
   (16, NULL, 'kapital', 'WACC', 'WACC Nominal en Moneda Local',          '$$WPBVC$$',    '2026-03-10 09:20:00', '2026-03-10 09:20:00', NULL);
 
 
--- ─── main_template_codes_main_templates ──────────────────────────────────────
-INSERT INTO `main_template_codes_main_templates` (
+-- ─── main_template_codes_master_templates ────────────────────────────────────
+INSERT INTO `main_template_codes_master_templates` (
         `template_code_id`,
-        `template_id`
+  `master_template_id`
     )
 VALUES
   (10, 10), (11, 10), (12, 10),

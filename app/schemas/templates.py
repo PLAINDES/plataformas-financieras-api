@@ -9,6 +9,7 @@ class MasterTemplateBase(BaseModel):
     nombre: str = Field(..., max_length=255)
     description: Optional[str] = None
     is_active: bool = True
+    is_default: bool = False
     hojas_config: Optional[Dict[str, Any]] = None
 
 
@@ -22,6 +23,7 @@ class MasterTemplateUpdate(BaseModel):
     nombre: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
     is_active: Optional[bool] = None
+    is_default: Optional[bool] = None
     hojas_config: Optional[Dict[str, Any]] = None
 
 

@@ -8,11 +8,13 @@ Los códigos se extraen de hojas específicas:
 """
 
 import re
+import unicodedata
 import logging
 from typing import List, Dict, Literal, Optional
 from io import BytesIO
 import openpyxl
 from openpyxl.worksheet.worksheet import Worksheet
+from app.core.constants import TEMPLATE_SHEET_TO_TYPE
 
 
 logger = logging.getLogger(__name__)
@@ -22,12 +24,30 @@ SheetMapping = Dict[str, TemplateType]
 
 # Mapeo de hojas a tipos de template
 DEFAULT_SHEET_MAPPING: SheetMapping = {
-    "Plantilla Usuario": "valora",
-    "WACC": "kapital",
+    sheet_name: template_type
+    for sheet_name, template_type in TEMPLATE_SHEET_TO_TYPE.items()
 }
 
 # Patrón para detectar códigos de template
 CODE_PATTERN = re.compile(r"\$\$([A-Z0-9]+)\$\$")
+
+def normalize_code(original_name: str) -> Optional[str]:
+    """Normaliza texto a código $$ALFANUMERICO$$ en mayúsculas."""
+    if not original_name:
+        return None
+
+    name_str = str(original_name)
+    if "<openpyxl" in name_str or "object at" in name_str:
+        return None
+
+    normalized = name_str.upper()
+    normalized = unicodedata.normalize("NFD", normalized)
+    normalized = "".join(
+        char for char in normalized if unicodedata.category(char) != "Mn"
+    )
+    normalized = re.sub(r"[^A-Z0-9]", "", normalized)
+
+    return f"$${normalized}$$" if normalized else None
 
 
 class TemplateCodeExtractor:
@@ -46,28 +66,14 @@ class TemplateCodeExtractor:
     def extract_from_bytes(
         self,
         file_content: bytes,
-        extract_images: bool = False,
     ) -> Dict[str, List[Dict]]:
         """
-        Extrae códigos de un contenido de archivo Excel.
-        
-        Args:
-            file_content: Contenido del archivo Excel en bytes
-            extract_images: Si True, intenta extraer imágenes con códigos
-        
-        Returns:
-            Dict con estructura:
-            {
-                "valora": [...codes...],
-                "kapital": [...codes...],
-                "extracted_count": int,
-                "processed_sheets": list
-            }
+        Extrae códigos de un contenido de archivo Excel. Solo celdas
         """
         try:
             # Cargar con data_only=True para obtener valores calculados
             workbook = openpyxl.load_workbook(BytesIO(file_content), data_only=True)
-            return self._extract_from_workbook(workbook, extract_images)
+            return self._extract_from_workbook(workbook)
         except Exception as e:
             logger.error(f"Error extracting codes from Excel: {e}")
             return {
@@ -80,8 +86,7 @@ class TemplateCodeExtractor:
 
     def _extract_from_workbook(
         self,
-        workbook: openpyxl.Workbook,
-        extract_images: bool = False,
+        workbook: openpyxl.Workbook
     ) -> Dict[str, List[Dict]]:
         """Extrae códigos del workbook."""
         result = {
@@ -98,7 +103,7 @@ class TemplateCodeExtractor:
 
             template_type = self.sheet_mapping[sheet_name]
             worksheet = workbook[sheet_name]
-            
+
             codes = self._extract_from_sheet(worksheet, sheet_name, template_type)
             result[template_type].extend(codes)
             result["processed_sheets"].append({
@@ -106,11 +111,6 @@ class TemplateCodeExtractor:
                 "type": template_type,
                 "codes_count": len(codes)
             })
-
-            # Extraer de imágenes si es necesario
-            if extract_images:
-                image_codes = self._extract_from_images(worksheet, template_type)
-                result[template_type].extend(image_codes)
 
         result["extracted_count"] = len(result["valora"]) + len(result["kapital"])
         return result
@@ -128,28 +128,28 @@ class TemplateCodeExtractor:
         """
         if cell_value is None:
             return None
-            
+
         # Si ya es un string, retornarlo limpio
         if isinstance(cell_value, str):
             return cell_value.strip()
-        
+
         # Si es un número, convertirlo a string
         if isinstance(cell_value, (int, float, bool)):
             return str(cell_value).strip()
-        
+
         # Convertir a string y verificar que no sea un objeto openpyxl
         cell_str = str(cell_value)
-        
+
         # Rechazar si contiene representaciones de objetos openpyxl
         if "<openpyxl" in cell_str or "object at 0x" in cell_str:
             logger.warning(f"Rejected openpyxl object in cell: {cell_str[:100]}")
             return None
-        
+
         # Rechazar si contiene "<" y ">" que indica objeto extraño
         if cell_str.startswith("<") and "object" in cell_str:
             logger.warning(f"Rejected suspicious object in cell: {cell_str[:100]}")
             return None
-        
+
         return cell_str.strip() if cell_str else None
 
     def _extract_from_sheet(
@@ -170,7 +170,7 @@ class TemplateCodeExtractor:
 
                 # Sanitizar el valor de la celda (rechaza openpyxl objects)
                 cell_value = self._sanitize_cell_value(cell.value)
-                
+
                 if not cell_value:
                     continue
 
@@ -204,13 +204,13 @@ class TemplateCodeExtractor:
         Si la columna F está vacía, retorna "NA".
         Las imágenes/gráficos siguen el mismo patrón con su nombre en la celda de al lado.
         """
-        # Obtener nombre de F (col+1) - LA ÚNICA FUENTE DE NOMBRES
+        # Obtener nombre de F (col+1)
         if cell.column < cell.parent.max_column:
             next_cell = cell.parent.cell(cell.row, cell.column + 1)
             next_value = self._sanitize_cell_value(next_cell.value)
             if next_value and "$$" not in next_value:
                 return next_value
-        
+
         # Si F está vacío, retornar "NA"
         return "NA"
 

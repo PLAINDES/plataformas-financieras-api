@@ -1,35 +1,7 @@
 # app/schemas/main.py
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Literal
+from typing import Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field, ConfigDict, field_validator
-
-
-# ==================== TEMPLATE SCHEMAS ====================
-class TemplateBase(BaseModel):
-    nombre: str = Field(..., max_length=255)
-    template_file_id: Optional[int] = None
-    is_default: bool = False
-
-
-class TemplateCreate(TemplateBase):
-    template_code_ids: List[int] = []
-
-
-class TemplateUpdate(BaseModel):
-    nombre: Optional[str] = Field(None, max_length=255)
-    template_file_id: Optional[int] = None
-    is_default: Optional[bool] = None
-    template_code_ids: Optional[List[int]] = None
-
-
-class TemplateResponse(TemplateBase):
-    id: int
-    template_code_ids: List[int] = []
-    created_at: datetime
-    updated_at: datetime
-    deleted_at: Optional[datetime] = None
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== TEMPLATE COMPLEMENT SCHEMAS ====================

@@ -1,7 +1,13 @@
 import os
-import boto3
 import uuid
-from botocore.exceptions import ClientError
+try:
+    import boto3 # pylint: disable=import-error
+    from botocore.exceptions import ClientError # pylint: disable=import-error
+except Exception:  # pragma: no cover - optional dependency in local/dev
+    boto3 = None
+
+    class ClientError(Exception):
+        pass
 from fastapi import UploadFile
 import logging
 
@@ -23,7 +29,16 @@ class AWSS3Service:
         self.bucket_name = settings.AWS_BUCKET_NAME
         # El prefijo base que simula una carpeta en S3 importado de constants.py
         self.base_prefix = AWS_BASE_PREFIX
-        
+
+        self.s3_client = None
+        if not boto3:
+            logger.warning("boto3 no está instalado. S3 quedará deshabilitado en este entorno.")
+            return
+
+        if not all([settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_ACCESS_KEY, settings.AWS_REGION_NAME, self.bucket_name]):
+            logger.warning("Credenciales AWS incompletas. S3 quedará deshabilitado en este entorno.")
+            return
+
         # Boto3 no carga automáticamente el .env de Pydantic, así que pasamos las credenciales explícitamente
         self.s3_client = boto3.client(
             "s3",
@@ -32,11 +47,16 @@ class AWSS3Service:
             region_name=settings.AWS_REGION_NAME
         )
 
+    def _ensure_client(self):
+        if not self.s3_client:
+            raise RuntimeError("AWS S3 no está disponible: faltan credenciales o boto3.")
+
     def upload_file(self, file: UploadFile, folder: str = "uploads") -> dict:
         """
         Sube un archivo a S3 y retorna un diccionario con la URL pública y el object key.
         """
         try:
+            self._ensure_client()
             # Generamos un nombre único para evitar colisiones
             extension = file.filename.split(".")[-1] if "." in file.filename else "bin"
             unique_filename = f"{uuid.uuid4().hex}.{extension}"
@@ -77,10 +97,14 @@ class AWSS3Service:
         Nota: Si guardaste la URL completa, deberás extraer el object_key.
         """
         try:
+            self._ensure_client()
             self.s3_client.delete_object(Bucket=self.bucket_name, Key=object_key)
             return True
         except ClientError as e:
             logger.error(f"Error eliminando archivo de S3: {e}")
+            return False
+        except Exception as e:
+            logger.warning(f"S3 no disponible para eliminar {object_key}: {e}")
             return False
 
     def generate_presigned_url(self, object_key: str, expiration: int = 3600) -> str:
@@ -88,6 +112,7 @@ class AWSS3Service:
         Genera una URL firmada (presigned URL) para descargar un archivo privado.
         """
         try:
+            self._ensure_client()
             response = self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': self.bucket_name, 'Key': object_key},

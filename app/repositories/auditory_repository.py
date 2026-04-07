@@ -1,7 +1,7 @@
 # app/repositories/auditory_repository.py
-from sqlalchemy.orm import Session
 from typing import List, Optional
-from ..models.cms import Auditory
+from sqlalchemy.orm import Session
+from app.models.cms import Auditory
 
 
 class AuditoryRepository:

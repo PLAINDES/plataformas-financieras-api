@@ -1,34 +1,31 @@
 # app/api/main/router.py
-import os
-import logging
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from fastapi.responses import JSONResponse, Response
-import json
-from fastapi.encoders import jsonable_encoder
-logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, or_
 from typing import List, Optional
 from datetime import datetime
-from ...db.database import get_db
-from ...models.main import (
-    Template,
+import os
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import JSONResponse, Response
+from fastapi.encoders import jsonable_encoder
+logger = logging.getLogger(__name__)
+from app.db.database import get_db
+from app.models.main import (
     TemplateComplement,
     Calculation,
-    TemplateCode,
     Report,
     Cover,
     CalculationType,
 )
-from ...services.query_service import apply_filters
-from ...models.cms import Media
-from ...services.aws_service import s3_service
-from ...schemas.main import (
-    ReportUpdate, TemplateCreate, TemplateUpdate, TemplateResponse,
+from app.services.query_service import apply_filters
+from app.models.cms import Media
+from app.services.aws_service import s3_service
+from app.schemas.main import (
+    ReportUpdate,
     TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
     CalculationCreate, CalculationUpdate, CalculationResponse,
 )
-from app.models.templates.master_templates import MasterTemplate
+from app.models.templates import MasterTemplate
 
 
 router = APIRouter(prefix="/main", tags=["Main"])
@@ -37,69 +34,6 @@ router = APIRouter(prefix="/main", tags=["Main"])
 @router.get("/health")
 def main_health():
     return {"status": "ok"}
-
-
-# ==================== TEMPLATES ====================
-@router.get("/templates", response_model=List[TemplateResponse])
-def list_templates(db: Session = Depends(get_db)):
-    result = db.execute(
-        select(Template).where(Template.deleted_at.is_(None))
-    )
-    templates = result.scalars().all()
-    return [_template_to_response(t) for t in templates]
-
-
-@router.get("/templates/{template_id}", response_model=TemplateResponse)
-def get_template(template_id: int, db: Session = Depends(get_db)):
-    template = db.get(Template, template_id)
-    if not template or template.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return _template_to_response(template)
-
-
-@router.post("/templates", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
-def create_template(payload: TemplateCreate, db: Session = Depends(get_db)):
-    template = Template(
-        nombre=payload.nombre,
-        template_file_id=payload.template_file_id,
-        is_default=payload.is_default,
-    )
-    if payload.template_code_ids:
-        template.template_codes = _get_template_codes(db, payload.template_code_ids)
-    db.add(template)
-    db.commit()
-    db.refresh(template)
-    return _template_to_response(template)
-
-
-@router.put("/templates/{template_id}", response_model=TemplateResponse)
-def update_template(template_id: int, payload: TemplateUpdate, db: Session = Depends(get_db)):
-    template = db.get(Template, template_id)
-    if not template or template.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Template not found")
-
-    update_data = payload.model_dump(exclude_unset=True)
-    template_code_ids = update_data.pop("template_code_ids", None)
-
-    for key, value in update_data.items():
-        setattr(template, key, value)
-
-    if template_code_ids is not None:
-        template.template_codes = _get_template_codes(db, template_code_ids)
-
-    db.commit()
-    db.refresh(template)
-    return _template_to_response(template)
-
-
-@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_template(template_id: int, db: Session = Depends(get_db)):
-    template = db.get(Template, template_id)
-    if not template or template.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Template not found")
-    template.deleted_at = datetime.utcnow()
-    db.commit()
-    return None
 
 # ==================== TEMPLATE COMPLEMENTS ====================
 @router.get("/template-complements", response_model=List[TemplateComplementResponse])
@@ -237,6 +171,23 @@ def delete_calculation(calculation_id: int, db: Session = Depends(get_db)):
 
 # ==================== REPORTS ====================
 
+def _get_default_or_latest_master_template(db: Session) -> MasterTemplate | None:
+    template = db.execute(
+        select(MasterTemplate).where(
+            MasterTemplate.deleted_at.is_(None),
+            MasterTemplate.is_default.is_(True),
+        )
+        .order_by(MasterTemplate.updated_at.desc(), MasterTemplate.id.desc())
+    ).scalars().first()
+    if template:
+        return template
+
+    return db.execute(
+        select(MasterTemplate)
+        .where(MasterTemplate.deleted_at.is_(None))
+        .order_by(MasterTemplate.created_at.desc(), MasterTemplate.id.desc())
+    ).scalars().first()
+
 @router.get("/reports")
 def list_reports(
     limit: Optional[int] = None,
@@ -249,7 +200,6 @@ def list_reports(
     base_query = select(Report)
 
     eager = [
-        joinedload(Report.template).joinedload(Template.template_codes),
         joinedload(Report.portada).joinedload(Cover.portada),
         joinedload(Report.portada).joinedload(Cover.primer_imagen_footer),
         joinedload(Report.portada).joinedload(Cover.segundo_imagen_footer),
@@ -287,19 +237,16 @@ def list_reports(
 @router.get("/reports/get-current-codes")
 async def get_current_codes(db: Session = Depends(get_db)):
     """
-    Obtiene la plantilla maestra más reciente (no borrada) y devuelve sus códigos
-    reusando la lógica de `get_template_codes`.
+    Obtiene la plantilla maestra por defecto (si existe), y si no, usa
+    la más reciente no borrada. Devuelve sus códigos reusando la lógica
+    de `get_template_codes`.
     """
-    obj = db.execute(
-        select(MasterTemplate)
-        .where(MasterTemplate.deleted_at.is_(None))
-        .order_by(MasterTemplate.created_at.desc())
-    ).scalars().first()
+    obj = _get_default_or_latest_master_template(db)
 
     if not obj:
         raise HTTPException(status_code=404, detail="No master template found")
 
-    from . import master_templates_router
+    from .master_templates import router as master_templates_router
 
     # Get template codes (async) and chart images (sync) from the master templates router
     codes_payload = await master_templates_router.get_template_codes(obj.id, db)
@@ -368,6 +315,12 @@ async def get_current_codes(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/reports/get-default-template-codes")
+async def get_default_template_codes(db: Session = Depends(get_db)):
+    """Alias explícito para obtener los códigos de la plantilla maestra por defecto."""
+    return await get_current_codes(db)
+
+
 
 
 @router.get("/reports/{report_id}")
@@ -397,14 +350,13 @@ def create_report(data: ReportUpdate, db: Session = Depends(get_db)):
     if not data.nombre:
         raise HTTPException(status_code=400, detail="Field 'nombre' is required")
 
-    # Try to pick a default template for new reports
-    template = db.execute(
-        select(Template).where(Template.deleted_at.is_(None), Template.is_default.is_(True))
-    ).scalars().first()
+    # Try to pick a default master template for new reports
+    template = _get_default_or_latest_master_template(db)
     if not template:
-        template = db.execute(select(Template).where(Template.deleted_at.is_(None))).scalars().first()
-    if not template:
-        raise HTTPException(status_code=400, detail="No template available to assign to the report")
+        raise HTTPException(
+            status_code=400,
+            detail="No master template available to assign to the report",
+        )
 
     report = Report(
         template_id=template.id,
@@ -825,27 +777,6 @@ def delete_cover(cover_id: int, db: Session = Depends(get_db)):
 
 # ==================== HELPER FUNCTIONS ====================
 
-def _get_template_codes(db: Session, template_code_ids: List[int]):
-    if not template_code_ids:
-        return []
-    result = db.execute(
-        select(TemplateCode).where(TemplateCode.id.in_(template_code_ids))
-    )
-    return list(result.scalars().all())
-
-
-def _template_to_response(template: Template) -> TemplateResponse:
-    return TemplateResponse(
-        id=template.id,
-        nombre=template.nombre,
-        template_file_id=template.template_file_id,
-        is_default=template.is_default,
-        template_code_ids=[code.id for code in template.template_codes],
-        created_at=template.created_at,
-        updated_at=template.updated_at,
-        deleted_at=template.deleted_at,
-    )
-
 def _media_to_dict(media: Media | None) -> dict | None:
     if not media:
         return None
@@ -877,7 +808,6 @@ def _cover_to_dict(cover: Cover | None) -> dict | None:
 
 
 def _report_to_response(report: Report) -> dict:
-    template = report.template
     def _iso(v):
         try:
             return v.isoformat() if v is not None and hasattr(v, "isoformat") else v

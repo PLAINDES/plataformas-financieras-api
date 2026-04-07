@@ -1,6 +1,6 @@
 import hashlib
 import enum
-from sqlalchemy import Column, String, DateTime, Numeric, Enum as SQLEnum, Boolean, JSON, ForeignKey, Text, Table
+from sqlalchemy import Column, String, DateTime, Numeric, Enum as SQLEnum, Boolean, JSON, ForeignKey, Text
 from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -16,37 +16,6 @@ class CoverType(enum.Enum):
 class CalculationType(enum.Enum):
     VALORA = "valora"
     KAPITAL = "kapital"
-
-
-main_template_code_templates = Table(
-    "main_template_codes_main_templates",
-    Base.metadata,
-    Column("template_code_id", MySQLBigInt(unsigned=True), ForeignKey("main_template_codes.id"), primary_key=True),
-    Column("template_id", MySQLBigInt(unsigned=True), ForeignKey("main_templates.id"), primary_key=True),
-)
-
-
-class Template(Base):
-    __tablename__ = "main_templates"
-
-    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
-    nombre = Column(String(255), nullable=False)
-    template_file_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_media.id"), nullable=True)
-    is_default = Column(Boolean, default=False, nullable=False)
-
-    created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-    deleted_at = Column(DateTime, nullable=True)
-
-    template_file = relationship("Media")
-    template_codes = relationship(
-        "TemplateCode",
-        secondary=main_template_code_templates,
-        back_populates="templates",
-    )
-
-    def __repr__(self):
-        return f"<Template {self.nombre}>"
 
 
 class TemplateComplement(Base):
@@ -120,9 +89,9 @@ class TemplateCode(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     template_code_image = relationship("Media")
-    templates = relationship(
-        "Template",
-        secondary=main_template_code_templates,
+    master_templates = relationship(
+        "MasterTemplate",
+        secondary="main_template_codes_master_templates",
         back_populates="template_codes",
     )
 
@@ -131,9 +100,9 @@ class TemplateCode(Base):
 
 class Report(Base):
     __tablename__ = "main_reports"
- 
+
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
-    template_id = Column(MySQLBigInt(unsigned=True), ForeignKey("main_templates.id"), nullable=False)
+    template_id = Column(MySQLBigInt(unsigned=True), ForeignKey("main_master_templates.id"), nullable=False)
     file = Column(String(500), nullable=True)
     nombre = Column(String(255), nullable=False)
     precio = Column(Numeric(10, 2), nullable=True)
@@ -160,7 +129,7 @@ class Report(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     portada = relationship("Cover", foreign_keys=[portada_id])
-    template = relationship("Template")
+    template = relationship("MasterTemplate")
 
     def __repr__(self):
         return f"<Report {self.nombre}>"
@@ -202,4 +171,3 @@ class Cover(Base):
 
     def __repr__(self):
         return f"<Covers {self.nombre} ({self.tipo.value})>"
-

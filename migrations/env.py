@@ -7,8 +7,7 @@ from alembic import context  # pylint: disable=no-member
 
 # Import all models so Alembic can detect all tables
 from app.db.base import Base
-from app.models import cms, main, user
-from app.models.templates import master_templates
+from app.models import cms, main, user, templates
 
 load_dotenv()
 # this is the Alembic Config object, which provides
