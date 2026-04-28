@@ -334,3 +334,4 @@ async def update_excel_cell(
     except Exception as e:
         logger.error(f"Error updating excel cell: {e}")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al actualizar celda: {str(e)}")
+
