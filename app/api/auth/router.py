@@ -2,12 +2,11 @@
 # app/api/auth/router.py
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
-from typing import Optional
-from ...db.database import get_db
-from ...schemas.user import UserLogin, TokenResponse, UserResponse, UserCreate, UserUpdate
-from ...models.user import User
-from ...services.auth_service import AuthService
-from ..deps import get_current_user
+from app.db.database import get_db
+from app.schemas.user import UserLogin, TokenResponse, UserResponse, UserCreate, UserUpdate
+from app.models.user import User
+from app.services.auth_service import AuthService
+from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -122,9 +121,7 @@ def refresh_token(
     """
     Refresca el token de acceso
     Genera un nuevo token para el usuario actual
-    """
-    from ...services.auth_service import AuthService
-    
+    """    
     auth_service = AuthService(db)
     access_token = auth_service._create_access_token(current_user.id)
     
