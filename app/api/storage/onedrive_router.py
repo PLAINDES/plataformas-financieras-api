@@ -12,13 +12,20 @@ Endpoints:
   DELETE /storage/onedrive/folder/{id}    -> Eliminar carpeta (recursivo)
 """
 
+import io
 import logging
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query, Body, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, status
+from fastapi.responses import StreamingResponse
 
+from app.api.deps import get_current_user
 from app.services.onedrive_service import get_onedrive_service, OneDriveConfig
 
-router = APIRouter(prefix="/storage/onedrive", tags=["Storage - OneDrive"])
+router = APIRouter(
+    prefix="/storage/onedrive",
+    tags=["Storage - OneDrive"],
+    dependencies=[Depends(get_current_user)],
+)
 logger = logging.getLogger(__name__)
 
 
@@ -204,9 +211,6 @@ async def get_folder_info(
 async def delete_onedrive_item(item_id: str):
     """
     Elimina un archivo específico de OneDrive.
-    
-    Parámetro:
-      item_id: OneDrive item ID del archivo a eliminar
     """
     config = OneDriveConfig()
     if not config.is_configured():
@@ -230,14 +234,11 @@ async def delete_onedrive_folder_recursive(folder_id: str):
     """
     Elimina una CARPETA completa y todo su contenido de forma RECURSIVA.
     
-    ⚠️ Esta es una operación DESTRUCTIVA.
+    Esta es una operación DESTRUCTIVA.
     Se eliminarán:
       - Todos los archivos dentro de la carpeta
       - Todas las subcarpetas y su contenido
       - No se puede deshacer
-    
-    Parámetro:
-      folder_id: OneDrive item ID de la carpeta a eliminar
     """
     config = OneDriveConfig()
     if not config.is_configured():
@@ -282,3 +283,54 @@ async def list_all_files_in_folder(
     except Exception as e:
         logger.error(f"Error listing files: {e}")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al listar archivos: {str(e)}")
+
+@router.post("/excel/read")
+async def read_excel_cell(
+    item_id: str = Body(...),
+    sheet_name: str = Body(...),
+    cell: str = Body(...),
+):
+    """
+    Lee una celda/rango del archivo Excel en OneDrive.
+    Usa una sesión de Excel Online con recálculo completo (fullRebuild)
+    para garantizar que las fórmulas devuelvan el valor calculado real,
+    no #N/D o #REF!.
+    """
+    config = OneDriveConfig()
+    if not config.is_configured():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no configurado")
+
+    service = get_onedrive_service()
+    try:
+        values = await service.read_excel_cell_with_session(
+            item_id=item_id, sheet_name=sheet_name, cell_address=cell
+        )
+        return {"item_id": item_id, "sheet_name": sheet_name, "cell": cell, "values": values}
+    except Exception as e:
+        logger.error(f"Error reading excel cell: {e}")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al leer celda: {str(e)}")
+
+@router.post("/excel/update")
+async def update_excel_cell(
+    item_id: str = Body(...),
+    sheet_name: str = Body(...),
+    cell: str = Body(...),
+    value: object = Body(...),
+):
+    """Actualiza una celda/rango del archivo Excel en OneDrive."""
+    config = OneDriveConfig()
+    if not config.is_configured():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no configurado")
+
+    service = get_onedrive_service()
+    try:
+        values = await service.update_excel_cell(
+            item_id=item_id,
+            sheet_name=sheet_name,
+            cell_address=cell,
+            value=value,
+        )
+        return {"item_id": item_id, "sheet_name": sheet_name, "cell": cell, "values": values}
+    except Exception as e:
+        logger.error(f"Error updating excel cell: {e}")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al actualizar celda: {str(e)}")
