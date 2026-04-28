@@ -4,7 +4,7 @@ from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.sql import func
 from datetime import datetime
 import enum
-from ..db.base import Base
+from app.db.base import Base
 
 
 class UserRole(enum.Enum):

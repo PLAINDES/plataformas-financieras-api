@@ -1,9 +1,10 @@
 # app/core/config.py
 
-from pydantic_settings import BaseSettings
-from typing import List, Optional
+import json
+from typing import List, Union, Any
 from functools import lru_cache
-
+from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     # App
@@ -13,10 +14,35 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # CORS
-    BACKEND_CORS_ORIGINS: List[str] = [
+    BACKEND_CORS_ORIGINS: Union[str, List[str]] = [
         "http://localhost:5173",
         "http://localhost:3000",
     ]
+
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> List[str]:
+        if isinstance(v, str):
+            v = v.strip()
+            # 1. Intentar parsearlo si viene como un JSON perfecto
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    # 2. Si GitHub aplanó las comillas y rompió el JSON, le quitamos los corchetes
+                    v = v[1:-1]
+
+            # 3. Separamos por comas y limpiamos cualquier rastro de comillas simples o dobles
+            return [
+                i.strip().strip("'").strip('"')
+                for i in v.split(",")
+                if i.strip()
+            ]
+
+        if isinstance(v, list):
+            return v
+
+        raise ValueError(v)
 
     # Database
     DATABASE_USER: str
@@ -40,7 +66,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
-    
+
     # Admin
     FIRST_ADMIN_EMAIL: str = "admin@example.com"
     FIRST_ADMIN_PASSWORD: str = "changeme"
