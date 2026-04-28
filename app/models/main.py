@@ -39,7 +39,7 @@ class Calculation(Base):
 
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     calculation_file_id = Column(String(36), nullable=True)
-    user_id = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=False)
+    user_id = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=True)
     code = Column(String(64), nullable=False, unique=True)
     type = Column(
         SQLEnum(

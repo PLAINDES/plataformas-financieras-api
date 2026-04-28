@@ -33,7 +33,7 @@ class TemplateComplementResponse(TemplateComplementBase):
 # ==================== CALCULATION SCHEMAS ====================
 class CalculationBase(BaseModel):
     calculation_file_id: Optional[str] = Field(None, max_length=36)
-    user_id: int
+    user_id: Optional[int] = None
     code: str = Field(..., max_length=64)
     type: Literal["valora", "kapital"]
     data: Optional[Dict[str, Any]] = None
