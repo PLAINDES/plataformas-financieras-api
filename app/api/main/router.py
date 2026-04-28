@@ -1,15 +1,15 @@
 # app/api/main/router.py
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select, or_
-from typing import List, Optional
-from datetime import datetime
 import os
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from fastapi.responses import JSONResponse, Response
-from fastapi.encoders import jsonable_encoder
-logger = logging.getLogger(__name__)
+from typing import List, Optional, Any
+from datetime import datetime
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select, or_
+from app.models.cms import Media
 from app.db.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
+from fastapi.encoders import jsonable_encoder
+from app.services.query_service import apply_filters
 from app.models.main import (
     TemplateComplement,
     Calculation,
@@ -17,18 +17,28 @@ from app.models.main import (
     Cover,
     CalculationType,
 )
-from app.services.query_service import apply_filters
-from app.models.cms import Media
+from app.api.main.calculations.router import get_default_or_latest_master_template
+logger = logging.getLogger(__name__)
 from app.services.aws_service import s3_service
 from app.schemas.main import (
     ReportUpdate,
-    TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
-    CalculationCreate, CalculationUpdate, CalculationResponse,
+    TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse
 )
-from app.models.templates import MasterTemplate
-
 
 router = APIRouter(prefix="/main", tags=["Main"])
+
+def _get_latest_calculation_by_user_and_type(
+    db: Session, user_id: int, calc_type: CalculationType
+) -> Calculation | None:
+    return (
+        db.execute(
+            select(Calculation)
+            .where(Calculation.user_id == user_id, Calculation.type == calc_type)
+            .order_by(Calculation.updated_at.desc(), Calculation.id.desc())
+        )
+        .scalars()
+        .first()
+    )
 
 
 @router.get("/health")
@@ -54,8 +64,29 @@ def get_template_complement_by_id(complement_id: int, db: Session = Depends(get_
     return TemplateComplementResponse.model_validate(complement)
 
 
-@router.get("/template-complements/by-name/{complement_name}", response_model=List[TemplateComplementResponse])
-def get_template_complement(complement_name: str, db: Session = Depends(get_db)):
+@router.get("/template-complements/by-name/{complement_name}")
+def get_template_complement(
+    complement_name: str,
+    only_name: bool = Query(False, alias="only-name"),
+    only_date: bool = Query(False, alias="only-date"),
+    country: Optional[str] = Query(None),
+    year: Optional[int] = Query(None),
+    period: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+    ) -> Any:
+
+    if only_name and complement_name != "damodaran":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El query parameter 'only-name' es exclusivo para el complemento 'damodaran'."
+        )
+
+    if only_date and complement_name != "rf":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El query parameter 'only-date' es exclusivo para el complemento 'rf'."
+        )
+
     result = db.execute(
         select(TemplateComplement)
         .where(TemplateComplement.nombre == complement_name)
@@ -63,7 +94,83 @@ def get_template_complement(complement_name: str, db: Session = Depends(get_db))
         .order_by(TemplateComplement.created_at.desc())
     )
     complement = result.scalars().first()
-    return [TemplateComplementResponse.model_validate(complement)] if complement else []
+
+    if not complement:
+        return []
+
+    data_list = complement.data if isinstance(complement.data, list) else []
+
+    # ==========================================
+    # Extracción exacta de valor
+    # ==========================================
+    if country and year:
+        # 1. Normalizar los parámetros que vienen de la URL
+        search_year = str(year).replace(".0", "").strip()
+        search_country = str(country).strip().lower()
+        search_period = str(period).strip().upper() if period else None
+
+        if complement_name == "ir":
+            for item in data_list:
+                # 2. Normalizar la data que viene de la BD (Excel)
+                db_fecha = str(item.get("fecha", "")).replace(".0", "").strip()
+                db_pais = str(item.get("pais", "")).strip().lower()
+
+                if db_fecha == search_year and db_pais == search_country:
+                    return {"valor": item.get("valor")}
+            return {"valor": None}
+
+        if complement_name == "devaluacion" and search_period:
+            for item in data_list:
+                db_fecha = str(item.get("fecha", "")).replace(".0", "").strip()
+                db_periodo = str(item.get("periodo", "")).strip().upper()
+
+                if db_fecha == search_year and db_periodo == search_period:
+                    # Buscar la llave del país ignorando mayúsculas y espacios
+                    country_key = next(
+                        (k for k in item.keys() if str(k).strip().lower() == search_country), 
+                        None
+                    )
+                    if country_key:
+                        return {"valor": item.get(country_key)}
+
+            # Si termina el bucle y no hay match
+            return {"valor": None}
+
+    # =====================
+    # Lógica Existente
+    # =====================
+    if only_name:
+        # 1. Extraer y limpiar espacios en blanco a los lados
+        industrias_crudas = [
+            str(item.get("industria")).strip()
+            for item in data_list 
+            if isinstance(item, dict) and item.get("industria")
+        ]
+        # 2. Eliminar los duplicados (por los años) y ordenar alfabéticamente
+        return sorted(list(set(industrias_crudas)))
+
+    if only_date:
+        fechas_crudas = [
+            str(item.get("fecha")).strip()
+            for item in data_list 
+            if isinstance(item, dict) and item.get("fecha")
+        ]
+        fechas_unicas = list(set(fechas_crudas))
+
+        def parse_date_for_sort(date_str):
+            try:
+                return datetime.strptime(date_str, "%d/%m/%Y")
+            except ValueError:
+                pass
+            try:
+                return datetime.strptime(date_str, "%Y")
+            except ValueError:
+                return datetime.min
+
+        fechas_unicas.sort(key=parse_date_for_sort, reverse=True)
+        return fechas_unicas
+
+    return [TemplateComplementResponse.model_validate(complement)]
 
 
 @router.post(
@@ -83,13 +190,40 @@ def create_template_complement(payload: TemplateComplementCreate, db: Session = 
         .where(TemplateComplement.deleted_at.is_(None))
     ).scalars().all()
 
+    merged_data = payload.data
+
+    # Lógica de Merge si ya existe historial
+    if old_records and payload.nombre in ["damodaran", "riesgo", "tax"]:
+        old_record = old_records[0] # El activo más reciente
+        old_data = old_record.data if isinstance(old_record.data, list) else []
+        new_data = payload.data if isinstance(payload.data, list) else []
+
+        # Extraer los años que vienen en el nuevo Excel para no duplicarlos
+        incoming_years = {str(item.get("fecha")) for item in new_data if item.get("fecha")}
+
+        # Retener solo los datos del JSON antiguo que NO correspondan a los años subidos
+        # (Esto permite actualizar un año si se vuelve a subir)
+        retained_data = [
+            item for item in old_data
+            if str(item.get("fecha")) not in incoming_years
+        ]
+
+        # Combinar el historial retenido con la nueva carga
+        merged_data = retained_data + new_data
+
+    # Marcar como eliminados lógicamente los registros anteriores
     for old in old_records:
         old.deleted_at = datetime.utcnow()
 
-    complement = TemplateComplement(**payload.model_dump())
+    # Inyectar la data fusionada en el payload antes de guardar
+    payload_dict = payload.model_dump()
+    payload_dict["data"] = merged_data
+
+    complement = TemplateComplement(**payload_dict)
     db.add(complement)
     db.commit()
     db.refresh(complement)
+
     return TemplateComplementResponse.model_validate(complement)
 
 
@@ -117,76 +251,7 @@ def delete_template_complement(complement_id: int, db: Session = Depends(get_db)
     db.commit()
     return None
 
-
-# ==================== CALCULATIONS ====================
-@router.get("/calculations", response_model=List[CalculationResponse])
-def list_calculations(user_id: Optional[int] = None, db: Session = Depends(get_db)):
-    query = select(Calculation)
-    if user_id:
-        query = query.where(Calculation.user_id == user_id)
-    result = db.execute(query)
-    calculations = result.scalars().all()
-    return [CalculationResponse.model_validate(c) for c in calculations]
-
-
-@router.get("/calculations/{calculation_id}", response_model=CalculationResponse)
-def get_calculation(calculation_id: int, db: Session = Depends(get_db)):
-    calculation = db.get(Calculation, calculation_id)
-    if not calculation:
-        raise HTTPException(status_code=404, detail="Calculation not found")
-    return CalculationResponse.model_validate(calculation)
-
-
-@router.post("/calculations", response_model=CalculationResponse, status_code=status.HTTP_201_CREATED)
-def create_calculation(payload: CalculationCreate, db: Session = Depends(get_db)):
-    calculation = Calculation(**payload.model_dump())
-    db.add(calculation)
-    db.commit()
-    db.refresh(calculation)
-    return CalculationResponse.model_validate(calculation)
-
-
-@router.put("/calculations/{calculation_id}", response_model=CalculationResponse)
-def update_calculation(calculation_id: int, payload: CalculationUpdate, db: Session = Depends(get_db)):
-    calculation = db.get(Calculation, calculation_id)
-    if not calculation:
-        raise HTTPException(status_code=404, detail="Calculation not found")
-    update_data = payload.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(calculation, key, value)
-    db.commit()
-    db.refresh(calculation)
-    return CalculationResponse.model_validate(calculation)
-
-
-@router.delete("/calculations/{calculation_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_calculation(calculation_id: int, db: Session = Depends(get_db)):
-    calculation = db.get(Calculation, calculation_id)
-    if not calculation:
-        raise HTTPException(status_code=404, detail="Calculation not found")
-    db.delete(calculation)
-    db.commit()
-    return None
-
-
 # ==================== REPORTS ====================
-
-def _get_default_or_latest_master_template(db: Session) -> MasterTemplate | None:
-    template = db.execute(
-        select(MasterTemplate).where(
-            MasterTemplate.deleted_at.is_(None),
-            MasterTemplate.is_default.is_(True),
-        )
-        .order_by(MasterTemplate.updated_at.desc(), MasterTemplate.id.desc())
-    ).scalars().first()
-    if template:
-        return template
-
-    return db.execute(
-        select(MasterTemplate)
-        .where(MasterTemplate.deleted_at.is_(None))
-        .order_by(MasterTemplate.created_at.desc(), MasterTemplate.id.desc())
-    ).scalars().first()
 
 @router.get("/reports")
 def list_reports(
@@ -241,7 +306,7 @@ async def get_current_codes(db: Session = Depends(get_db)):
     la más reciente no borrada. Devuelve sus códigos reusando la lógica
     de `get_template_codes`.
     """
-    obj = _get_default_or_latest_master_template(db)
+    obj = get_default_or_latest_master_template(db)
 
     if not obj:
         raise HTTPException(status_code=404, detail="No master template found")
@@ -351,7 +416,7 @@ def create_report(data: ReportUpdate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Field 'nombre' is required")
 
     # Try to pick a default master template for new reports
-    template = _get_default_or_latest_master_template(db)
+    template = get_default_or_latest_master_template(db)
     if not template:
         raise HTTPException(
             status_code=400,
@@ -550,7 +615,7 @@ def create_cover(
     imagen_central_id: Optional[int] = Form(None),
     logo_inferior_id: Optional[int] = Form(None),
     imagen_fondo_id: Optional[int] = Form(None),
-    
+
     portada: Optional[UploadFile] = File(None),
     primer_imagen_footer: Optional[UploadFile] = File(None),
     segundo_imagen_footer: Optional[UploadFile] = File(None),
@@ -558,7 +623,7 @@ def create_cover(
     imagen_central: Optional[UploadFile] = File(None),
     logo_inferior: Optional[UploadFile] = File(None),
     imagen_fondo: Optional[UploadFile] = File(None),
-    
+
     db: Session = Depends(get_db)
 ):
     # Subir nuevos archivos a S3 y crear los Media correspondientes si existen
@@ -827,7 +892,5 @@ def _report_to_response(report: Report) -> dict:
         "activo": report.activo,
         "created_at": _iso(report.created_at),
         "updated_at": _iso(report.updated_at),
-        # `template` removed from response to avoid sending template metadata
-        # (previously included template id, nombre, is_default and template_codes)
         "portada": _cover_to_dict(report.portada),
     }
