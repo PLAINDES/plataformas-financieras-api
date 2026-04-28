@@ -1,0 +1,24 @@
+name: Backend CI Tests
+
+on:
+  pull_request:
+    branches: [ "dev" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar entorno (.env.ci)
+        run: echo "${{ secrets.ENV_CI }}" > .env.ci
+
+      - name: Construir y Ejecutar Tests
+        run: |
+          docker compose -p financiera_ci -f compose.yaml -f compose.ci.yaml --env-file .env.ci up --build --abort-on-container-exit --exit-code-from backend
+
+      - name: Limpiar contenedores
+        if: always() # Asegura que se limpie incluso si los tests explotan
+        run: docker compose -p financiera_ci -f compose.yaml -f compose.ci.yaml down -v

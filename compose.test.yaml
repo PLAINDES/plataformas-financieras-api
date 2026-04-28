@@ -5,7 +5,7 @@ services:
       - .env.test
     restart: unless-stopped
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data_test:/var/lib/mysql
     networks:
       - backend_network
       - npm_network
@@ -22,3 +22,6 @@ networks:
   npm_network:
     external: true
     name: ${NPM_EXTERNAL_NETWORK:-npm_network}
+volumes:
+  mysql_data_test:
+    driver: local

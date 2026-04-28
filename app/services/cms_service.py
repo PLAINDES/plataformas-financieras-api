@@ -13,9 +13,11 @@ class CMSService:
         self.auditory_repository = AuditoryRepository(db)
 
     def get_landing_page(self, slug: str = None) -> LandingDataResponse:
-        page = self.repository.get_homepage()
+        page = self.repository.get_page_by_slug(slug) if slug else self.repository.get_homepage()
 
         if not page:
+            if slug:
+                raise ValueError(f"Page with slug '{slug}' not found")
             raise ValueError("Homepage not found. Please ensure the database is seeded with initial data.")
 
         contents = self.repository.get_contents_by_page_id(page.id)

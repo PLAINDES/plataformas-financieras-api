@@ -1,5 +1,6 @@
 import os
 import uuid
+import logging
 try:
     import boto3 # pylint: disable=import-error
     from botocore.exceptions import ClientError # pylint: disable=import-error
@@ -9,7 +10,6 @@ except Exception:  # pragma: no cover - optional dependency in local/dev
     class ClientError(Exception):
         pass
 from fastapi import UploadFile
-import logging
 
 from app.core.constants import AWS_BASE_PREFIX
 from app.core.config import settings
