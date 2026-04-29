@@ -219,6 +219,14 @@ def _to_excel_input_value(field: str, value: object) -> object:
     n = _extract_number(value)
     if n is None:
         return value
+
+    # Para country, hacer división extra por 100
+    if field == "country":
+        return n / 10000 if abs(n) > 1 else n / 100
+
+    if field == "devaluacion" or field == "costo_deuda":
+        return n / 100
+
     return n / 100 if abs(n) > 1 else n
 
 # --- METODO PARA RUTAS BATCH ---
@@ -394,7 +402,7 @@ async def _enrich_payload_with_excel_outputs(
     # Si no nos pasaron sesión, creamos una nueva
     if not session_id:
         t0 = time.perf_counter()
-        session_id = await service._create_workbook_session(item_id, persist_changes=False)
+        session_id = await service._create_workbook_session(item_id, persist_changes=True)
         print(f"[RAM] Nueva sesión creada: {time.perf_counter() - t0:.2f} seg", flush=True)
     else:
         print(f"Intentando reusar sesión: {session_id}", flush=True)
@@ -850,7 +858,7 @@ async def prewarm_excel_session(db: Session = Depends(get_db)):
     try:
         session_id = await service._create_workbook_session(
             source_template.onedrive_item_id, 
-            persist_changes=False
+            persist_changes=True
         )
         return {"session_id": session_id}
     except Exception as e:
