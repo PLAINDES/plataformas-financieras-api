@@ -65,6 +65,7 @@ frontend/
 - Financial analysis modules (Kapital, Valora)
 - Admin panel for content editing
 - Responsive frontend with modern UI
+- New Chatbot service
 
 ## Extraccion de Plantillas Maestras
 
