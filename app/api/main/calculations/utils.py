@@ -429,7 +429,7 @@ async def _enrich_payload_with_excel_outputs(
     # Si no nos pasaron sesión, creamos una nueva
     if not session_id:
         t0 = time.perf_counter()
-        session_id = await service._create_workbook_session(item_id, persist_changes=False)
+        session_id = await service._create_workbook_session(item_id, persist_changes=True)
         print(f"[RAM] Nueva sesión creada: {time.perf_counter() - t0:.2f} seg", flush=True)
     else:
         print(f"Intentando reusar sesión: {session_id}", flush=True)
