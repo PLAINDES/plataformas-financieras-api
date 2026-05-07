@@ -92,6 +92,8 @@ class Settings(BaseSettings):
     AWS_REGION_NAME: str = "us-east-1"
     AWS_BUCKET_NAME: str = "plaindes"
 
+    GEMINI_API_KEY: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = True
