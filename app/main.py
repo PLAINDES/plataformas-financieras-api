@@ -10,6 +10,7 @@ from .api.main.router import router as main_router
 from .api.main.master_templates.router import router as master_templates_router
 from .api.storage.onedrive_router import router as onedrive_router
 from .api.main.calculations.router import router as calculations_router
+from .api.main.chatbot.router import router as chatbot_router
 
 print("--- EL SERVIDOR ESTÁ ARRANCANDO ---")
 # Crear instancia de FastAPI
@@ -58,6 +59,7 @@ app.include_router(main_router, prefix=settings.API_V1_PREFIX)
 app.include_router(master_templates_router, prefix=settings.API_V1_PREFIX)
 app.include_router(onedrive_router, prefix=settings.API_V1_PREFIX)
 app.include_router(calculations_router, prefix=settings.API_V1_PREFIX)
+app.include_router(chatbot_router, prefix=settings.API_V1_PREFIX)
 
 # Global exception handler
 @app.exception_handler(Exception)
