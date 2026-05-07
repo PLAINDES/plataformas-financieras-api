@@ -2,7 +2,7 @@
 import os
 
 # Configuracion de variables de entorno con valores por defecto
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-pro-preview")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_API_VERSION = os.getenv("GEMINI_API_VERSION", "v1")
 
 # Construccion de la URL de la API
