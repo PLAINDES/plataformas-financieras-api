@@ -5,7 +5,6 @@ CRUD de Plantillas Maestras + integración OneDrive + Extracción nativa de grá
 import io
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, Literal
 from urllib.parse import quote
 from sqlalchemy import or_, select
@@ -45,9 +44,9 @@ router = APIRouter(
 Environment = Literal["development", "production", "test"]
 Folder = Literal["plantillas_maestras", "kapital", "valora"]
 
-# ==============================================================================
+# =============================
 # RESTO DE RUTAS GENERALES
-# ==============================================================================
+# =============================
 
 
 @router.get("/chart-file/{chart_filename}")
@@ -267,14 +266,20 @@ async def upload_and_extract_codes(
         raise HTTPException(503, "OneDrive no configurado")
 
     # 1. SUBIR A ONEDRIVE
-    filename = file.filename or f"plantilla_{template_id}.xlsx"
+    original_name = file.filename or f"plantilla_{template_id}.xlsx"
+    unique_onedrive_name = f"{template_id}-{original_name}"
+
     try:
-        item = await service.upload_file(content=content, filename=filename, env=env, folder=folder)
+        item = await service.upload_file(content=content, filename=unique_onedrive_name, env=env, folder=folder)
     except Exception as e:
         raise HTTPException(502, f"Error OneDrive: {e}")
 
     obj.onedrive_env, obj.onedrive_folder, obj.onedrive_item_id = env, folder, item.get("id")
-    obj.onedrive_filename, obj.onedrive_path = filename, service.build_path(env, folder, filename)
+
+    obj.onedrive_filename = unique_onedrive_name
+    obj.original_filename = original_name
+    obj.onedrive_path = service.build_path(env, folder, unique_onedrive_name)
+
     db.commit()
     db.refresh(obj)
 
@@ -389,10 +394,17 @@ async def re_upload_and_extract_codes(
         except Exception:
             pass
 
-    filename = file.filename or f"plantilla_{template_id}.xlsx"
+    original_name = file.filename or f"plantilla_{template_id}.xlsx"
+    unique_onedrive_name = f"{template_id}-{original_name}"
+
     env: Environment = settings.ENVIRONMENT
-    item = await service.upload_file(content=content, filename=filename, env=env, folder=obj.onedrive_folder or "plantillas_maestras")
-    obj.onedrive_item_id, obj.onedrive_filename, obj.onedrive_path = item.get("id"), filename, service.build_path(env, obj.onedrive_folder or "plantillas_maestras", filename)
+    item = await service.upload_file(content=content, filename=unique_onedrive_name, env=env, folder=obj.onedrive_folder or "plantillas_maestras")
+
+    obj.onedrive_item_id = item.get("id")
+    obj.onedrive_filename = unique_onedrive_name
+    obj.original_filename = original_name
+    obj.onedrive_path = service.build_path(env, obj.onedrive_folder or "plantillas_maestras", unique_onedrive_name)
+
     db.commit()
 
     # ====== 4. Extraer e insertar NUEVOS códigos de celdas ======
@@ -695,7 +707,8 @@ async def download_from_onedrive(template_id: int, db: Session = Depends(get_db)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al descargar de OneDrive: {e}")
 
-    filename = obj.onedrive_filename or f"plantilla_{obj.id}.xlsx"
+    filename = obj.original_filename or obj.onedrive_filename or f"plantilla_{obj.id}.xlsx"
+
     return StreamingResponse(
         io.BytesIO(content),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

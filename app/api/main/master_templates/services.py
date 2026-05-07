@@ -200,9 +200,11 @@ async def _extract_and_save_charts_via_graph(db: Session, template_id: int, obj:
                     # 4. Subir a S3
                     file_url, object_key = None, None
                     stored_size = len(image_bytes)
+
+                    dynamic_folder = f"graphs/{template_prefix}"
                     try:
                         upload_file = SimpleUploadFile(prefixed_filename, io.BytesIO(image_bytes))
-                        s3_result = s3_service.upload_file(upload_file, folder="graphs")
+                        s3_result = s3_service.upload_file(upload_file, folder=dynamic_folder)
                         file_url = s3_result["file_url"]
                         object_key = s3_result["object_key"]
                     except Exception as e:

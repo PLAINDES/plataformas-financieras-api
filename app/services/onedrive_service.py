@@ -160,20 +160,38 @@ class OneDriveService:
         try:
             token = await self._get_token()
             headers = self._headers(token)
-            # Use direct user email instead of /me with app-only auth
+            
             url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive"
+            
             async with httpx.AsyncClient() as client:
                 resp = await client.get(url, headers=headers)
+                
+                # Fallback: Si Microsoft nos niega leer el "Drive" general del usuario por permisos (401/403/404),
+                # intentamos leer directamente la "raíz" del drive, que usa permisos de Archivos (Files.ReadWrite).
+                if resp.status_code in [401, 403, 404]:
+                    logger.warning(f"Fallo acceso a {url}. Código {resp.status_code}. Intentando fallback a la raíz...")
+                    url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive/root"
+                    resp = await client.get(url, headers=headers)
+                
                 resp.raise_for_status()
                 data = resp.json()
+                
                 return {
                     "status": "connected",
-                    "drive_id": data.get("id"),
+                    "drive_id": data.get("id") or data.get("parentReference", {}).get("driveId", "Unknown"),
                     "owner_email": self.config.user_email,
-                    "owner_display_name": data.get("owner", {}).get("displayName", "Unknown"),
+                    "owner_display_name": data.get("owner", {}).get("user", {}).get("displayName", "Unknown"),
                 }
+                
+        except httpx.HTTPStatusError as e:
+            # Captura el error REAL de Microsoft Graph para que no salga en blanco
+            error_msg = f"HTTP {e.response.status_code}: {e.response.text}"
+            logger.error(f"Connection check failed (Status Error): {error_msg}")
+            raise Exception(error_msg)
+            
         except Exception as e:
-            logger.error(f"Connection check failed: {e}")
+            # Usamos repr(e) para evitar strings vacíos en errores de timeout/red de httpx
+            logger.error(f"Connection check failed (Network/System): {repr(e)}")
             raise
 
     # === FOLDER SETUP =========================================================
@@ -449,7 +467,7 @@ class OneDriveService:
             target_folder_data = folder_resp.json()
             target_folder_id = target_folder_data["id"]
             drive_id = target_folder_data["parentReference"]["driveId"]
-            
+
             # 2. Solicitar la copia interna
             copy_url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{source_item_id}/copy"
             payload = {
@@ -471,19 +489,16 @@ class OneDriveService:
                 status_resp = await client.get(monitor_url)
                 if status_resp.status_code == 200:
                     status_data = status_resp.json()
-                    
                     if status_data.get("status") == "completed":
-                        # TRUCO DE RENDIMIENTO: Graph API devuelve el nuevo ID aquí mismo
                         resource_id = status_data.get("resourceId")
                         if resource_id:
                             return {"id": resource_id}
-                            
                         # Fallback en caso muy raro de que no venga el resourceId
                         new_item_url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive/root:/{target_path}/{new_filename}"
                         new_item_resp = await client.get(new_item_url, headers=headers)
-                        new_item_resp.raise_for_status() # ¡Ahora sí validamos errores!
+                        new_item_resp.raise_for_status()
                         return new_item_resp.json()
-                        
+
                     elif status_data.get("status") in ["failed", "canceled"]:
                         raise Exception("Fallo la copia interna en OneDrive")
 
@@ -641,6 +656,22 @@ class OneDriveService:
             logger.debug(f"Workbook session closed: {session_id}")
         except Exception as e:
             logger.warning(f"Could not close workbook session {session_id}: {e}")
+
+    async def _refresh_workbook_session(self, item_id: str, session_id: str) -> None:
+        """Reinicia el timeout de 5 minutos de una sesión activa."""
+        token = await self._get_token()
+        headers = self._headers(token)
+        headers["workbook-session-id"] = session_id
+        url = (
+            f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
+            f"/workbook/refreshSession"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(url, headers=headers)
+                resp.raise_for_status()
+        except Exception as e:
+            logger.warning(f"No se pudo refrescar la sesión {session_id}: {e}")
 
     # === EXCEL OPERATIONS ====================================================
 

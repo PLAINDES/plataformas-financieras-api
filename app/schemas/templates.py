@@ -29,6 +29,7 @@ class MasterTemplateResponse(MasterTemplateBase):
     onedrive_folder: Optional[str] = None
     onedrive_item_id: Optional[str] = None
     onedrive_filename: Optional[str] = None
+    original_filename: Optional[str] = None
     onedrive_path: Optional[str] = None
     created_by_user_id: Optional[int] = None
     created_at: datetime
