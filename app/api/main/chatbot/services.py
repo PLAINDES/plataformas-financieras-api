@@ -1,9 +1,10 @@
 # app/api/main/chatbot/services.py
-import httpx, re
+import httpx, re, asyncio
 from app.core.config import settings
 from app.api.main.chatbot.constants import GEMINI_API_URL, SYSTEM_PROMPT_TEMPLATE
-from app.api.main.chatbot.schemas import ChatRequest, ChatResponse, ChatHistoryMessage
+from app.api.main.chatbot.schemas import ChatRequest, ChatResponse, AnalyzeCompaniesRequest, YahooFinanceResponse
 from app.api.main.chatbot.utils import extract_tickers, extract_beta_update, build_form_context
+from app.api.main.chatbot.boa import calculate_sector_beta
 
 async def generate_chat_response(request: ChatRequest) -> ChatResponse:
     api_key = settings.GEMINI_API_KEY
@@ -74,3 +75,12 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
             {"role": "model", "parts": [{"text": raw_response}]}
         ]
     )
+
+async def process_company_analysis(request: AnalyzeCompaniesRequest) -> YahooFinanceResponse:
+    """
+    Ejecuta el script boa.py (Yahoo Finance) de forma asíncrona usando threads
+    para no bloquear el servidor FastAPI mientras hace las descargas.
+    """
+    result = await asyncio.to_thread(calculate_sector_beta, request.tickers)
+
+    return YahooFinanceResponse(**result)
