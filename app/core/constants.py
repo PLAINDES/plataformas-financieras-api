@@ -23,7 +23,10 @@ KAPITAL_EXPECTED_DEVALUATION = "C16"
 KAPITAL_SENSITIVITY_INPUT_CELL_MAP = {
     "beta_desapalancado": "C12",
 }
-# PLANTILLA USUARIO 
+
+
+
+# Hoja PLANTILLA USUARIO 
 KAPITAL_INPUT_CELL_MAP = {
     "fecha": "C2",
     "pais": "C3",
@@ -35,7 +38,7 @@ KAPITAL_INPUT_CELL_MAP = {
     "porcentaje_deuda": "C9"
 }
 
-# WACC
+# Hoja WACC
 KAPITAL_INPUT_WACC = {
     "tasa_impositiva": "F13",
     "devaluacion": "F14",
@@ -43,7 +46,7 @@ KAPITAL_INPUT_WACC = {
     "porcentaje_deuda": "F12"
 }
 
-# WACC
+# Hoja WACC
 KAPITAL_RESULTS_CELL_MAP = {
     "mercado_desarrollado": {
         "ke": "D47",
@@ -51,6 +54,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd": "D49",
         "cppc": "D50",
         "kd(1-t)": "D51",
+        "D_empresa": "D52",
     },
     "mercado_emergente": {
         "ke": "E47",
@@ -58,6 +62,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd": "E49",
         "cppc": "E50",
         "kd(1-t)": "E51",
+        "D_empresa": "E52",
     },
     "empresa_dolares": {
         "ke": "F47",
@@ -65,6 +70,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd": "F49",
         "cppc": "F50",
         "kd(1-t)": "F51",
+        "D_empresa": "F52",
     },
     "empresa_soles": {
         "ke": "G47",
@@ -74,7 +80,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd(1-t)": "G51",
     },
 }
-# WACC
+# Hoja WACC
 KAPITAL_SENSITIVITY_CELL_MAP = {
     "mercado_desarrollado": {
         "ke": "D67",
@@ -89,6 +95,7 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd": "E69",
         "cppc": "E70",
         "kd(1-t)": "E71",
+        "D_empresa": "E72",
     },
     "empresa_dolares": {
         "ke": "F67",
@@ -96,6 +103,7 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd": "F69",
         "cppc": "F70",
         "kd(1-t)": "F71",
+        "D_empresa": "F72",
     },
     "empresa_soles": {
         "ke": "G67",
@@ -106,7 +114,9 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
     },
 }
 
-# WACC
+
+
+# Hoja WACC
 KAPITAL_DAMODARAN_CELL_MAP = {
     "number_of_firms": "D18",
     "beta": "E18",
@@ -121,29 +131,29 @@ KAPITAL_DAMODARAN_CELL_MAP = {
     #"cost_of_capital_local": "M36",
 }
 
-# WACC
+# Hoja WACC
 KAPITAL_PRIMA_CELL_MAP = {
     #"fecha": "B52",
     "PRM Kroll": "F7",
 }
 
-# WACC 
+# Hoja WACC
 KAPITAL_EMBI_CELL_MAP = {
     "country": "F11",
 }
 
-# WACC
+# Hoja WACC
 KAPITAL_RF_CELL_MAP = {
     "year": "F6"
 }
 
-# WACC
+# Hoja WACC
 KAPITAL_TAX_CELL_MAP = {
     "global_default_spread": "F8",
     "tax_rate": "F9"
 }
 
-# WACC
+# Hoja WACC
 KAPITAL_RIESGO_CELL_MAP = {
     "num1_basis_spread": "J8",
     "num2_basis_spread": "J9",

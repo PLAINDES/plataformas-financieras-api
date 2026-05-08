@@ -73,7 +73,7 @@ def get_template_complement(
     year: Optional[int] = Query(None),
     period: Optional[str] = Query(None),
     db: Session = Depends(get_db)
-    ) -> Any:
+) -> Any:
 
     if only_name and complement_name != "damodaran":
         raise HTTPException(
