@@ -239,6 +239,10 @@ def _process_single_ticker(ticker: str):
         if denom != 0:
             beta_unlevered = beta_levered / denom
 
+    if beta_unlevered is not None and beta_unlevered < 0:
+        return None
+    print(f"Ticker {ticker}: Boa: beta_unlevered={fmt(beta_unlevered, '.4f')}")
+
     # PORCENTAJES DE ESTRUCTURA DE CAPITAL ORIGINALES
     pct_debt   = None
     pct_equity = None
