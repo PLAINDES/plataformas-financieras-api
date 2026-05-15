@@ -54,7 +54,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd": "D49",
         "cppc": "D50",
         "kd(1-t)": "D51",
-        "D_empresa": "D52",
+        "d_empresa": "D52",
     },
     "mercado_emergente": {
         "ke": "E47",
@@ -62,7 +62,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd": "E49",
         "cppc": "E50",
         "kd(1-t)": "E51",
-        "D_empresa": "E52",
+        "d_empresa": "E52",
     },
     "empresa_dolares": {
         "ke": "F47",
@@ -70,7 +70,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd": "F49",
         "cppc": "F50",
         "kd(1-t)": "F51",
-        "D_empresa": "F52",
+        "d_empresa": "F52",
     },
     "empresa_soles": {
         "ke": "G47",
@@ -95,7 +95,7 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd": "E69",
         "cppc": "E70",
         "kd(1-t)": "E71",
-        "D_empresa": "E72",
+        "d_empresa": "E72",
     },
     "empresa_dolares": {
         "ke": "F67",
@@ -103,7 +103,7 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd": "F69",
         "cppc": "F70",
         "kd(1-t)": "F71",
-        "D_empresa": "F72",
+        "d_empresa": "F72",
     },
     "empresa_soles": {
         "ke": "G67",
