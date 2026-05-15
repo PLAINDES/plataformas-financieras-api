@@ -98,14 +98,13 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
             logger.warning(f"Error procesando en RAM: {exc}")
 
     # GUARDAR EN BD
-    t_db = time.perf_counter()
     calculation = Calculation(
         user_id=payload.user_id,
         code=payload.code,
         type=calc_type,
         #calculation_file_id=(file_meta.get("onedrive_item_id") or "")[:36] or None,
         #data=_normalize_calculation_data(payload_data, #file_meta=file_meta),
-        calculation_file_id=None, 
+        calculation_file_id=None,
         data=_normalize_calculation_data(payload_data),
     )
 
@@ -130,7 +129,6 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
         include_resultados_history = True
         include_sensibilizacion_history = True
         base_changed = True
-        only_boa_update = False
 
         _inject_macro_data_into_payload(db, update_data["data"])
 
@@ -150,15 +148,9 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
             has_beta_for_sensitivity = incoming_input_raw.get("beta_desapalancado") is not None
             base_changed = bool(incoming_input_base) and incoming_input_base != current_input_base
 
-
-            #only_boa_update = has_beta_for_sensitivity and not base_changed
-
             include_input_history = True
             include_resultados_history = base_changed
             include_sensibilizacion_history = has_beta_for_sensitivity
-
-            # Solo para pasar a la función de _enrich (si no hay base_changed, no se extraen resultados)
-            only_boa_update = has_beta_for_sensitivity and not base_changed
 
             existing_session = None
 
@@ -222,7 +214,7 @@ async def prewarm_excel_session(db: Session = Depends(get_db)):
     service = get_onedrive_service()
     try:
         session_id = await service._create_workbook_session(
-            source_template.onedrive_item_id, 
+            source_template.onedrive_item_id,
             persist_changes=True
         )
         return {"session_id": session_id}

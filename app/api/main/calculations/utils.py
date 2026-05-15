@@ -412,7 +412,8 @@ async def _enrich_payload_with_excel_outputs(
     *,
     include_resultados: bool,
     include_sensibilizacion: bool,
-    existing_session_id: str | None = None
+    existing_session_id: str | None = None,
+    retry_count: int = 0,
 ) -> object:
 
     t_start = time.perf_counter()
@@ -426,13 +427,22 @@ async def _enrich_payload_with_excel_outputs(
 
     session_id = existing_session_id
 
-    # Si no nos pasaron sesión, creamos una nueva
+    # 1. Validación de sesión existente
+    if session_id:
+        print(f"Intentando reusar sesión: {session_id}", flush=True)
+        try:
+            t_ping = time.perf_counter()
+            # Hace un GET para verificar si la sesión sigue viva.
+            await service.force_calculate_excel(item_id, session_id=session_id)
+            print(f"[PING] Sesión validada en {time.perf_counter() - t_ping:.2f} seg", flush=True)
+        except (httpx.HTTPError, httpx.TimeoutException):
+            print("Sesión expirada detectada en el Ping rápido. Descartando...", flush=True)
+            session_id = None
+    # Si no pasaron sesión, crea una nueva
     if not session_id:
         t0 = time.perf_counter()
         session_id = await service._create_workbook_session(item_id, persist_changes=True)
         print(f"[RAM] Nueva sesión creada: {time.perf_counter() - t0:.2f} seg", flush=True)
-    else:
-        print(f"Intentando reusar sesión: {session_id}", flush=True)
 
     async def _execute_excel_logic(sid: str):
         if latest_input:
@@ -454,13 +464,19 @@ async def _enrich_payload_with_excel_outputs(
     try:
         resultados_entry, sensibilidad_entry = await _execute_excel_logic(session_id)
     except (httpx.HTTPError, httpx.TimeoutException) as e:
-        print(f"Error de red o sesión de Graph expirada ({e}). Reintentando con sesión nueva...")
+        if retry_count >= 2:
+            print(f"Fallo crítico de red tras múltiples intentos ({e}). Abortando.", flush=True)
+            raise e
+
+        print(f"Microcorte de red o inestabilidad en Graph detectado ({e}). Reintentando recuperación ({retry_count + 1}/2)...", flush=True)
+
         # Si falló por la red/Microsoft, forzamos una nueva creación de sesión
         return await _enrich_payload_with_excel_outputs(
             payload_data, item_id,
             include_resultados=include_resultados,
             include_sensibilizacion=include_sensibilizacion,
-            existing_session_id=None 
+            existing_session_id=None,
+            retry_count=retry_count + 1
         )
 
     print(f"TIEMPO TOTAL ENRICH: {time.perf_counter() - t_start:.2f} seg", flush=True)
@@ -503,7 +519,7 @@ def _normalize_calculation_data(
         if isinstance(incoming_results, list) and incoming_results:
             # Tomamos estrictamente el nuevo generado por Excel
             resultados = _stamp_entries([incoming_results[0]])
-            
+
     if not resultados:
         # Si no extrajimos resultados nuevos (ej. update de solo BOA), mantenemos el que ya existía
         old_resultados = _stamp_entries(existing.get("resultados") or [])

@@ -160,35 +160,34 @@ class OneDriveService:
         try:
             token = await self._get_token()
             headers = self._headers(token)
-            
+
             url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive"
-            
+
             async with httpx.AsyncClient() as client:
                 resp = await client.get(url, headers=headers)
-                
                 # Fallback: Si Microsoft nos niega leer el "Drive" general del usuario por permisos (401/403/404),
                 # intentamos leer directamente la "raíz" del drive, que usa permisos de Archivos (Files.ReadWrite).
                 if resp.status_code in [401, 403, 404]:
                     logger.warning(f"Fallo acceso a {url}. Código {resp.status_code}. Intentando fallback a la raíz...")
                     url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive/root"
                     resp = await client.get(url, headers=headers)
-                
+
                 resp.raise_for_status()
                 data = resp.json()
-                
+
                 return {
                     "status": "connected",
                     "drive_id": data.get("id") or data.get("parentReference", {}).get("driveId", "Unknown"),
                     "owner_email": self.config.user_email,
                     "owner_display_name": data.get("owner", {}).get("user", {}).get("displayName", "Unknown"),
                 }
-                
+
         except httpx.HTTPStatusError as e:
             # Captura el error REAL de Microsoft Graph para que no salga en blanco
             error_msg = f"HTTP {e.response.status_code}: {e.response.text}"
             logger.error(f"Connection check failed (Status Error): {error_msg}")
             raise Exception(error_msg)
-            
+
         except Exception as e:
             # Usamos repr(e) para evitar strings vacíos en errores de timeout/red de httpx
             logger.error(f"Connection check failed (Network/System): {repr(e)}")

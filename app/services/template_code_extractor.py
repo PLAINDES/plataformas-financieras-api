@@ -187,6 +187,7 @@ class TemplateCodeExtractor:
                     codes.append({
                         "code": code_formatted,
                         "nombre": self._get_cell_name(cell),
+                        "value": self._get_cell_value(cell),
                         "hoja": sheet_name,
                         "type": template_type,
                     })
@@ -213,6 +214,15 @@ class TemplateCodeExtractor:
 
         # Si F está vacío, retornar "NA"
         return "NA"
+    def _get_cell_value(self, cell) -> Optional[str]:
+        """
+        Obtiene el valor de la celda ubicada exactamente 2 columnas a la derecha.
+        Retorna None si la columna excede el límite de la hoja o está vacía.
+        """
+        if cell.column + 2 <= cell.parent.max_column:
+            value_cell = cell.parent.cell(cell.row, cell.column + 2)
+            return self._sanitize_cell_value(value_cell.value)
+        return None
 
     def get_statistics(self, extraction_result: Dict) -> Dict:
         """Obtiene estadísticas de la extracción."""

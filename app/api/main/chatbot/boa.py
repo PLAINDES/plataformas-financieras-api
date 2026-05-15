@@ -191,7 +191,11 @@ def _process_single_ticker(ticker: str):
 
     listing_currency = info.get("currency", "USD")
     reporting_currency = info.get("financialCurrency", listing_currency)
+    
     fx_rate = get_fx_rate(reporting_currency, global_fx_pairs)
+    # Se añade la tasa de conversion especifica para la capitalizacion de mercado
+    fx_listing = get_fx_rate(listing_currency, global_fx_pairs)
+
     country = info.get("country", "")
 
     bs = stock.balance_sheet
@@ -228,10 +232,13 @@ def _process_single_ticker(ticker: str):
     beta_levered = info.get("beta", None)
     market_cap = info.get("marketCap", None)
 
-    # Guard: equity != 0 para evitar división por cero
+    # Conversion de Market Cap a USD usando la moneda de cotizacion
+    market_cap_usd = market_cap * fx_listing if market_cap is not None else None
+
+    # Calculo de D/E ratio basado en Market Cap
     de_ratio = None
-    if equity_value is not None and debt_value is not None and equity_value != 0:
-        de_ratio = debt_value / equity_value
+    if debt_value is not None and market_cap_usd is not None and market_cap_usd != 0:
+        de_ratio = debt_value / market_cap_usd
 
     beta_unlevered = None
     if beta_levered is not None and de_ratio is not None:
@@ -241,16 +248,17 @@ def _process_single_ticker(ticker: str):
 
     if beta_unlevered is not None and beta_unlevered < 0:
         return None
+
     print(f"Ticker {ticker}: Boa: beta_unlevered={fmt(beta_unlevered, '.4f')}")
 
     # PORCENTAJES DE ESTRUCTURA DE CAPITAL ORIGINALES
     pct_debt   = None
     pct_equity = None
-    if debt_value is not None and equity_value is not None and equity_value != 0:
-        total_cap  = debt_value + equity_value
+    if debt_value is not None and market_cap_usd is not None:
+        total_cap  = debt_value + market_cap_usd
         if total_cap != 0:
             pct_debt   = debt_value   / total_cap
-            pct_equity = equity_value / total_cap
+            pct_equity = market_cap_usd / total_cap
 
     # GUARDAMOS PARA PANDAS
     raw_data = ({
@@ -259,7 +267,7 @@ def _process_single_ticker(ticker: str):
         "Moneda EE.FF": reporting_currency,
         "FX (→ USD)": fx_rate,
         "Deuda LP (USD)": debt_value,
-        "Equity (USD)": equity_value,
+        "Equity (USD)": market_cap_usd,
         "Total Activos (USD)": total_assets,
         "D/E Ratio": de_ratio,
         "Tasa Impositiva": tax_rate_val,
@@ -283,7 +291,7 @@ def _process_single_ticker(ticker: str):
             "reporting_currency": reporting_currency,
             "fx_rate": fx_rate,
             "debt_value": debt_value,
-            "equity_value": equity_value,
+            "equity_value": market_cap_usd,
             "total_assets": total_assets,
             "dc_ratio": round(de_ratio, 4),
             "effective_tax_rate": round(tax_rate_val, 4),
@@ -318,7 +326,7 @@ def calculate_sector_beta(target_tickers: list[str]) -> dict:
                     api_companies.append(api_data)
 
     t_end_batch = time.perf_counter()
-    print(f"Descarga concurrente completada en {t_end_batch - t_start_batch:.2f}s")
+    print(f"Operacion concurrente completada en {t_end_batch - t_start_batch:.2f}s")
 
     # PONDERACIÓN
     df = pd.DataFrame(results)
