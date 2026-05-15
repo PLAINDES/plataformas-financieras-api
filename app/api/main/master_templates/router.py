@@ -2,11 +2,14 @@
 """
 CRUD de Plantillas Maestras + integración OneDrive + Extracción nativa de gráficos vía Microsoft Graph.
 """
+import asyncio
 import io
+import time
 import logging
 from datetime import datetime
 from typing import Optional, Literal
 from urllib.parse import quote
+import httpx
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -285,7 +288,7 @@ async def upload_and_extract_codes(
 
     # 2. EXTRAER TEXT CODES
     extractor = get_template_code_extractor()
-    extraction_result = extractor.extract_from_bytes(content)
+    extraction_result = await asyncio.to_thread(extractor.extract_from_bytes, content)
 
     new_codes, _ = _process_and_save_cell_codes(db, obj, extraction_result, old_code_sets)
 
@@ -324,6 +327,8 @@ async def upload_and_extract_codes(
 async def re_upload_and_extract_codes(
     template_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_admin)
 ):
+    start_total = time.perf_counter()
+
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls")):
         raise HTTPException(422, "Solo Excel")
     content = await file.read()
@@ -335,6 +340,7 @@ async def re_upload_and_extract_codes(
         raise HTTPException(404, "Not found")
 
     # ====== 1. SNAPSHOT PREVIO - Capturar códigos EXISTENTES DE ESTA PLANTILLA ======
+    t0 = time.perf_counter() # time
     old_code_sets = {"valora": set(), "kapital": set()}
     old_image_sets = {"valora": set(), "kapital": set()}
 
@@ -359,8 +365,11 @@ async def re_upload_and_extract_codes(
         old_code_sets[mt].add(f"$${c}$$")
         old_image_sets[mt].add(m.filename)
 
+    print(f"[TIMER] 1. Snapshot previo: {time.perf_counter() - t0:.2f}s")
+
     # ====== 2. HARD-DELETE del estado anterior ======
     # 1. Desvincularse: Soft-delete de TemplateCode y desvincularse de Media
+    t0 = time.perf_counter()
     for code in obj.template_codes:
         if code:
             code.template_code_image_id = None  # Desvincularse de Media
@@ -369,24 +378,32 @@ async def re_upload_and_extract_codes(
     obj.template_codes = []
     db.commit()  # Commit para guardar desvinculos antes de borrar Media
 
-    # 2. Hard-delete de Media (eliminar completamente los gráficos viejos BD + S3)
-    for m in db.execute(
+    media_to_delete = db.execute(
         select(Media).where(
             (Media.deleted_at.is_(None)) & (Media.folder.like(f"%master-templates/{template_id}%"))
         )
-    ).scalars().all():
-        # Eliminar archivo de S3 si existe
-        if m.storage_path:
-            try:
-                s3_service.delete_file(m.storage_path)
-            except Exception as e:
-                logger.warning(f"Error eliminando archivo S3 {m.storage_path}: {e}")
-        # Eliminar registro de BD
+    ).scalars().all()
+
+    # 2. Hard-delete de Media (eliminar completamente los gráficos viejos BD + S3)
+    async def delete_s3_file(path):
+        try:
+            await asyncio.to_thread(s3_service.delete_file, path)
+        except Exception as e:
+            logger.warning(f"Error eliminando archivo S3 {path}: {e}")
+
+    s3_delete_tasks = [delete_s3_file(m.storage_path) for m in media_to_delete if m.storage_path]
+    if s3_delete_tasks:
+        await asyncio.gather(*s3_delete_tasks)
+
+    # Eliminar registro de BD
+    for m in media_to_delete:
         db.delete(m)
 
     db.commit()
 
+    print(f"[TIMER] 2. Hard-Delete (BD + S3 asincrono): {time.perf_counter() - t0:.2f}s")
     # ====== 3. Reemplazar archivo en OneDrive ======
+    t0 = time.perf_counter()
     service = get_onedrive_service()
     if obj.onedrive_item_id:
         try:
@@ -398,7 +415,15 @@ async def re_upload_and_extract_codes(
     unique_onedrive_name = f"{template_id}-{original_name}"
 
     env: Environment = settings.ENVIRONMENT
-    item = await service.upload_file(content=content, filename=unique_onedrive_name, env=env, folder=obj.onedrive_folder or "plantillas_maestras")
+    try:
+        item = await service.upload_file(content=content, filename=unique_onedrive_name, env=env, folder=obj.onedrive_folder or "plantillas_maestras")
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 423:
+            raise HTTPException(
+                status_code=400, 
+                detail="La plantilla está actualmente en uso por un cálculo activo. Espere a que las sesiones expiren e intente de nuevo."
+            )
+        raise HTTPException(status_code=e.response.status_code, detail=str(e))
 
     obj.onedrive_item_id = item.get("id")
     obj.onedrive_filename = unique_onedrive_name
@@ -406,14 +431,18 @@ async def re_upload_and_extract_codes(
     obj.onedrive_path = service.build_path(env, obj.onedrive_folder or "plantillas_maestras", unique_onedrive_name)
 
     db.commit()
+    print(f"[TIMER] 3. Upload a OneDrive: {time.perf_counter() - t0:.2f}s")
 
     # ====== 4. Extraer e insertar NUEVOS códigos de celdas ======
+    t0 = time.perf_counter()
     extractor = get_template_code_extractor()
-    extraction_result = extractor.extract_from_bytes(content)
+    extraction_result = await asyncio.to_thread(extractor.extract_from_bytes, content)
 
     _, new_codes = _process_and_save_cell_codes(db, obj, extraction_result, old_code_sets)
+    print(f"[TIMER] 4. Extracción Celdas (Openpyxl + BD): {time.perf_counter() - t0:.2f}s")
 
     # ====== 5. Extraer e insertar gráficos (Motor Graph API) ======
+    t0 = time.perf_counter()
     extracted_charts, _, chart_errors = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
     new_images = {"valora": [], "kapital": []}
 
@@ -422,6 +451,8 @@ async def re_upload_and_extract_codes(
             if chart["filename"] not in old_image_sets[template_type]:
                 new_images[template_type].append(chart["filename"])
 
+    print(f"[TIMER] 5. Extracción Gráficos (Graph API + S3): {time.perf_counter() - t0:.2f}s")
+    print(f"[TIMER] TOTAL RE-UPLOAD: {time.perf_counter() - start_total:.2f}s")
     return {
         "template_id": template_id, 
         "template": MasterTemplateResponse.model_validate(obj),
@@ -601,6 +632,7 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
             "hoja": code.hoja,
             "nombre": code.nombre,
             "code": normalized_code,
+            "value": code.value,
             "template_ids": [t.id for t in code.master_templates] if hasattr(code, "master_templates") else [],
             "created_at": code.created_at,
             "updated_at": code.updated_at,

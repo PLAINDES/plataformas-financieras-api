@@ -341,6 +341,7 @@ async def get_current_codes(db: Session = Depends(get_db)):
                     "code": code_val,
                     "type": t,
                     "hoja": None,
+                    "value": None
                 }
             else:
                 try:
@@ -353,6 +354,7 @@ async def get_current_codes(db: Session = Depends(get_db)):
                     "code": c_dict.get("code"),
                     "type": t,
                     "hoja": c_dict.get("hoja"),
+                    "value": c_dict.get("value")
                 }
 
             img_url = image_map.get(entry.get("code"))
