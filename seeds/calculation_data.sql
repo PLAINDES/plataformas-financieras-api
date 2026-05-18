@@ -219,8 +219,8 @@ VALUES
   (10,
    'Portada Kapital WACC — Finanzas',
    'imagen_adjuntada',
-   32, 33, NULL,
-   NULL, NULL, 34, NULL,
+   NULL, NULL, NULL,
+   NULL, NULL, NULL, NULL,
    '2026-03-10 09:10:00', '2026-03-10 09:10:00', NULL);
 
 
@@ -234,9 +234,7 @@ INSERT IGNORE INTO `main_master_templates` (
         `onedrive_item_id`,
         `onedrive_filename`,
         `onedrive_path`,
-        `is_active`,
         `is_default`,
-        `hojas_config`,
         `created_by_user_id`,
         `created_at`,
         `updated_at`,
@@ -251,9 +249,7 @@ VALUES
    NULL,
    NULL,
    NULL,
-   1,
    0,
-   NULL,
    NULL,
    '2026-03-10 09:15:00', '2026-03-10 09:15:00', NULL);
 

@@ -19,11 +19,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
     """Servicio de autenticación y autorización"""
-    
+
     def __init__(self, db: Session):
         self.db = db
         self.repository = UserRepository(db)
-    
+
     def register(self, user_data: UserCreate) -> TokenResponse:
         """
         Registra un nuevo usuario
@@ -64,9 +64,9 @@ class AuthService:
         if not user:
             print("Failed to create user in database for email:", user_data.email)
             raise ValueError("Error creating user")
-        
+
         print("User created successfully in database:", user.email)
-        
+
         self.db.commit()
         print("Database commit successful for user:", user.email)
 
@@ -75,7 +75,7 @@ class AuthService:
         if not access_token:
             print("Failed to generate access token for user:", user.id)
             raise ValueError("Error generating access token")
-        
+
         print("Generated access token for user:", user.id)
         # Crear sesión
         self._create_session(user.id, access_token)
@@ -86,7 +86,7 @@ class AuthService:
             token_type="bearer",
             user=self._user_to_response(user)
         )
-    
+
     def login(self, credentials: UserLogin) -> TokenResponse:
         """
         Inicia sesión con email y contraseña
@@ -102,31 +102,31 @@ class AuthService:
         """
         # Buscar usuario
         user = self.repository.get_by_email(credentials.email)
-        
+
         if not user:
             raise ValueError("Invalid credentials")
-        
+
         # Verificar contraseña
         if not self._verify_password(credentials.password, user.password):
             raise ValueError("Invalid credentials")
-        
+
         # Verificar si está activo
         if not user.is_active:
             raise ValueError("User account is inactive")
-        
+
         # Generar token
         access_token = self._create_access_token(user.id)
-        
+
         # Crear sesión
         self._create_session(user.id, access_token)
         self.db.commit()
-        
+
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
             user=self._user_to_response(user)
         )
-    
+
     def logout(self, token: str) -> bool:
         """
         Cierra sesión eliminando el token
@@ -141,7 +141,7 @@ class AuthService:
         if result:
             self.db.commit()
         return result
-    
+
     def get_current_user(self, token: str) -> Optional[User]:
         try:
             payload = jwt.decode(
@@ -168,23 +168,23 @@ class AuthService:
         except PyJWTError:
             return None
 
-    
+
     def verify_admin(self, user: User) -> bool:
         role = getattr(user, "role", None)
         role_value = getattr(role, "value", role)
         return str(role_value).lower() in ("admin", "master")
 
-    
+
     # ==================== PRIVATE METHODS ====================
-    
+
     def _hash_password(self, password: str) -> str:
         """Hashea una contraseña"""
         return pwd_context.hash(password)
-    
+
     def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verifica una contraseña contra su hash"""
         return pwd_context.verify(plain_password, hashed_password)
-    
+
     def _create_access_token(self, user_id: int) -> str:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
@@ -195,17 +195,16 @@ class AuthService:
 
         return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-    
     def _create_session(self, user_id: int, token: str) -> None:
         """Crea una sesión en la BD"""
         expires_at = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        
+
         self.repository.create_session({
             "user_id": user_id,
             "token": token,
             "expires_at": expires_at
         })
-    
+
     def _user_to_response(self, user: User) -> UserResponse:
         """Convierte User model a UserResponse schema"""
         return UserResponse(

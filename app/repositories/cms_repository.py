@@ -3,7 +3,7 @@ from sqlalchemy import select, and_, desc
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import datetime
-from ..models.cms import ( Page, Section, Media, 
+from app.models.cms import ( Page, Section, Media, 
 PageStatus, Site, SectionContent, Content)
 
 
@@ -38,6 +38,20 @@ class CMSRepository:
             .where(
                 and_(
                     Page.is_homepage == True,
+                    Page.status == PageStatus.PUBLISHED,
+                    Page.deleted_at.is_(None)
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    def get_page_by_slug(self, slug: str) -> Optional[Page]:
+        result = self.db.execute(
+            select(Page)
+            .options(selectinload(Page.sections))
+            .where(
+                and_(
+                    Page.slug == slug,
                     Page.status == PageStatus.PUBLISHED,
                     Page.deleted_at.is_(None)
                 )

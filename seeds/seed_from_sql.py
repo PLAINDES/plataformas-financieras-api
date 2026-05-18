@@ -242,7 +242,7 @@ def main(argv: Iterable[str] | None = None) -> int:
 	seeds_dir = Path(__file__).parent
 	seeds = [
 		(seeds_dir / 'basic_data.sql', 'cms_content_types'),
-		(seeds_dir / 'calculation_data.sql', 'cms_media'),
+		(seeds_dir / 'calculation_data.sql', 'main_calculations'),
 	]
 	
 	try:

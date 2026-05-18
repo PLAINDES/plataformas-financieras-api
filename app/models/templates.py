@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, DateTime, Boolean, JSON, ForeignKey, Text, Table
+from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Text, Table
 from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -41,12 +41,13 @@ class MasterTemplate(Base):
     onedrive_env = Column(String(20), nullable=True)      # "development" | "production" | "test"
     onedrive_folder = Column(String(50), nullable=True)   # "plantillas_maestras"
     onedrive_item_id = Column(String(512), nullable=True) # ID en OneDrive para descarga directa
-    onedrive_filename = Column(String(512), nullable=True)
+
+    onedrive_filename = Column(String(512), nullable=True) # Nombre único en Onedrive
+    original_filename = Column(String(512), nullable=True) # Nombre original del archivo subido por el usuario
+
     onedrive_path = Column(String(1024), nullable=True)   # path completo por referencia
 
-    is_active = Column(Boolean, default=True, nullable=False)
     is_default = Column(Boolean, default=False, nullable=False)
-    hojas_config = Column(JSON, nullable=True)            # metadatos de hojas relevantes
     created_by_user_id = Column(MySQLBigInt(unsigned=True),
                                 ForeignKey("sys_users.id"), nullable=True)
 

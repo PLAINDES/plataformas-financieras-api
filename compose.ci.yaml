@@ -1,0 +1,21 @@
+services:
+  db:
+    container_name: financiera-db-ci
+    env_file:
+      - .env.ci
+    networks:
+      - backend_network
+
+  backend:
+    container_name: financiera-api-ci
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env.ci
+    # Ejecutamos las pruebas y nos salimos
+    command: >
+      sh -c "pip install pytest httpx && pytest tests/ -v"
+    networks:
+      - backend_network
+

@@ -24,6 +24,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       timeout: 10s

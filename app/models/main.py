@@ -38,8 +38,8 @@ class Calculation(Base):
     __tablename__ = "main_calculations"
 
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
-    calculation_file_id = Column(MySQLBigInt(unsigned=True), ForeignKey("cms_media.id"), nullable=True)
-    user_id = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=False)
+    calculation_file_id = Column(String(36), nullable=True)
+    user_id = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=True)
     code = Column(String(64), nullable=False, unique=True)
     type = Column(
         SQLEnum(
@@ -54,8 +54,6 @@ class Calculation(Base):
     data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
-
-    calculation_file = relationship("Media")
 
     def set_code(self, raw_string: str) -> None:
         """Genera un hash SHA-256 truncado a 64 chars."""
@@ -83,6 +81,7 @@ class TemplateCode(Base):
     hoja = Column(String(255), nullable=True)
     nombre = Column(String(255), nullable=False)
     code = Column(String(255), nullable=False)
+    value = Column(String(255), nullable=True)
 
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)

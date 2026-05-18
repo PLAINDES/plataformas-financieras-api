@@ -37,9 +37,12 @@ Cómo obtenerlas:
 """
 
 import os
+import time
 import logging
+import asyncio
 from typing import Literal, Optional
 from functools import lru_cache
+from urllib.parse import quote
 import httpx
 
 from app.core.config import settings
@@ -89,12 +92,13 @@ class OneDriveService:
     def __init__(self, config: Optional[OneDriveConfig] = None):
         self.config = config or OneDriveConfig()
         self._access_token: Optional[str] = None
+        self._token_expires_at: float = 0
 
     # === AUTH =================================================================
 
     async def _get_token(self) -> str:
         """Obtiene un access token via OAuth2 client_credentials flow."""
-        if self._access_token:
+        if self._access_token and time.time() < (self._token_expires_at - 60):
             return self._access_token
 
         url = f"https://login.microsoftonline.com/{self.config.tenant_id}/oauth2/v2.0/token"
@@ -109,7 +113,14 @@ class OneDriveService:
             resp.raise_for_status()
             token_data = resp.json()
             self._access_token = token_data["access_token"]
+            expires_in = int(token_data.get("expires_in", 3600))
+            self._token_expires_at = time.time() + expires_in
             return self._access_token
+
+    async def _force_refresh_token(self) -> str:
+        self._access_token = None
+        self._token_expires_at = 0
+        return await self._get_token()
 
     def _headers(self, token: str) -> dict:
         return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
@@ -149,20 +160,37 @@ class OneDriveService:
         try:
             token = await self._get_token()
             headers = self._headers(token)
-            # Use direct user email instead of /me with app-only auth
+
             url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive"
+
             async with httpx.AsyncClient() as client:
                 resp = await client.get(url, headers=headers)
+                # Fallback: Si Microsoft nos niega leer el "Drive" general del usuario por permisos (401/403/404),
+                # intentamos leer directamente la "raíz" del drive, que usa permisos de Archivos (Files.ReadWrite).
+                if resp.status_code in [401, 403, 404]:
+                    logger.warning(f"Fallo acceso a {url}. Código {resp.status_code}. Intentando fallback a la raíz...")
+                    url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive/root"
+                    resp = await client.get(url, headers=headers)
+
                 resp.raise_for_status()
                 data = resp.json()
+
                 return {
                     "status": "connected",
-                    "drive_id": data.get("id"),
+                    "drive_id": data.get("id") or data.get("parentReference", {}).get("driveId", "Unknown"),
                     "owner_email": self.config.user_email,
-                    "owner_display_name": data.get("owner", {}).get("displayName", "Unknown"),
+                    "owner_display_name": data.get("owner", {}).get("user", {}).get("displayName", "Unknown"),
                 }
+
+        except httpx.HTTPStatusError as e:
+            # Captura el error REAL de Microsoft Graph para que no salga en blanco
+            error_msg = f"HTTP {e.response.status_code}: {e.response.text}"
+            logger.error(f"Connection check failed (Status Error): {error_msg}")
+            raise Exception(error_msg)
+
         except Exception as e:
-            logger.error(f"Connection check failed: {e}")
+            # Usamos repr(e) para evitar strings vacíos en errores de timeout/red de httpx
+            logger.error(f"Connection check failed (Network/System): {repr(e)}")
             raise
 
     # === FOLDER SETUP =========================================================
@@ -220,17 +248,17 @@ class OneDriveService:
                     if isinstance(sub_structure, dict):
                         # Subfolder structure is a dict (levels)
                         for env, folders_list in sub_structure.items():
-                            await self._ensure_folder(client, headers, f"root:/{root_name}", env)
+                            await self._ensure_folder(client, headers, f"root:/{root_name}:", env)
                             created.append(f"{root_name}/{env}")
 
                             if isinstance(folders_list, list):
                                 for folder in folders_list:
-                                    await self._ensure_folder(client, headers, f"root:/{root_name}/{env}", folder)
+                                    await self._ensure_folder(client, headers, f"root:/{root_name}/{env}:", folder)
                                     created.append(f"{root_name}/{env}/{folder}")
                     elif isinstance(sub_structure, list):
                         # Subfolder structure is a flat list
                         for folder in sub_structure:
-                            await self._ensure_folder(client, headers, f"root:/{root_name}", folder)
+                            await self._ensure_folder(client, headers, f"root:/{root_name}:", folder)
                             created.append(f"{root_name}/{folder}")
                 except Exception as e:
                     errors.append(f"{root_name}: {str(e)}")
@@ -250,9 +278,13 @@ class OneDriveService:
         payload = {
             "name": folder_name,
             "folder": {},
-            "@microsoft.graph.conflictBehavior": "replace",
+            "@microsoft.graph.conflictBehavior": "fail",
         }
         resp = await client.post(url, headers=headers, json=payload)
+
+        if resp.status_code == 409:
+            return {}
+
         if resp.status_code not in (200, 201):
             logger.warning(f"Could not create folder '{folder_name}': {resp.text}")
             return {}
@@ -337,7 +369,7 @@ class OneDriveService:
         token = await self._get_token()
         url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
         headers = self._headers(token)
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.get(url, headers=headers)
             resp.raise_for_status()
             data = resp.json()
@@ -377,6 +409,12 @@ class OneDriveService:
             resp = await client.get(url, headers=headers)
             if resp.status_code == 404:
                 return []
+            if resp.status_code == 401:
+                token = await self._force_refresh_token()
+                headers = self._headers(token)
+                resp = await client.get(url, headers=headers)
+                if resp.status_code == 404:
+                    return []
             resp.raise_for_status()
             items = resp.json().get("value", [])
             # Filter only files (not folders)
@@ -404,6 +442,67 @@ class OneDriveService:
             if resp.status_code != 204:
                 logger.warning(f"Unexpected status deleting item {item_id}: {resp.status_code}")
 
+    async def copy_file(
+        self,
+        source_item_id: str,
+        new_filename: str,
+        env: Environment,
+        folder: Folder,
+    ) -> dict:
+        """
+        Copia un archivo de OneDrive leyendo por item_id y subiendo una nueva versión
+        al destino solicitado. Retorna el metadata del nuevo item.
+        """
+        token = await self._get_token()
+        headers = self._headers(token)
+
+        # 1. Obtener el ID de la carpeta destino
+        target_path = self.build_path(env, folder)
+        target_folder_url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive/root:/{target_path}"
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            folder_resp = await client.get(target_folder_url, headers=headers)
+            folder_resp.raise_for_status()
+            target_folder_data = folder_resp.json()
+            target_folder_id = target_folder_data["id"]
+            drive_id = target_folder_data["parentReference"]["driveId"]
+
+            # 2. Solicitar la copia interna
+            copy_url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{source_item_id}/copy"
+            payload = {
+                "parentReference": {"driveId": drive_id, "id": target_folder_id},
+                "name": new_filename
+            }
+
+            copy_resp = await client.post(copy_url, headers=headers, json=payload)
+            copy_resp.raise_for_status()
+
+            # Microsoft devuelve 202 Accepted y una URL para monitorear la copia
+            monitor_url = copy_resp.headers.get("Location")
+            if not monitor_url:
+                raise Exception("No se recibió URL de monitoreo para la copia")
+
+            # 3. Esperar a que MS termine de copiar
+            for _ in range(20): # Reintentar durante ~10 segundos maximo
+                await asyncio.sleep(0.5)
+                status_resp = await client.get(monitor_url)
+                if status_resp.status_code == 200:
+                    status_data = status_resp.json()
+                    if status_data.get("status") == "completed":
+                        resource_id = status_data.get("resourceId")
+                        if resource_id:
+                            return {"id": resource_id}
+                        # Fallback en caso muy raro de que no venga el resourceId
+                        new_item_url = f"{GRAPH_BASE}/users/{self.config.user_email}/drive/root:/{target_path}/{new_filename}"
+                        new_item_resp = await client.get(new_item_url, headers=headers)
+                        new_item_resp.raise_for_status()
+                        return new_item_resp.json()
+
+                    elif status_data.get("status") in ["failed", "canceled"]:
+                        raise Exception("Fallo la copia interna en OneDrive")
+
+            raise Exception("Timeout esperando a que OneDrive copie el archivo")
+
     # === FOLDER OPERATIONS ====================================================
 
     async def list_folders(self, path: Optional[str] = None) -> list[dict]:
@@ -425,6 +524,13 @@ class OneDriveService:
             if resp.status_code == 404:
                 logger.warning(f"Path not found: {path}")
                 return []
+            if resp.status_code == 401:
+                token = await self._force_refresh_token()
+                headers = self._headers(token)
+                resp = await client.get(url, headers=headers)
+                if resp.status_code == 404:
+                    logger.warning(f"Path not found: {path}")
+                    return []
             resp.raise_for_status()
             items = resp.json().get("value", [])
             # Filter only folders
@@ -491,8 +597,247 @@ class OneDriveService:
             resp = await client.get(url, headers=headers)
             if resp.status_code == 404:
                 return None
+            if resp.status_code == 401:
+                token = await self._force_refresh_token()
+                headers = self._headers(token)
+                resp = await client.get(url, headers=headers)
+                if resp.status_code == 404:
+                    return None
             resp.raise_for_status()
             return resp.json()
+
+    # === EXCEL SESSION MANAGEMENT ============================================
+
+    async def _create_workbook_session(
+        self, item_id: str, persist_changes: bool = False
+    ) -> str:
+        """
+        Crea una sesión de trabajo (workbook session) en Excel Online.
+        Todas las operaciones dentro de la misma sesión comparten el
+        mismo contexto de cálculo.
+
+        Args:
+            item_id: ID del archivo en OneDrive
+            persist_changes: Si True, los cambios se guardan en el archivo.
+                             Si False, sesión de solo lectura (no persiste).
+        Returns:
+            session_id: ID de la sesión creada
+        """
+        token = await self._get_token()
+        headers = self._headers(token)
+        url = (
+            f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
+            f"/workbook/createSession"
+        )
+        payload = {"persistChanges": persist_changes}
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                url, headers=headers, json=payload
+            )
+            resp = await client.post(url, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("id")
+
+    async def _close_workbook_session(self, item_id: str, session_id: str) -> None:
+        """Cierra una sesión de trabajo de Excel Online."""
+        token = await self._get_token()
+        headers = self._headers(token)
+        headers["workbook-session-id"] = session_id
+        url = (
+            f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
+            f"/workbook/closeSession"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                await client.post(url, headers=headers)
+            logger.debug(f"Workbook session closed: {session_id}")
+        except Exception as e:
+            logger.warning(f"Could not close workbook session {session_id}: {e}")
+
+    async def _refresh_workbook_session(self, item_id: str, session_id: str) -> None:
+        """Reinicia el timeout de 5 minutos de una sesión activa."""
+        token = await self._get_token()
+        headers = self._headers(token)
+        headers["workbook-session-id"] = session_id
+        url = (
+            f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
+            f"/workbook/refreshSession"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(url, headers=headers)
+                resp.raise_for_status()
+        except Exception as e:
+            logger.warning(f"No se pudo refrescar la sesión {session_id}: {e}")
+
+    # === EXCEL OPERATIONS ====================================================
+
+    async def force_calculate_excel(
+        self, item_id: str, session_id: str | None = None
+    ):
+        """
+        Fuerza a Excel Online a recalcular todas las fórmulas del libro.
+        Si se pasa session_id, el cálculo se hace dentro de esa sesión
+        (necesario para que read_excel_cell vea los resultados).
+        """
+        token = await self._get_token()
+        headers = self._headers(token)
+        if session_id:
+            headers["workbook-session-id"] = session_id
+
+        url = (
+            f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
+            f"/workbook/application/calculate"
+        )
+        # fullRebuild recalcula todo, incluyendo dependencias entre hojas
+        payload = {"calculationType": "fullRebuild"}
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(url, headers=headers, json=payload)
+            if resp.status_code == 401:
+                token = await self._force_refresh_token()
+                headers = self._headers(token)
+                if session_id:
+                    headers["workbook-session-id"] = session_id
+                resp = await client.post(url, headers=headers, json=payload)
+            resp.raise_for_status()
+
+    async def read_excel_cell(
+        self,
+        item_id: str,
+        sheet_name: str,
+        cell_address: str,
+        session_id: str | None = None,
+    ):
+        """
+        Lee un rango/celda de un Excel alojado en OneDrive.
+        Si se pasa session_id, la lectura se hace dentro de esa sesión
+        para aprovechar el contexto de cálculo compartido.
+        """
+        token = await self._get_token()
+        headers = self._headers(token)
+        if session_id:
+            headers["workbook-session-id"] = session_id
+
+        encoded_sheet = quote(sheet_name)
+        encoded_cell = quote(cell_address)
+        url = (
+            f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
+            f"/workbook/worksheets('{encoded_sheet}')/range(address='{encoded_cell}')"
+        )
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 401:
+                token = await self._force_refresh_token()
+                headers = self._headers(token)
+                if session_id:
+                    headers["workbook-session-id"] = session_id
+                resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+            return {
+                "values": data.get("values"),
+                "text": data.get("text"),
+                "formulas": data.get("formulas"),
+            }
+
+    async def read_excel_cell_with_session(
+        self,
+        item_id: str,
+        sheet_name: str,
+        cell_address: str,
+    ):
+        """
+        Lee una celda forzando recálculo completo dentro de una sesión
+        de Excel Online. Esto garantiza que las fórmulas (VLOOKUP,
+        referencias cruzadas entre hojas, etc.) se resuelvan
+        correctamente y devuelvan el valor calculado, no #N/D o #REF!.
+
+        Flujo:
+          1. Crea una sesión de solo lectura
+          2. Fuerza fullRebuild de todas las fórmulas
+          3. Lee la celda (ya con fórmulas evaluadas)
+          4. Cierra la sesión
+        """
+        session_id = await self._create_workbook_session(
+            item_id, persist_changes=False
+        )
+        try:
+            # Forzar recálculo completo dentro de la sesión
+            await self.force_calculate_excel(item_id, session_id=session_id)
+            # Leer la celda con las fórmulas ya evaluadas
+            result = await self.read_excel_cell(
+                item_id, sheet_name, cell_address, session_id=session_id
+            )
+            return result
+        finally:
+            await self._close_workbook_session(item_id, session_id)
+
+    async def update_excel_cell(
+        self,
+        item_id: str,
+        sheet_name: str,
+        cell_address: str,
+        value,
+        session_id: str | None = None,
+    ):
+        """Actualiza un rango/celda de un Excel alojado en OneDrive."""
+        token = await self._get_token()
+        headers = self._headers(token)
+        if session_id:
+            headers["workbook-session-id"] = session_id
+
+        encoded_sheet = quote(sheet_name)
+        encoded_cell = quote(cell_address)
+        url = (
+            f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
+            f"/workbook/worksheets('{encoded_sheet}')/range(address='{encoded_cell}')"
+        )
+        payload = {"values": [[value]]}
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.patch(url, headers=headers, json=payload)
+            if resp.status_code == 401:
+                token = await self._force_refresh_token()
+                headers = self._headers(token)
+                if session_id:
+                    headers["workbook-session-id"] = session_id
+                resp = await client.patch(url, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("values")
+
+    async def execute_batch(self, requests_payload: list[dict]) -> list[dict]:
+        """
+        Ejecuta un lote (Batch) de hasta 20 peticiones individuales hacia Graph API.
+        requests_payload debe ser una lista de diccionarios: 
+        [{"id": "1", "method": "GET", "url": "/users/..."}]
+        """
+        if not requests_payload:
+            return []
+
+        token = await self._get_token()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        url = f"{GRAPH_BASE}/$batch"
+        payload = {"requests": requests_payload}
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(url, headers=headers, json=payload)
+            if resp.status_code == 401:
+                token = await self._force_refresh_token()
+                headers["Authorization"] = f"Bearer {token}"
+                resp = await client.post(url, headers=headers, json=payload)
+
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("responses", [])
 
 
 # === SINGLETON ================================================================

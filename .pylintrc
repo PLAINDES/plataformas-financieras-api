@@ -12,6 +12,7 @@ disable=
     use-dict-literal,
     unused-import,
     E0015,
+    logging-fstring-interpolation,
 
 # Esto ignora los errores en módulos específicos
 ignore-patterns=

@@ -1,6 +1,6 @@
 # app/schemas/templates.py
 from datetime import datetime
-from typing import Optional, Dict, Any, Literal, List
+from typing import Optional, Literal, List
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -8,23 +8,18 @@ from pydantic import BaseModel, Field, ConfigDict
 class MasterTemplateBase(BaseModel):
     nombre: str = Field(..., max_length=255)
     description: Optional[str] = None
-    is_active: bool = True
     is_default: bool = False
-    hojas_config: Optional[Dict[str, Any]] = None
 
 
 class MasterTemplateCreate(MasterTemplateBase):
     """Schema para crear una nueva plantilla maestra."""
-    pass
 
 
 class MasterTemplateUpdate(BaseModel):
     """Schema para actualizar una plantilla maestra."""
     nombre: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
-    is_active: Optional[bool] = None
     is_default: Optional[bool] = None
-    hojas_config: Optional[Dict[str, Any]] = None
 
 
 class MasterTemplateResponse(MasterTemplateBase):
@@ -34,6 +29,7 @@ class MasterTemplateResponse(MasterTemplateBase):
     onedrive_folder: Optional[str] = None
     onedrive_item_id: Optional[str] = None
     onedrive_filename: Optional[str] = None
+    original_filename: Optional[str] = None
     onedrive_path: Optional[str] = None
     created_by_user_id: Optional[int] = None
     created_at: datetime
@@ -50,7 +46,7 @@ class TemplateCodeBase(BaseModel):
     hoja: Optional[str] = Field(None, max_length=255)
     nombre: str = Field(..., max_length=255)
     code: str = Field(..., max_length=255)
-
+    value: Optional[str] = Field(None, max_length=255)
 
 class TemplateCodeCreate(TemplateCodeBase):
     """Schema para crear un código de plantilla."""

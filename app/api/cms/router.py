@@ -3,12 +3,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
-from ...db.database import get_db
-from ...schemas.cms import (
+from app.db.database import get_db
+from app.schemas.cms import (
     ContentUpdate,
     LandingDataResponse
 )
-from ...services.cms_service import CMSService
+from app.services.cms_service import CMSService
 
 router = APIRouter(prefix="/cms", tags=["CMS"])
 

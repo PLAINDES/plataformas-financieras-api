@@ -1,5 +1,6 @@
 import os
 import uuid
+import logging
 try:
     import boto3 # pylint: disable=import-error
     from botocore.exceptions import ClientError # pylint: disable=import-error
@@ -9,7 +10,6 @@ except Exception:  # pragma: no cover - optional dependency in local/dev
     class ClientError(Exception):
         pass
 from fastapi import UploadFile
-import logging
 
 from app.core.constants import AWS_BASE_PREFIX
 from app.core.config import settings
@@ -60,7 +60,7 @@ class AWSS3Service:
             # Generamos un nombre único para evitar colisiones
             extension = file.filename.split(".")[-1] if "." in file.filename else "bin"
             unique_filename = f"{uuid.uuid4().hex}.{extension}"
-            
+
             # Incorporamos el base_prefix en la llave del objeto (ej: plataformas_financieras/uploads/archivo.jpg)
             object_key = f"{self.base_prefix}/{folder}/{unique_filename}"
 
@@ -69,14 +69,16 @@ class AWSS3Service:
                 file.file,
                 self.bucket_name,
                 object_key,
-                ExtraArgs={"ContentType": file.content_type}
+                ExtraArgs={
+                    "ContentType": file.content_type,
+                }
             )
-            
+
             # Construimos la URL pública (asumiendo que el bucket es público para lectura)
             # O usando la estructura clásica: https://{bucket_name}.s3.{region}.amazonaws.com/{object_key}
             region = settings.AWS_REGION_NAME
             file_url = f"https://{self.bucket_name}.s3.{region}.amazonaws.com/{object_key}"
-            
+
             return {
                 "file_url": file_url,
                 "object_key": object_key
@@ -133,7 +135,7 @@ class AWSS3Service:
             return file_url.split(f"{domain}/")[-1]
         elif f"{self.bucket_name}.s3.amazonaws.com" in file_url:
             return file_url.split(f"{self.bucket_name}.s3.amazonaws.com/")[-1]
-        
+
         # Fallback genérico si el hostname cambia
         return "/".join(file_url.split("/")[3:])
 
