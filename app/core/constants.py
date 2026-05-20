@@ -24,9 +24,7 @@ KAPITAL_SENSITIVITY_INPUT_CELL_MAP = {
     "beta_desapalancado": "C12",
 }
 
-
-
-# Hoja PLANTILLA USUARIO 
+# Hoja PLANTILLA USUARIO
 KAPITAL_INPUT_CELL_MAP = {
     "fecha": "C2",
     "pais": "C3",

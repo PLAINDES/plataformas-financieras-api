@@ -100,4 +100,19 @@ class ReportUpdate(BaseModel):
 
     # Kept for backwards-compat: patches fields on the already-linked Cover.
     cover_data: Optional[CoverUpdate] = None
- 
+
+
+# ==================== APP CONFIGURATION SCHEMAS ====================
+class AppConfigurationBase(BaseModel):
+    module: str = Field(..., max_length=50)
+    settings: Dict[str, Any]
+
+class AppConfigurationUpdate(BaseModel):
+    settings: Dict[str, Any]
+
+class AppConfigurationResponse(AppConfigurationBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

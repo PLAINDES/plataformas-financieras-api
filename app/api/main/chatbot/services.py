@@ -1,13 +1,13 @@
 # app/api/main/chatbot/services.py
-import httpx, re, asyncio, logging
+import httpx, re, asyncio, logging,json
 from app.core.config import settings
 from app.api.main.chatbot.constants import (
+    DANGEROUS_PATTERNS,
     SYSTEM_PROMPT_TEMPLATE,
     FALLBACK_MODELS,
     GENERATION_CONFIG,
-    ENFORCEMENT_MODEL_ACK,
-    get_enforced_user_message
-)
+    GEMINI_API_BASE_URL
+    )
 from app.api.main.chatbot.schemas import ChatRequest, ChatResponse, AnalyzeCompaniesRequest, YahooFinanceResponse
 from app.api.main.chatbot.utils import extract_tickers, extract_beta_update, build_form_context
 from app.api.main.chatbot.boa import calculate_sector_beta
@@ -15,11 +15,27 @@ from app.api.main.chatbot.boa import calculate_sector_beta
 logger = logging.getLogger("uvicorn.error")
 logger.setLevel(logging.INFO)
 
+def is_prompt_injection(text: str) -> bool:
+    """Verifica si el mensaje del usuario intenta saltarse los controles."""
+    text_lower = text.lower()
+    for pattern in DANGEROUS_PATTERNS:
+        if re.search(pattern, text_lower):
+            return True
+    return False
+
 async def generate_chat_response(request: ChatRequest) -> ChatResponse:
     api_key = settings.GEMINI_API_KEY
     if not api_key:
         raise ValueError("API Key de Gemini no configurada en el servidor.")
 
+    if is_prompt_injection(request.message):
+        logger.warning(f"Intento de Prompt Injection bloqueado: {request.message}")
+        return ChatResponse(
+            text="No puedo procesar solicitudes que intenten alterar mis instrucciones principales.",
+            tickers=[],
+            new_beta=None,
+            raw_history_appends=[]
+        )
 
     # Elimina modelos duplicados
     seen = set()
@@ -35,21 +51,24 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
 
     # Construimos el array de contenidos para enviar a Gemini
     contents = []
-    contents.append({"role": "user", "parts": [{"text": system_prompt}]})
-    contents.append({"role": "user", "parts": [{"text": ENFORCEMENT_MODEL_ACK}]})
 
-    for msg in request.history:
-        contents.append(msg.model_dump())
+    if request.history:
+        # Si hay historial, inyectamos el system_prompt
+        for i, msg in enumerate(request.history):
+            msg_dict = msg.model_dump()
+            if i == 0 and msg_dict["role"] == "user":
+                original_text = msg_dict["parts"][0]["text"]
+                msg_dict["parts"][0]["text"] = f"[INSTRUCCIONES DEL SISTEMA]\n{system_prompt}\n\n[FIN DE INSTRUCCIONES]\n\n{original_text}"
+            contents.append(msg_dict)
 
-    # Agregamos el historial pasado
-    for msg in request.history:
-        contents.append(msg.model_dump())
+        # Agregamos el mensaje actual al final
+        safe_user_message = f"Petición del usuario: {request.message}\n\n[RECUERDA: Responde estrictamente con las reglas establecidas y el formato TICKERS.]"
+        contents.append({"role": "user", "parts": [{"text": safe_user_message}]})
 
-    enforced_message = get_enforced_user_message(request.message)
-    contents.append({"role": "user", "parts": [{"text": enforced_message}]})
-
-    # Agregamos el mensaje actual del usuario
-    contents.append({"role": "user", "parts": [{"text": request.message}]})
+    else:
+        # Si es una conversación nueva (no hay historial), lo enviamos todo junto
+        safe_user_message = f"[INSTRUCCIONES DEL SISTEMA]\n{system_prompt}\n\n[FIN DE INSTRUCCIONES]\n\nPetición del usuario: {request.message}\n\n[RECUERDA: Responde estrictamente con las reglas establecidas y el formato TICKERS.]"
+        contents.append({"role": "user", "parts": [{"text": safe_user_message}]})
 
     payload = {
         "contents": contents,
@@ -62,7 +81,7 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         for model, version in models_to_try:
-            url = f"https://generativelanguage.googleapis.com/{version}/models/{model}:generateContent?key={api_key}"
+            url = GEMINI_API_BASE_URL.format(version=version, model=model, api_key=api_key)
             try:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
@@ -108,7 +127,7 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
     clean_text = raw_response
 
     # Esta regex elimina "TICKERS:" y todo lo que le siga en esa misma línea
-    clean_text = re.sub(r'TICKERS:.*', '', clean_text, flags=re.IGNORECASE).strip()
+    clean_text = re.sub(r'TICKERS:\s*\[.*?\]', '', clean_text, flags=re.IGNORECASE).strip()
 
     # Elimina "BETA_UPDATE:" y el valor numérico asociado
     if new_beta is not None:

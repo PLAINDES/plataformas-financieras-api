@@ -16,13 +16,15 @@ from app.models.main import (
     Report,
     Cover,
     CalculationType,
+    AppConfiguration
 )
 from app.api.main.calculations.router import get_default_or_latest_master_template
 logger = logging.getLogger(__name__)
 from app.services.aws_service import s3_service
 from app.schemas.main import (
     ReportUpdate,
-    TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse
+    TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
+    AppConfigurationUpdate
 )
 
 router = APIRouter(prefix="/main", tags=["Main"])
@@ -127,7 +129,7 @@ def get_template_complement(
                 if db_fecha == search_year and db_periodo == search_period:
                     # Buscar la llave del país ignorando mayúsculas y espacios
                     country_key = next(
-                        (k for k in item.keys() if str(k).strip().lower() == search_country), 
+                        (k for k in item.keys() if str(k).strip().lower() == search_country),
                         None
                     )
                     if country_key:
@@ -143,7 +145,7 @@ def get_template_complement(
         # 1. Extraer y limpiar espacios en blanco a los lados
         industrias_crudas = [
             str(item.get("industria")).strip()
-            for item in data_list 
+            for item in data_list
             if isinstance(item, dict) and item.get("industria")
         ]
         # 2. Eliminar los duplicados (por los años) y ordenar alfabéticamente
@@ -152,7 +154,7 @@ def get_template_complement(
     if only_date:
         fechas_crudas = [
             str(item.get("fecha")).strip()
-            for item in data_list 
+            for item in data_list
             if isinstance(item, dict) and item.get("fecha")
         ]
         fechas_unicas = list(set(fechas_crudas))
@@ -251,295 +253,6 @@ def delete_template_complement(complement_id: int, db: Session = Depends(get_db)
     db.commit()
     return None
 
-# ==================== REPORTS ====================
-
-@router.get("/reports")
-def list_reports(
-    limit: Optional[int] = None,
-    page: Optional[int] = None,
-    search: Optional[str] = None,
-    type: Optional[str] = None,
-    activo: Optional[bool] = 1,
-    db: Session = Depends(get_db),
-):
-    base_query = select(Report)
-
-    eager = [
-        joinedload(Report.portada).joinedload(Cover.portada),
-        joinedload(Report.portada).joinedload(Cover.primer_imagen_footer),
-        joinedload(Report.portada).joinedload(Cover.segundo_imagen_footer),
-        joinedload(Report.portada).joinedload(Cover.logo_superior),
-        joinedload(Report.portada).joinedload(Cover.imagen_central),
-        joinedload(Report.portada).joinedload(Cover.logo_inferior),
-        joinedload(Report.portada).joinedload(Cover.imagen_fondo),
-    ]
-
-    params = {
-        "limit": limit,
-        "page": page,
-        "search": search,
-        "type": type,
-        "activo": activo,
-    }
-
-    query = apply_filters(
-        base_query,
-        Report,
-        params,
-        search_fields=["nombre", "contenido", "sector_empresa"],
-        enum_fields={"type": CalculationType},
-        eager_loads=eager,
-    )
-
-    # order newest first
-    query = query.order_by(Report.created_at.desc(), Report.id.desc())
-
-    result = db.execute(query)
-    reports = result.unique().scalars().all()
-    return [_report_to_response(r) for r in reports]
-
-
-@router.get("/reports/get-current-codes")
-async def get_current_codes(db: Session = Depends(get_db)):
-    """
-    Obtiene la plantilla maestra por defecto (si existe), y si no, usa
-    la más reciente no borrada. Devuelve sus códigos reusando la lógica
-    de `get_template_codes`.
-    """
-    obj = get_default_or_latest_master_template(db)
-
-    if not obj:
-        raise HTTPException(status_code=404, detail="No master template found")
-
-    from .master_templates import router as master_templates_router
-
-    # Get template codes (async) and chart images (sync) from the master templates router
-    codes_payload = await master_templates_router.get_template_codes(obj.id, db)
-    images_payload = master_templates_router.get_template_chart_images(obj.id, db)
-
-    # Build a map code -> image url (codes are returned as strings like $$CODE$$)
-    image_map = {}
-    for t in ("valora", "kapital"):
-        for img in images_payload.get(t, []):
-            code = img.get("code")
-            if code:
-                image_map[code] = img.get("url")
-
-    # Attach image url to each template code if available
-    def attach_urls(codes_list, t):
-        # Return a minimal object for each code with only the fields the frontend expects
-        result = []
-        for c in codes_list:
-            # c may be a Pydantic model or dict or a plain string
-            if not c:
-                continue
-            if isinstance(c, str):
-                code_val = c
-                entry = {
-                    "id": -1,
-                    "nombre": c,
-                    "code": code_val,
-                    "type": t,
-                    "hoja": None,
-                    "value": None
-                }
-            else:
-                try:
-                    c_dict = c.model_dump() if hasattr(c, "model_dump") else dict(c)
-                except Exception:
-                    c_dict = dict(c)
-                entry = {
-                    "id": c_dict.get("id", -1),
-                    "nombre": c_dict.get("nombre") or c_dict.get("original_name") or c_dict.get("filename") or c_dict.get("code"),
-                    "code": c_dict.get("code"),
-                    "type": t,
-                    "hoja": c_dict.get("hoja"),
-                    "value": c_dict.get("value")
-                }
-
-            img_url = image_map.get(entry.get("code"))
-            if img_url:
-                entry["template_code_image_url"] = img_url
-
-            result.append(entry)
-        return result
-
-    # `get_template_codes` returns keys: template_id, template_name, codes, statistics
-    codes_block = codes_payload.get("codes", {}) if isinstance(codes_payload, dict) else {}
-
-    return {
-        "template_id": codes_payload.get("template_id"),
-        "template_name": codes_payload.get("template_name"),
-        "extracted_codes": {
-            "valora": attach_urls(codes_block.get("valora", []), "valora"),
-            "kapital": attach_urls(codes_block.get("kapital", []), "kapital"),
-        },
-        "extracted_chart_codes": None,
-        "extracted_chart_images": images_payload,
-        "chart_extraction_stats": None,
-        "statistics": codes_payload.get("statistics"),
-        "processed_sheets": None,
-    }
-
-
-@router.get("/reports/get-default-template-codes")
-async def get_default_template_codes(db: Session = Depends(get_db)):
-    """Alias explícito para obtener los códigos de la plantilla maestra por defecto."""
-    return await get_current_codes(db)
-
-
-
-
-@router.get("/reports/{report_id}")
-def get_report(report_id: int, db: Session = Depends(get_db)):
-    result = db.execute(
-        select(Report)
-        .where(Report.id == report_id, Report.deleted_at.is_(None))
-        .options(
-            joinedload(Report.portada).joinedload(Cover.portada),
-            joinedload(Report.portada).joinedload(Cover.primer_imagen_footer),
-            joinedload(Report.portada).joinedload(Cover.segundo_imagen_footer),
-            joinedload(Report.portada).joinedload(Cover.logo_superior),
-            joinedload(Report.portada).joinedload(Cover.imagen_central),
-            joinedload(Report.portada).joinedload(Cover.logo_inferior),
-            joinedload(Report.portada).joinedload(Cover.imagen_fondo),
-        )
-    )
-    report = result.unique().scalar_one_or_none()
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
-    return _report_to_response(report)
-
-
-@router.post("/reports")
-def create_report(data: ReportUpdate, db: Session = Depends(get_db)):
-    # Require at least a nombre for creation
-    if not data.nombre:
-        raise HTTPException(status_code=400, detail="Field 'nombre' is required")
-
-    # Try to pick a default master template for new reports
-    template = get_default_or_latest_master_template(db)
-    if not template:
-        raise HTTPException(
-            status_code=400,
-            detail="No master template available to assign to the report",
-        )
-
-    report = Report(
-        template_id=template.id,
-        nombre=data.nombre,
-        precio=data.precio,
-        moneda=data.moneda or "SOLES",
-        sector_empresa=data.sector_empresa,
-        bono_ajustado=data.bono_ajustado,
-        link_pago=data.link_pago,
-        contenido=data.contenido,
-        contentEditor=data.contentEditor,
-        portada_id=data.portada_id,
-        activo=data.activo if data.activo is not None else True,
-        type=CalculationType(data.type) if getattr(data, "type", None) else CalculationType.KAPITAL,
-    )
-
-    db.add(report)
-    db.commit()
-    db.refresh(report)
-    logger.info(f"_report_to_response(report): {_report_to_response(report)}")
-    response =_report_to_response(report)
-    return jsonable_encoder(response)
-
-
-@router.put("/reports/{report_id}")
-def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_db)):
-
-    result = db.execute(
-        select(Report)
-        .where(Report.id == report_id, Report.deleted_at.is_(None))
-        .options(joinedload(Report.portada))
-    )
-    report = result.unique().scalar_one_or_none()
-
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
-
-    update_dict = data.model_dump(exclude_unset=True, exclude={"cover_data"})
-
-    for key, value in update_dict.items():
-        if key == "type" and value is not None:
-            try:
-                setattr(report, key, CalculationType(value))
-            except Exception:
-                setattr(report, key, value)
-        else:
-            setattr(report, key, value)
-
-    if data.cover_data and report.portada:
-        cover_dict = data.cover_data.model_dump(exclude_unset=True)
-        for key, value in cover_dict.items():
-            setattr(report.portada, key, value)
-
-    try:
-        db.commit()
-        db.refresh(report)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=f"Error al actualizar: {str(e)}")
-
-    return _report_to_response(report)
-
-
-STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../files")
-
-@router.post("/reports/{report_id}/upload", status_code=status.HTTP_200_OK)
-async def upload_report_file(
-    report_id: int,
-    file: UploadFile = File(...),
-    html: str = Form(...),
-    db: Session = Depends(get_db),
-):
-    report = db.get(Report, report_id)
-    if not report or report.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Report not found")
-
-    print("STORAGE_DIR:", STORAGE_DIR)
-    print("STORAGE_DIR absoluto:", os.path.abspath(STORAGE_DIR))
-    print("__file__:", __file__)
-
-    os.makedirs(STORAGE_DIR, exist_ok=True)
-
-    filename = f"Reporte-{report_id}.pdf"
-    pdf_path = os.path.join(STORAGE_DIR, filename)
-
-    with open(pdf_path, "wb") as f:
-        f.write(await file.read())
-
-    html_path = os.path.join(STORAGE_DIR, f"Reporte-{report_id}.html")
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html)
-
-    report.file = filename
-    # persist editor content to the DB as well
-    try:
-        report.contentEditor = html
-    except Exception:
-        pass
-    db.commit()
-    return {"message": "Archivo guardado", "file": filename}
-
-
-@router.get("/reports/{report_id}/content")
-def get_report_content(report_id: int, db: Session = Depends(get_db)):
-    report = db.get(Report, report_id)
-    if not report or report.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Report not found")
-
-    html_path = os.path.join(STORAGE_DIR, f"Reporte-{report_id}.html")
-    if not os.path.exists(html_path):
-        return {"html": ""}
-
-    with open(html_path, "r", encoding="utf-8") as f:
-        return {"html": f.read()}
-
-
 # ==================== COVERS ====================
 
 @router.get("/covers")
@@ -585,14 +298,14 @@ def get_cover(cover_id: int, db: Session = Depends(get_db)):
 def _create_media_from_upload(db: Session, file: UploadFile) -> Optional[int]:
     if not file or not file.filename:
         return None
-        
+
     try:
         s3_result = s3_service.upload_file(file, folder="covers")
     except Exception as e:
         # Si falla AWS S3, lanzamos un 400 para que el frontend lo pueda mostrar
         # y no cause un 500 que rompe los headers CORS.
         raise HTTPException(status_code=400, detail=f"Error subiendo archivo a AWS S3: {str(e)}")
-    
+
     media = Media(
         filename=s3_result["object_key"].split("/")[-1],
         original_name=file.filename,
@@ -874,25 +587,53 @@ def _cover_to_dict(cover: Cover | None) -> dict | None:
     }
 
 
-def _report_to_response(report: Report) -> dict:
-    def _iso(v):
-        try:
-            return v.isoformat() if v is not None and hasattr(v, "isoformat") else v
-        except Exception:
-            return str(v)
-    return {
-        "id": report.id,
-        "nombre": report.nombre,
-        "file": report.file,
-        "precio": float(report.precio) if report.precio is not None else None,
-        "moneda": report.moneda,
-        "sector_empresa": report.sector_empresa,
-        "bono_ajustado": report.bono_ajustado,
-        "link_pago": report.link_pago,
-        "contenido": report.contenido,
-        "contentEditor": report.contentEditor,
-        "activo": report.activo,
-        "created_at": _iso(report.created_at),
-        "updated_at": _iso(report.updated_at),
-        "portada": _cover_to_dict(report.portada),
-    }
+# ==================== APP CONFIGURATIONS ====================
+
+@router.get("/settings/{module}", response_model=dict)
+def get_app_settings(module: str, db: Session = Depends(get_db)):
+    """
+    Obtiene la configuración de un módulo en formato JSON.
+    """
+    config = db.execute(
+        select(AppConfiguration).where(AppConfiguration.module == module)
+    ).scalars().first()
+
+    if not config:
+        # Valores por defecto inyectados si la tabla está vacía
+        if module == "kapital":
+            return {"max_sensibilizaciones": 3}
+        return {}
+
+    return config.settings
+
+
+@router.patch("/settings/{module}", response_model=dict)
+def update_app_settings(
+    module: str,
+    payload: AppConfigurationUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Crea o actualiza la configuración JSON de un módulo.
+    """
+    config = db.execute(
+        select(AppConfiguration).where(AppConfiguration.module == module)
+    ).scalars().first()
+
+    if config:
+        # Se genera un nuevo diccionario en memoria utilizando dict()
+        current_settings = dict(config.settings or {})
+        current_settings.update(payload.settings)
+        config.settings = current_settings
+    else:
+        # Si es la primera vez que se guarda, creamos el registro
+        config = AppConfiguration(
+            module=module,
+            settings=payload.settings
+        )
+        db.add(config)
+
+    db.commit()
+    db.refresh(config)
+
+    return config.settings

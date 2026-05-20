@@ -4,7 +4,7 @@ Módulo de Pruebas de Integración para el Router de OneDrive.
 
 import os
 import asyncio
-import pytest
+import time
 from fastapi.testclient import TestClient
 from app.core.config import settings
 from app.main import app
@@ -107,6 +107,8 @@ def test_onedrive_files_list_and_delete(client: TestClient):
         )
     )
     item_id = upload_result["id"]
+
+    time.sleep(1.5)  # Esperar un segundo para asegurar la sincronización
 
     # 2. LIST FILES: Probar endpoint GET /files
     folder_path = f"PLATAFORMAS_FINANCIERAS/{current_env}/{folder_name}"
