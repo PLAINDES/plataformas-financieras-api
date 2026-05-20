@@ -170,3 +170,21 @@ class Cover(Base):
 
     def __repr__(self):
         return f"<Covers {self.nombre} ({self.tipo.value})>"
+
+class AppConfiguration(Base):
+    __tablename__ = "main_app_configurations"
+
+    # Identificador interno
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+
+    # Define a qué sección pertenece la configuración (ej. 'kapital', 'valora', 'sistema')
+    module = Column(String(50), nullable=False, unique=True)
+
+    # Almacena los pares clave-valor de la configuración
+    settings = Column(JSON, nullable=False)
+
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f"<AppConfiguration {self.module}>"
