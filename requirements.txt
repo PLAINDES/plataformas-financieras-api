@@ -40,3 +40,5 @@ openpyxl==3.1.5
 yfinance
 pandas
 numpy
+fpdf2
+pypdf
