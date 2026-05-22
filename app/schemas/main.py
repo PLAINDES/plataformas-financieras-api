@@ -1,6 +1,6 @@
 # app/schemas/main.py
 from datetime import datetime
-from typing import Optional, Dict, Any, Literal
+from typing import List, Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
@@ -61,6 +61,12 @@ class CalculationResponse(CalculationBase):
 
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
+class PaginatedCalculationResponse(BaseModel):
+    items: List[CalculationResponse]
+    total: int
+    page: int
+    limit: int
+    pages: int
 
 # ==================== COVER CODE SCHEMAS ====================
 class CoverUpdate(BaseModel):
