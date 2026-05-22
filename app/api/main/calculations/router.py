@@ -1,23 +1,17 @@
 # app/api/main/calculations_router.py
-import os
 import logging
-import re
-import json
 import time
-from datetime import datetime as _dt
 from uuid import uuid4
-from typing import Any, List, Optional
+from typing import List, Optional
 import httpx
-import asyncio
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import func, select
 from urllib.parse import quote
 from app.db.database import get_db
-from app.models.main import Calculation, CalculationType, TemplateComplement
-from app.models.templates import MasterTemplate
-from app.schemas.main import CalculationCreate, CalculationUpdate, CalculationResponse
-from app.services.onedrive_service import get_onedrive_service, OneDriveConfig
+from app.models.main import Calculation, CalculationType
+from app.schemas.main import CalculationCreate, CalculationUpdate, CalculationResponse, PaginatedCalculationResponse
+from app.services.onedrive_service import get_onedrive_service
 
 
 from .utils import (
@@ -37,14 +31,40 @@ router = APIRouter(prefix="/main", tags=["Calculations"])
 
 # ==================== ENDPOINTS ====================
 
-@router.get("/calculations", response_model=List[CalculationResponse])
-def list_calculations(user_id: Optional[int] = None, db: Session = Depends(get_db)):
+@router.get("/calculations", response_model=PaginatedCalculationResponse)
+def list_calculations(
+    user_id: Optional[int] = None,
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: Optional[str] = Query(None, max_length=64),
+    type: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
     query = select(Calculation)
+
     if user_id:
         query = query.where(Calculation.user_id == user_id)
-    result = db.execute(query)
-    calculations = result.scalars().all()
-    return [CalculationResponse.model_validate(c) for c in calculations]
+
+    if search:
+        query = query.where(Calculation.code.ilike(f"%{search}%"))
+
+    if type:
+        query = query.where(Calculation.type == type)
+
+    # Contar total antes de aplicar limit/offset
+    count_query = select(func.count()).select_from(query.subquery())
+    total = db.execute(count_query).scalar()
+
+    query = query.offset((page - 1) * limit).limit(limit).order_by(Calculation.created_at.desc())
+    calculations = db.execute(query).scalars().all()
+
+    return {
+        "items": [CalculationResponse.model_validate(c) for c in calculations],
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit
+    }
 
 @router.get("/calculations/{calculation_id}", response_model=CalculationResponse)
 def get_calculation(calculation_id: int, db: Session = Depends(get_db)):
