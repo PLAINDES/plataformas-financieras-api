@@ -3,6 +3,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
+from playwright.async_api import async_playwright, Browser
+from contextlib import asynccontextmanager
 from .core.config import settings
 from .api.auth.router import router as auth_router
 from .api.cms.router import router as cms_router
@@ -13,6 +15,35 @@ from .api.main.calculations.router import router as calculations_router
 from .api.main.chatbot.router import router as chatbot_router
 from .api.main.reports.router import router as reports_router
 
+playwright_state = {
+    "playwright": None,
+    "browser": None
+}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    playwright = await async_playwright().start()
+    browser = await playwright.chromium.launch(
+        headless=True,
+        args=[
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu"
+        ]
+    )
+    # Almacenar en el estado de la aplicación
+    app.state.playwright = playwright
+    app.state.browser = browser
+    
+    yield
+    
+    # SHUTDOWN
+    if hasattr(app.state, "browser") and app.state.browser:
+        await app.state.browser.close()
+    if hasattr(app.state, "playwright") and app.state.playwright:
+        await app.state.playwright.stop()
+
 print("--- EL SERVIDOR ESTÁ ARRANCANDO ---")
 # Crear instancia de FastAPI
 app = FastAPI(
@@ -21,6 +52,7 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_PREFIX}/docs",
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
+    lifespan=lifespan
 )
 
 # CORS Middleware

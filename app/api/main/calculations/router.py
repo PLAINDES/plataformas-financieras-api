@@ -1,10 +1,11 @@
 # app/api/main/calculations_router.py
 import logging
 import time
+import traceback
 from uuid import uuid4
-from typing import List, Optional
+from typing import Optional
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, status, Body, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
 from urllib.parse import quote
@@ -12,10 +13,12 @@ from app.db.database import get_db
 from app.models.main import Calculation, CalculationType
 from app.schemas.main import CalculationCreate, CalculationUpdate, CalculationResponse, PaginatedCalculationResponse
 from app.services.onedrive_service import get_onedrive_service
+from app.core.config import settings
 
 
 from .utils import (
     _extract_input_payload,
+    _generate_calculation_images,
     _to_calc_type,
     _sanitize_input_for_history,
     _extract_latest_input_from_history,
@@ -66,22 +69,78 @@ def list_calculations(
         "pages": (total + limit - 1) // limit
     }
 
+
 @router.get("/calculations/{calculation_id}", response_model=CalculationResponse)
-def get_calculation(calculation_id: int, db: Session = Depends(get_db)):
+async def get_calculation(
+    request: Request,
+    calculation_id: int, 
+    include_graphs: bool = Query(False),
+    bot_token: Optional[str] = Header(None, alias="X-Bot-Token"),
+    db: Session = Depends(get_db)
+):
     calculation = db.get(Calculation, calculation_id)
     if not calculation:
         raise HTTPException(status_code=404, detail="Calculation not found")
-    return CalculationResponse.model_validate(calculation)
+
+    response_data = CalculationResponse.model_validate(calculation).model_dump()
+
+    if include_graphs:
+        if bot_token != settings.BOT_API_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="API Key inválida o ausente."
+            )
+        browser = request.app.state.browser
+        if not browser:
+            raise HTTPException(status_code=500, detail="Browser instance not available")
+
+        try:
+            # Generar imágenes delegando a la función utilitaria
+            base64_images = await _generate_calculation_images(calculation.data, browser)
+            response_data["graphs_base64"] = base64_images
+        except Exception as e:
+            logger.error(f"Error rendering graphs for calculation {calculation_id}: {e}")
+            raise HTTPException(status_code=500, detail="Error generating calculation graphs")
+
+    return response_data
+
 
 @router.get("/calculations/by-code/{code}", response_model=CalculationResponse)
-def get_calculation_by_code(code: str, db: Session = Depends(get_db)):
+async def get_calculation_by_code(
+    request: Request,
+    code: str, 
+    include_graphs: bool = Query(False),
+    bot_token: Optional[str] = Header(None, alias="X-Bot-Token"),
+    db: Session = Depends(get_db)
+):
     calculation = db.execute(
         select(Calculation).where(Calculation.code == code)
     ).scalars().first()
 
     if not calculation:
         raise HTTPException(status_code=404, detail="Calculation not found")
-    return CalculationResponse.model_validate(calculation)
+
+    # Convertir el modelo validado a diccionario para permitir la inyección de las imágenes
+    response_data = CalculationResponse.model_validate(calculation).model_dump()
+
+    if include_graphs:
+        if bot_token != settings.BOT_API_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="API Key inválida o ausente."
+            )
+        browser = getattr(request.app.state, "browser", None)
+        if not browser:
+            logger.error("La instancia del navegador Playwright no está disponible en app.state")
+        else:
+            try:
+                graphs_dict = await _generate_calculation_images(calculation.data, browser)
+                response_data["graphs_base64"] = graphs_dict
+            except Exception as e:
+                logger.error(f"Error generando capturas para el código {code}: {e}")
+                traceback.print_exc()
+
+    return response_data
 
 @router.post("/calculations", response_model=CalculationResponse, status_code=status.HTTP_201_CREATED)
 async def create_calculation(payload: CalculationCreate, db: Session = Depends(get_db)):
