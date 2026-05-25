@@ -54,10 +54,20 @@ class CalculationUpdate(BaseModel):
     data: Optional[Dict[str, Any]] = None
 
 
+class ComparacionGraph(BaseModel):
+    boa: float
+    imagen: str
+
+class GraphsResponse(BaseModel):
+    resultados_generales: Optional[str] = None
+    sensibilidad_general: Optional[str] = None
+    comparaciones: List[ComparacionGraph] = Field(default_factory=list)
+
 class CalculationResponse(CalculationBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    graphs_base64: Optional[GraphsResponse] = None
 
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 

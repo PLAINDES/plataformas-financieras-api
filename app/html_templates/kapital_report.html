@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ["Inter", "sans-serif"] },
+            colors: { valora: { primary: "#155dfc" } },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-[#f3f6f9] p-8 font-sans w-[1700px] min-h-screen">
+    {% macro render_full_card(card) %}
+    <article
+      class="flex-none w-[360px] bg-white shadow-md shadow-slate-300 flex flex-col rounded-[2rem] p-5 h-[350px]"
+    >
+      <h2 class="font-semibold text-center text-lg text-gray-700">
+        {{ card.title }}
+      </h2>
+      <div
+        class="relative w-[85%] mt-2 flex flex-row items-center justify-between mx-auto gap-2"
+      >
+        <div class="text-center px-2 flex-1">
+          <span class="font-black text-gray-900 text-2xl leading-none">
+            {{ card.data.cppc }}
+          </span>
+          <p
+            class="text-sm text-gray-500 font-bold uppercase tracking-widest mt-1"
+          >
+            CPPC
+          </p>
+        </div>
+        <span
+          class="font-bold text-gray-900 text-sm lg:text-base whitespace-nowrap shrink-0"
+        >
+          Kd={{ card.data.kd }}
+        </span>
+      </div>
+      <section class="flex flex-col mx-auto w-full max-w-[92%] gap-3 mt-auto">
+        <main class="w-full flex h-48 md:h-52">
+          <div class="w-1/2 p-0.5">
+            <div
+              class="h-full border-[3px] border-[#7b1fa2] rounded-l-xl relative p-1 flex flex-col items-center justify-center"
+            >
+              <div
+                class="absolute top-1 text-gray-400 text-center w-full uppercase font-medium text-[11px] tracking-wider block"
+              >
+                Activo
+              </div>
+              <div
+                class="text-center font-bold text-sm w-full text-gray-800 mt-4"
+              >
+                Koa = {{ card.data.koa }}
+              </div>
+            </div>
+          </div>
+          <div class="w-1/2 flex flex-col p-0.5 gap-1">
+            <div
+              style="height: calc({{ card.data.visualPasivoPerc }}% - 2px);"
+              class="border-[3px] border-[#4caf50] rounded-tr-xl relative p-0.5 flex flex-col items-center justify-center shadow-sm overflow-hidden min-h-[90px]"
+            >
+              <div
+                class="absolute top-0.5 font-medium text-gray-400 text-center w-full uppercase tracking-wider text-[10px] block"
+              >
+                Pasivo
+              </div>
+              <div
+                class="text-center font-bold text-gray-800 text-xs lg:text-sm mt-3 px-2 leading-tight"
+              >
+                Kd(1-T) = {{ card.data.kd_1_minus_t }}
+              </div>
+            </div>
+            <div
+              style="height: calc({{ card.data.visualPatrimonioPerc }}% - 2px);"
+              class="border-[3px] border-[#03a9f4] rounded-br-xl relative p-2 flex flex-col items-center justify-center shadow-sm overflow-hidden min-h-[90px]"
+            >
+              <div
+                class="absolute top-1 text-gray-400 text-center w-full uppercase tracking-wider font-medium text-[11px] block"
+              >
+                Patrimonio
+              </div>
+              <div
+                class="text-center font-bold text-gray-800 text-sm lg:text-base mt-4 px-2 leading-tight"
+              >
+                Ke = {{ card.data.ke }}
+              </div>
+            </div>
+          </div>
+        </main>
+      </section>
+    </article>
+    {% endmacro %}
+
+    <header
+      class="flex justify-between items-center w-full mb-8 max-w-[1550px] mx-auto"
+    >
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">{{ report_title }}</h1>
+        <p class="text-gray-600 text-lg">Resultados financieros detallados</p>
+      </div>
+    </header>
+
+    <main
+      class="flex flex-row justify-center items-center w-full gap-8 max-w-[1550px] mx-auto mt-6"
+    >
+      {% for card in cards %} {{ render_full_card(card) }} {% endfor %}
+    </main>
+  </body>
+</html>
