@@ -8,17 +8,16 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, status, Body, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
-from urllib.parse import quote
 from app.db.database import get_db
 from app.models.main import Calculation, CalculationType
 from app.schemas.main import CalculationCreate, CalculationUpdate, CalculationResponse, PaginatedCalculationResponse
 from app.services.onedrive_service import get_onedrive_service
 from app.core.config import settings
 
+from .graphs import _generate_calculation_images
 
 from .utils import (
     _extract_input_payload,
-    _generate_calculation_images,
     _to_calc_type,
     _sanitize_input_for_history,
     _extract_latest_input_from_history,

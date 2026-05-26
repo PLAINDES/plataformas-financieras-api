@@ -175,3 +175,13 @@ KAPITAL_RIESGO_CELL_MAP = {
     "num7_max_deviation": "I14",
     "num7_min_deviation": "H14",
 }
+
+COUNTRY_LOCAL_CURRENCIES = {
+    "Argentina": "ARS",
+    "Brazil": "BRL",
+    "Mexico": "MXN",
+    "Chile": "CLP",
+    "Colombia": "COP",
+    "Ecuador": "USD",
+    "Peru": "PEN",
+}
