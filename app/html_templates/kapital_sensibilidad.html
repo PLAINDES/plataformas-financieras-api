@@ -2,21 +2,9 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: { sans: ["Inter", "sans-serif"] },
-            colors: { valora: { primary: "#155dfc" } },
-          },
-        },
-      };
-    </script>
+    <style>
+      {% include 'kapital_styles.css' %}
+    </style>
   </head>
   <body class="bg-[#f3f6f9] p-8 font-sans w-[1700px] min-h-screen">
     {% macro render_full_card(card) %}
@@ -46,7 +34,7 @@
         </span>
       </div>
       <section class="flex flex-col mx-auto w-full max-w-[92%] gap-3 mt-auto">
-        <main class="w-full flex h-48 md:h-52">
+        <main class="w-full flex h-48 md:h-52 items-stretch">
           <div class="w-1/2 p-0.5">
             <div
               class="h-full border-[3px] border-[#7b1fa2] rounded-l-xl relative p-1 flex flex-col items-center justify-center"
@@ -63,10 +51,11 @@
               </div>
             </div>
           </div>
-          <div class="w-1/2 flex flex-col p-0.5 gap-1">
+
+          <div class="w-1/2 flex flex-col p-0.5 gap-1 h-full">
             <div
               style="height: calc({{ card.data.visualPasivoPerc }}% - 2px);"
-              class="border-[3px] border-[#4caf50] rounded-tr-xl relative p-0.5 flex flex-col items-center justify-center shadow-sm overflow-hidden min-h-[90px]"
+              class="border-[3px] border-[#4caf50] rounded-tr-xl relative p-0.5 flex flex-col items-center justify-center shadow-sm overflow-hidden"
             >
               <div
                 class="absolute top-0.5 font-medium text-gray-400 text-center w-full uppercase tracking-wider text-[10px] block"
@@ -79,9 +68,10 @@
                 Kd(1-T) = {{ card.data.kd_1_minus_t }}
               </div>
             </div>
+
             <div
               style="height: calc({{ card.data.visualPatrimonioPerc }}% - 2px);"
-              class="border-[3px] border-[#03a9f4] rounded-br-xl relative p-2 flex flex-col items-center justify-center shadow-sm overflow-hidden min-h-[90px]"
+              class="border-[3px] border-[#03a9f4] rounded-br-xl relative p-2 flex flex-col items-center justify-center shadow-sm overflow-hidden"
             >
               <div
                 class="absolute top-1 text-gray-400 text-center w-full uppercase tracking-wider font-medium text-[11px] block"
