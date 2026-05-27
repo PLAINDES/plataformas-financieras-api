@@ -24,6 +24,7 @@ from app.models.main import TemplateCode, CalculationType
 from app.models.cms import Media
 from app.schemas.templates import (
     MasterTemplateCreate, MasterTemplateUpdate, MasterTemplateResponse,
+    PaginatedMasterTemplateResponse,
     TemplateCodeResponse,
 )
 from app.services.onedrive_service import get_onedrive_service, OneDriveConfig
@@ -102,14 +103,28 @@ def create_master_template(payload: MasterTemplateCreate, db: Session = Depends(
     return MasterTemplateResponse.model_validate(obj)
 
 
-@router.get("", response_model=list[MasterTemplateResponse])
+@router.get("", response_model=PaginatedMasterTemplateResponse)
 def list_master_templates(limit: int = 10, offset: int = 0, search: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_admin)):
     query = select(MasterTemplate).where((MasterTemplate.deleted_at.is_(None)) & (MasterTemplate.created_by_user_id == current_user.id))
     if search:
         query = query.where(or_(MasterTemplate.nombre.ilike(f"%{search}%"), MasterTemplate.description.ilike(f"%{search}%")))
 
+    total_query = select(MasterTemplate.id).where((MasterTemplate.deleted_at.is_(None)) & (MasterTemplate.created_by_user_id == current_user.id))
+    if search:
+        total_query = total_query.where(or_(MasterTemplate.nombre.ilike(f"%{search}%"), MasterTemplate.description.ilike(f"%{search}%")))
+
+    total_count = len(db.execute(total_query).all())
+    pages = (total_count + limit - 1) // limit if limit > 0 else 1
+    page = (offset // limit) + 1 if limit > 0 else 1
+
     templates = db.execute(query.order_by(MasterTemplate.created_at.desc()).offset(offset).limit(limit)).scalars().all()
-    return [MasterTemplateResponse.model_validate(t) for t in templates]
+    return {
+        "items": [MasterTemplateResponse.model_validate(t) for t in templates],
+        "total": total_count,
+        "page": page,
+        "limit": limit,
+        "pages": pages,
+    }
 
 
 @router.get("/{template_id}", response_model=MasterTemplateResponse)

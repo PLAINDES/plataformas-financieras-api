@@ -39,6 +39,14 @@ class MasterTemplateResponse(MasterTemplateBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PaginatedMasterTemplateResponse(BaseModel):
+    items: List[MasterTemplateResponse]
+    total: int
+    page: int
+    limit: int
+    pages: int
+
+
 # ==================== TEMPLATE CODE SCHEMAS ====================
 class TemplateCodeBase(BaseModel):
     template_code_image_id: Optional[int] = None

@@ -33,12 +33,16 @@ def test_list_master_templates(client: TestClient):
     assert response.status_code == 200
 
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) >= 1 # Debe haber al menos la que creamos en el test anterior
+    assert isinstance(data, dict)
+    assert isinstance(data.get("items"), list)
+    assert data["total"] >= 1
+    assert len(data["items"]) >= 1
 
 def test_get_single_master_template(client: TestClient):
     # Primero listamos para obtener un ID válido
-    templates = client.get(PREFIX).json()
+    data = client.get(PREFIX).json()
+    templates = data.get("items", [])
+    assert templates, f"No master templates found: {data}"
     target_id = templates[0]["id"]
 
     response = client.get(f"{PREFIX}/{target_id}")
@@ -46,7 +50,9 @@ def test_get_single_master_template(client: TestClient):
     assert response.json()["id"] == target_id
 
 def test_update_master_template(client: TestClient):
-    templates = client.get(PREFIX).json()
+    data = client.get(PREFIX).json()
+    templates = data.get("items", [])
+    assert templates, f"No master templates found: {data}"
     target_id = templates[0]["id"]
 
     update_payload = {
@@ -60,7 +66,9 @@ def test_update_master_template(client: TestClient):
     assert data["nombre"] == "Plantilla Contable Actualizada"
 
 def test_set_default_template(client: TestClient):
-    templates = client.get(PREFIX).json()
+    data = client.get(PREFIX).json()
+    templates = data.get("items", [])
+    assert templates, f"No master templates found: {data}"
     target_id = templates[0]["id"]
 
     response = client.post(f"{PREFIX}/{target_id}/set-default")
@@ -68,7 +76,9 @@ def test_set_default_template(client: TestClient):
     assert response.json()["is_default"] is True
 
 def test_delete_master_template(client: TestClient):
-    templates = client.get(PREFIX).json()
+    data = client.get(PREFIX).json()
+    templates = data.get("items", [])
+    assert templates, f"No master templates found: {data}"
     target_id = templates[0]["id"]
 
     response = client.delete(f"{PREFIX}/{target_id}")
