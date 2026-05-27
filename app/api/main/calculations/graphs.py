@@ -58,87 +58,92 @@ async def _generate_calculation_images(data: dict, browser: Browser) -> list[str
     context = await browser.new_context()
     page = await context.new_page()
 
-    # ---------- IMAGEN 1: RESULTADOS GENERALES ----------
-    cards_gen = []
-    if "mercado_desarrollado" in base_resultado and base_resultado["mercado_desarrollado"].get("kd"):
-        cards_gen.append(_build_card_dict("Mercado Desarrollado", base_resultado["mercado_desarrollado"]))
-    if "mercado_emergente" in base_resultado and base_resultado["mercado_emergente"].get("kd"):
-        cards_gen.append(_build_card_dict("Mercado Emergente", base_resultado["mercado_emergente"]))
-    if "empresa_soles" in base_resultado and base_resultado["empresa_soles"].get("kd"):
-        cards_gen.append(_build_card_dict(f"Tu Empresa ({moneda_local})", base_resultado["empresa_soles"], base_d_empresa))
-    if "empresa_dolares" in base_resultado and base_resultado["empresa_dolares"].get("kd"):
-        titulo_usd = "Tu Empresa (USD Ext)" if moneda_local == "USD" else "Tu Empresa (USD)"
-        cards_gen.append(_build_card_dict(titulo_usd, base_resultado["empresa_dolares"]))
-
-    html_gen = template_resultados.render(report_title="Resultados Generales", cards=cards_gen)
-    graphs_response["resultados_generales"] = await _render_html_to_b64(page, html_gen, viewport_height=700, viewport_width=1700)
-
-    # ---------- IMÁGENES DE SENSIBILIZACIÓN Y COMPARACIÓN ----------
-    if num_sens > 0:
-        # VISTA SENSIBILIZACIÓN
-        sens_primera = sensibilizaciones[0]
-        cards_sens = []
-
-        # Mercado Desarrollado (Estático)
+    try:
+        # ---------- IMAGEN 1: RESULTADOS GENERALES ----------
+        cards_gen = []
         if "mercado_desarrollado" in base_resultado and base_resultado["mercado_desarrollado"].get("kd"):
-            cards_sens.append(_build_card_dict("Mercado Desarrollado", base_resultado["mercado_desarrollado"]))
+            cards_gen.append(_build_card_dict("Mercado Desarrollado", base_resultado["mercado_desarrollado"]))
+        if "mercado_emergente" in base_resultado and base_resultado["mercado_emergente"].get("kd"):
+            cards_gen.append(_build_card_dict("Mercado Emergente", base_resultado["mercado_emergente"]))
+        if "empresa_soles" in base_resultado and base_resultado["empresa_soles"].get("kd"):
+            cards_gen.append(_build_card_dict(f"Tu Empresa ({moneda_local})", base_resultado["empresa_soles"], base_d_empresa))
+        if "empresa_dolares" in base_resultado and base_resultado["empresa_dolares"].get("kd"):
+            titulo_usd = "Tu Empresa (USD Ext)" if moneda_local == "USD" else "Tu Empresa (USD)"
+            cards_gen.append(_build_card_dict(titulo_usd, base_resultado["empresa_dolares"]))
 
-        # Datos Sensibilizados
-        if "mercado_emergente" in sens_primera and sens_primera["mercado_emergente"].get("kd"):
-            cards_sens.append(_build_card_dict("Mercado Emergente (Sens)", sens_primera["mercado_emergente"]))
-        if "empresa_soles" in sens_primera and sens_primera["empresa_soles"].get("kd"):
-            cards_sens.append(_build_card_dict(f"Tu Empresa {moneda_local} (Sens)", sens_primera["empresa_soles"], base_d_empresa))
-        if "empresa_dolares" in sens_primera and sens_primera["empresa_dolares"].get("kd"):
-            titulo_usd_sens = "Tu Empresa USD Ext (Sens)" if moneda_local == "USD" else "Tu Empresa USD (Sens)"
-            cards_sens.append(_build_card_dict(titulo_usd_sens, sens_primera["empresa_dolares"], base_d_empresa))
+        html_gen = template_resultados.render(report_title="Resultados Generales", cards=cards_gen)
+        graphs_response["resultados_generales"] = await _render_html_to_b64(page, html_gen, viewport_height=700, viewport_width=1700)
 
-        html_sens = template_sens.render(
-            report_title=f"Análisis de Sensibilidad (BOA: {sens_primera.get('boa', 'N/A')})",
-            cards=cards_sens
-        )
-        graphs_response["sensibilidad_general"] = await _render_html_to_b64(page, html_sens, viewport_height=700, viewport_width=1700)
+        # ---------- IMÁGENES DE SENSIBILIZACIÓN Y COMPARACIÓN ----------
+        if num_sens > 0:
+            # VISTA SENSIBILIZACIÓN
+            sens_primera = sensibilizaciones[0]
+            cards_sens = []
 
-        # VISTA COMPARACIÓN
-        for i, sens in enumerate(sensibilizaciones):
+            # Mercado Desarrollado (Estático)
+            if "mercado_desarrollado" in base_resultado and base_resultado["mercado_desarrollado"].get("kd"):
+                cards_sens.append(_build_card_dict("Mercado Desarrollado", base_resultado["mercado_desarrollado"]))
 
-            # Construir datos para el Mercado Desarrollado estático
-            dev_data = _build_card_dict("Mercado Desarrollado", base_resultado.get("mercado_desarrollado", {}))
-
-            # Fila Original
-            orig_cards = []
-            if "mercado_emergente" in base_resultado and base_resultado["mercado_emergente"].get("kd"):
-                orig_cards.append(_build_card_dict("Mercado Emergente", base_resultado["mercado_emergente"]))
-            if "empresa_soles" in base_resultado and base_resultado["empresa_soles"].get("kd"):
-                orig_cards.append(_build_card_dict(f"Tu Empresa ({moneda_local})", base_resultado["empresa_soles"], base_d_empresa))
-            if "empresa_dolares" in base_resultado and base_resultado["empresa_dolares"].get("kd"):
+            # Datos Sensibilizados
+            if "mercado_emergente" in sens_primera and sens_primera["mercado_emergente"].get("kd"):
+                cards_sens.append(_build_card_dict("Mercado Emergente (Sens)", sens_primera["mercado_emergente"]))
+            if "empresa_soles" in sens_primera and sens_primera["empresa_soles"].get("kd"):
+                cards_sens.append(_build_card_dict(f"Tu Empresa {moneda_local} (Sens)", sens_primera["empresa_soles"], base_d_empresa))
+            if "empresa_dolares" in sens_primera and sens_primera["empresa_dolares"].get("kd"):
                 titulo_usd_sens = "Tu Empresa USD Ext (Sens)" if moneda_local == "USD" else "Tu Empresa USD (Sens)"
-                orig_cards.append(_build_card_dict(titulo_usd_sens, base_resultado["empresa_dolares"], base_d_empresa))
+                cards_sens.append(_build_card_dict(titulo_usd_sens, sens_primera["empresa_dolares"], base_d_empresa))
 
-            # Fila Sensibilizada
-            sens_cards = []
-            if "mercado_emergente" in sens and sens["mercado_emergente"].get("kd"):
-                sens_cards.append(_build_card_dict("Mercado Emergente", sens["mercado_emergente"]))
-            if "empresa_soles" in sens and sens["empresa_soles"].get("kd"):
-                sens_cards.append(_build_card_dict(f"Tu Empresa ({moneda_local})", sens["empresa_soles"], base_d_empresa))
-            if "empresa_dolares" in sens and sens["empresa_dolares"].get("kd"):
-                titulo_usd_sens = "Tu Empresa USD Ext (Sens)" if moneda_local == "USD" else "Tu Empresa USD (Sens)"
-                sens_cards.append(_build_card_dict(titulo_usd_sens, sens["empresa_dolares"], base_d_empresa))
-
-            html_comp = template_comp.render(
-                report_title=f"Comparación vs Sensibilización {i+1}",
-                developed=dev_data["data"],
-                boa_original=base_resultado.get("boa", "0.00"),
-                original_cards=orig_cards,
-                boa_sensibilizado=sens.get("boa", "0.00"),
-                sens_cards=sens_cards
+            html_sens = template_sens.render(
+                report_title=f"Análisis de Sensibilidad (BOA: {sens_primera.get('boa', 'N/A')})",
+                cards=cards_sens
             )
-            img_comp = await _render_html_to_b64(page, html_comp, viewport_height=950, viewport_width=1700)
+            graphs_response["sensibilidad_general"] = await _render_html_to_b64(page, html_sens, viewport_height=700, viewport_width=1700)
 
-            graphs_response["comparaciones"].append({
-                "boa": float(sens.get("boa", 0.0)),
-                "imagen": img_comp
-            })
-    return graphs_response
+            # VISTA COMPARACIÓN
+            for i, sens in enumerate(sensibilizaciones):
+
+                # Construir datos para el Mercado Desarrollado estático
+                dev_data = _build_card_dict("Mercado Desarrollado", base_resultado.get("mercado_desarrollado", {}))
+
+                # Fila Original
+                orig_cards = []
+                if "mercado_emergente" in base_resultado and base_resultado["mercado_emergente"].get("kd"):
+                    orig_cards.append(_build_card_dict("Mercado Emergente", base_resultado["mercado_emergente"]))
+                if "empresa_soles" in base_resultado and base_resultado["empresa_soles"].get("kd"):
+                    orig_cards.append(_build_card_dict(f"Tu Empresa ({moneda_local})", base_resultado["empresa_soles"], base_d_empresa))
+                if "empresa_dolares" in base_resultado and base_resultado["empresa_dolares"].get("kd"):
+                    titulo_usd_sens = "Tu Empresa USD Ext (Sens)" if moneda_local == "USD" else "Tu Empresa USD (Sens)"
+                    orig_cards.append(_build_card_dict(titulo_usd_sens, base_resultado["empresa_dolares"], base_d_empresa))
+
+                # Fila Sensibilizada
+                sens_cards = []
+                if "mercado_emergente" in sens and sens["mercado_emergente"].get("kd"):
+                    sens_cards.append(_build_card_dict("Mercado Emergente", sens["mercado_emergente"]))
+                if "empresa_soles" in sens and sens["empresa_soles"].get("kd"):
+                    sens_cards.append(_build_card_dict(f"Tu Empresa ({moneda_local})", sens["empresa_soles"], base_d_empresa))
+                if "empresa_dolares" in sens and sens["empresa_dolares"].get("kd"):
+                    titulo_usd_sens = "Tu Empresa USD Ext (Sens)" if moneda_local == "USD" else "Tu Empresa USD (Sens)"
+                    sens_cards.append(_build_card_dict(titulo_usd_sens, sens["empresa_dolares"], base_d_empresa))
+
+                html_comp = template_comp.render(
+                    report_title=f"Comparación vs Sensibilización {i+1}",
+                    developed=dev_data["data"],
+                    boa_original=base_resultado.get("boa", "0.00"),
+                    original_cards=orig_cards,
+                    boa_sensibilizado=sens.get("boa", "0.00"),
+                    sens_cards=sens_cards
+                )
+                img_comp = await _render_html_to_b64(page, html_comp, viewport_height=950, viewport_width=1700)
+
+                graphs_response["comparaciones"].append({
+                    "boa": float(sens.get("boa", 0.0)),
+                    "imagen": img_comp
+                })
+        return graphs_response
+    finally:
+        await page.close()
+        await context.close()
+
 
 # Función para no repetir el código de captura
 async def _render_html_to_b64(page: Page, html_content: str, viewport_height: int, viewport_width: int = 1200) -> str:
