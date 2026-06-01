@@ -3,6 +3,21 @@ services:
     container_name: financiera-db-ci
     env_file:
       - .env.ci
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p$$MYSQL_ROOT_PASSWORD",
+        ]
+      timeout: 10s
+      retries: 5
+      interval: 10s
     networks:
       - backend_network
 
@@ -18,4 +33,3 @@ services:
       sh -c "pip install pytest httpx && pytest tests/ -v"
     networks:
       - backend_network
-
