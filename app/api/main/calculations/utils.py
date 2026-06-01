@@ -110,22 +110,36 @@ def _extract_latest_input_from_history(data: object) -> dict:
     return latest if isinstance(latest, dict) else {}
 
 def _merge_unique_entries(existing_entries: list[dict], incoming_entries: object) -> list[dict]:
-    merged = list(existing_entries)
-    incoming = _stamp_entries(incoming_entries)
-    if not incoming:
-        return merged
+    """
+    Mezcla las entradas históricas garantizando la unicidad basada en el valor del BOA.
+    Si un escenario con el mismo BOA ya existe, lo actualiza con los parámetros más recientes.
+    """
 
-    existing_keys = {
-        json.dumps(_entry_payload_without_timestamp(entry), sort_keys=True, ensure_ascii=False)
-        for entry in merged
-    }
+    merged = {e.get("boa"): e for e in existing_entries if e.get("boa") is not None}
+    incoming = _stamp_entries(incoming_entries)
+
+    # Fallback de compatibilidad si la estructura no pertenece a bloques de sensibilización con BOA
+    if not merged and existing_entries:
+        existing_keys = {
+            json.dumps(_entry_payload_without_timestamp(entry), sort_keys=True, ensure_ascii=False)
+            for entry in existing_entries
+        }
+        res = list(existing_entries)
+        for entry in incoming:
+            key = json.dumps(_entry_payload_without_timestamp(entry), sort_keys=True, ensure_ascii=False)
+            if key not in existing_keys:
+                res.append(entry)
+        return _stamp_entries(res)
+
+    # Fusionar entradas entrantes usando el 'boa' como clave única de comparación
     for entry in incoming:
-        key = json.dumps(_entry_payload_without_timestamp(entry), sort_keys=True, ensure_ascii=False)
-        if key in existing_keys:
-            continue
-        merged.append(entry)
-        existing_keys.add(key)
-    return _stamp_entries(merged)
+        boa_val = entry.get("boa")
+        if boa_val is not None:
+            # Reemplaza o añade el bloque del escenario específico
+            merged[boa_val] = entry
+
+    # Convertir los valores del diccionario a una lista
+    return _stamp_entries(list(merged.values()))
 
 def _now_iso() -> str:
     return _dt.utcnow().replace(microsecond=0).isoformat()
@@ -274,16 +288,17 @@ async def _write_inputs_to_excel(
     write_requests = []
     req_id = 1
 
-    def add_write_req(field_data, cell_map, sheet_name=KAPITAL_INPUT_SHEET):
+    def add_write_req(field_data, cell_map, fallback_sheet=KAPITAL_INPUT_SHEET):
         nonlocal req_id
         # Si field_data no es un diccionario válido, salimos
         if not isinstance(field_data, dict):
             return
 
-        for f, cell in cell_map.items():
+        for f, target_code in cell_map.items():
             # Buscamos 'f' dentro de 'field_data', NO en 'input_payload'
-            if not cell or f not in field_data:
+            if not target_code or f not in field_data:
                 continue
+
             mapped_val = _to_excel_input_value(f, field_data[f])
             headers = {"Content-Type": "application/json"}
             if session_id:
@@ -292,7 +307,7 @@ async def _write_inputs_to_excel(
             write_requests.append({
                 "id": str(req_id),
                 "method": "PATCH",
-                "url": _build_excel_range_url(email, item_id, sheet_name, cell),
+                "url": _build_excel_range_url(email, item_id, fallback_sheet, target_code),
                 "body": {"values": [[mapped_val]]},
                 "headers": headers
             })
@@ -350,14 +365,14 @@ async def _build_excel_output_entries(
     for m in KAPITAL_SENSITIVITY_CELL_MAP.keys():
         sensibilidad_entry[m] = {}
 
-    def add_read_req(category, sheet, block_map, market_name=None):
+    def add_read_req(category, fallback_sheet, block_map, market_name=None):
         nonlocal req_id
-        for field, cell in block_map.items():
+        for field, target_code in block_map.items():
             mapping[str(req_id)] = (category, market_name, field)
             read_requests.append({
                 "id": str(req_id),
                 "method": "GET",
-                "url": _build_excel_range_url(email, item_id, sheet, cell),
+                "url": _build_excel_range_url(email, item_id, fallback_sheet, target_code),
                 "headers": {"workbook-session-id": session_id} if session_id else {}
             })
             req_id += 1
@@ -482,6 +497,13 @@ async def _enrich_payload_with_excel_outputs(
 
     print(f"TIEMPO TOTAL ENRICH: {time.perf_counter() - t_start:.2f} seg", flush=True)
 
+    # Inyección explícita del BOA desde el input del usuario para asegurar su persistencia
+    if include_resultados and latest_input.get("beta_desapalancado") is not None:
+        resultados_entry["boa"] = _extract_number(latest_input["beta_desapalancado"])
+
+    if include_sensibilizacion and latest_input.get("beta_desapalancado") is not None:
+        sensibilidad_entry["boa"] = _extract_number(latest_input["beta_desapalancado"])
+
     enriched["resultados"] = [resultados_entry] if include_resultados else []
     enriched["sensibilizacion"] = [sensibilidad_entry] if include_sensibilizacion else []
 
@@ -508,7 +530,6 @@ def _normalize_calculation_data(
     if incoming_input:
         inputs = _stamp_entries([{**incoming_input, "created_at": _now_iso()}])
     else:
-        # Si no mandan nada (raro), rescatamos el último que existía
         old_inputs = _stamp_entries(existing.get("inputs") or [])
         if old_inputs:
             inputs = [old_inputs[0]]

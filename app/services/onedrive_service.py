@@ -744,6 +744,53 @@ class OneDriveService:
                 "formulas": data.get("formulas"),
             }
 
+    async def get_excel_chart_image(
+        self, 
+        item_id: str, 
+        sheet_name: str, 
+        chart_name: str, 
+        session_id: str | None = None
+    ) -> str:
+        """
+        Extrae la imagen en base64 de un gráfico de Excel usando Microsoft Graph.
+        """
+
+        token = await self._get_token()
+        headers = self._headers(token)
+        headers["Content-Type"] = "application/json"
+
+        if session_id:
+            headers["workbook-session-id"] = session_id
+
+        # Codificar los nombres para evitar errores en la URL
+        encoded_sheet = quote(sheet_name)
+        encoded_chart = quote(chart_name)
+
+        url = (
+            f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
+            f"/workbook/worksheets('{encoded_sheet}')/charts('{encoded_chart}')/image(width=0,height=0,fittingMode='fit')"
+        )
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.get(url, headers=headers)
+
+            # Manejo estándar de token expirado que ya tienes en otros métodos
+            if resp.status_code == 401:
+                token = await self._force_refresh_token()
+                headers = self._headers(token)
+                headers["Content-Type"] = "application/json"
+                if session_id:
+                    headers["workbook-session-id"] = session_id
+                resp = await client.get(url, headers=headers)
+
+            if resp.status_code != 200:
+                error_data = resp.text
+                logger.error(f"Error extrayendo gráfico {chart_name}: {error_data}")
+                return "" # Retornamos string vacío para no romper la generación del reporte
+
+            data = resp.json()
+            return data.get("value", "")
+
     async def read_excel_cell_with_session(
         self,
         item_id: str,

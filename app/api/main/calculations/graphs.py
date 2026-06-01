@@ -1,6 +1,5 @@
 # app/api/main/calculations_router.py
 import base64
-import time
 from pathlib import Path
 from app.models.cms import Page
 from jinja2 import Environment, FileSystemLoader

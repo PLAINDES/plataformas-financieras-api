@@ -55,6 +55,7 @@ class TemplateCodeBase(BaseModel):
     nombre: str = Field(..., max_length=255)
     code: str = Field(..., max_length=255)
     value: Optional[str] = Field(None, max_length=255)
+    coordinate: Optional[str] = Field(None, max_length=15)
 
 class TemplateCodeCreate(TemplateCodeBase):
     """Schema para crear un código de plantilla."""
@@ -68,6 +69,7 @@ class TemplateCodeUpdate(BaseModel):
     hoja: Optional[str] = Field(None, max_length=255)
     nombre: Optional[str] = Field(None, max_length=255)
     code: Optional[str] = Field(None, max_length=255)
+    coordinate: Optional[str] = Field(None, max_length=15)
     template_ids: Optional[List[int]] = None
 
 
