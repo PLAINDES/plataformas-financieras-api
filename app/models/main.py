@@ -82,6 +82,7 @@ class TemplateCode(Base):
     nombre = Column(String(255), nullable=False)
     code = Column(String(255), nullable=False)
     value = Column(String(255), nullable=True)
+    coordinate = Column(String(15), nullable=True)
 
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)

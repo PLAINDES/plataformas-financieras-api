@@ -123,16 +123,18 @@ def _process_and_save_cell_codes(db: Session, obj: MasterTemplate, extraction_re
                 existing.nombre = data.get("nombre", "Sin nombre")
                 existing.hoja = data.get("hoja")
                 existing.value = data.get("value")
+                if data.get("coordinate"):
+                    existing.coordinate = data.get("coordinate")
                 tc = existing
             else:
-                tc = TemplateCode(code=cn, nombre=data.get("nombre", "Sin nombre"), type=code_enum, hoja=data.get("hoja"), value=data.get("value"))
+                tc = TemplateCode(code=cn, nombre=data.get("nombre", "Sin nombre"), type=code_enum, hoja=data.get("hoja"), value=data.get("value"), coordinate=data.get("coordinate"))
                 db.add(tc)
 
             _link_code_to_master_template(obj, tc)
             db.commit()
             db.refresh(tc)
 
-            code_resp = {"id": tc.id, "code": tc.code, "nombre": tc.nombre, "hoja": tc.hoja, "type": template_type, "value": tc.value}
+            code_resp = {"id": tc.id, "code": tc.code, "nombre": tc.nombre, "hoja": tc.hoja, "type": template_type, "value": tc.value, "coordinate": tc.coordinate}
             created_codes[template_type].append(code_resp)
 
             if cn not in old_sets.get(template_type, set()):

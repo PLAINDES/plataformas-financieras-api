@@ -1,23 +1,27 @@
 # app/api/main/reports/router.py
 
+from urllib.parse import quote
+import asyncio
 import os
 import logging
 from typing import Optional
 from fastapi.responses import FileResponse
 import tempfile
-from fpdf import FPDF
+from app.models.templates import MasterTemplate
+from app.services.onedrive_service import get_onedrive_service
 from pypdf import PdfReader, PdfWriter
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
 from app.db.database import get_db
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status, UploadFile, File, Form
 from fastapi.encoders import jsonable_encoder
 from app.services.query_service import apply_filters
 from app.models.main import (
     Report,
     Cover,
     CalculationType,
-    Calculation
+    Calculation,
+    TemplateCode
 )
 from .utils import _sanitize_text, flatten_dict
 from app.api.main.calculations.router import get_default_or_latest_master_template
@@ -343,10 +347,11 @@ def get_report_content(report_id: int, db: Session = Depends(get_db)):
 
 @router.get("/reports/{report_id}/generate", response_class=FileResponse)
 async def generate_report_pdf(
+    request: Request,
     report_id: int,
     calculation_id: int,
     background_tasks: BackgroundTasks,
-    is_preview: bool = True, # Parámetro para limitar las páginas
+    is_preview: bool = True,
     db: Session = Depends(get_db)
 ):
     report = db.get(Report, report_id)
@@ -354,46 +359,189 @@ async def generate_report_pdf(
     if not report or not calculation:
         raise HTTPException(status_code=404, detail="Recurso no encontrado")
 
-    flat_data = flatten_dict(calculation.data)
+    browser = request.app.state.browser
+    if not browser:
+        raise HTTPException(status_code=500, detail="Browser instance not available")
 
+    onedrive_service = get_onedrive_service()
     html_content = report.contentEditor or ""
-    for key, value in flat_data.items():
-        placeholder = f"$${key}$$"
-        html_content = html_content.replace(placeholder, str(value) if value is not None else "")
+
+    session_id = calculation.data.get("active_session_id") if isinstance(calculation.data, dict) else None
+    item_id = report.template.onedrive_item_id
+
+    template_codes = db.execute(
+        select(TemplateCode)
+        .join(TemplateCode.master_templates)
+        .where(MasterTemplate.id == report.template_id)
+    ).scalars().all()
+
+    def _is_image_code(code_obj: TemplateCode) -> bool:
+        return code_obj.template_code_image_id is not None or code_obj.template_code_image is not None
+
+    def _normalise_code(raw_code: str) -> str:
+        return f"$${str(raw_code).replace('$$', '').upper()}$$"
+
+    # 1. Separar códigos encontrados en el HTML (Textos vs Gráficos)
+    text_codes = []
+    image_codes = []
+
+    for code_obj in template_codes:
+        normalized_code = _normalise_code(code_obj.code)
+        
+        if normalized_code not in html_content:
+            continue
+
+        if _is_image_code(code_obj):
+            image_codes.append((normalized_code, code_obj))
+        else:
+            text_codes.append((normalized_code, code_obj))
+    
+    # 2. PROCESAMIENTO DE GRÁFICOS
+    for normalized_code, code_obj in image_codes:
+        if not code_obj.hoja or not code_obj.nombre:
+            html_content = html_content.replace(
+                normalized_code,
+                f"<p><em>[Configuración incompleta: {normalized_code}]</em></p>"
+            )
+            continue
+
+        try:
+            base64_chart = await onedrive_service.get_excel_chart_image(
+                item_id=item_id,
+                sheet_name=code_obj.hoja,
+                chart_name=code_obj.nombre,
+                session_id=session_id,
+            )
+            if base64_chart:
+                img_tag = f'<img src="data:image/png;base64,{base64_chart}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />'
+                html_content = html_content.replace(normalized_code, img_tag)
+            else:
+                html_content = html_content.replace(normalized_code, f"<p><em>[Gráfico vacio: {code_obj.nombre}]</em></p>")
+        except Exception as e:
+            logger.error(f"Error procesando grafico {normalized_code}: {e}")
+            html_content = html_content.replace(normalized_code, f"<p><em>[Fallo al cargar: {code_obj.nombre}]</em></p>")
+
+    # 3. PROCESAMIENTO DE TEXTOS EN BATCH
+    if text_codes:
+        read_requests = []
+        mapping = {}  # req_id -> (normalized_code, code_obj)
+        req_id = 1
+        user_email = onedrive_service.config.user_email
+
+        # Armar el payload de peticiones para Graph API
+        for normalized_code, code_obj in text_codes:
+            if not code_obj.hoja or not code_obj.coordinate:
+                html_content = html_content.replace(
+                    normalized_code,
+                    f"<p><em>[Configuración incompleta: {normalized_code}]</em></p>"
+                )
+                continue
+
+            mapping[str(req_id)] = (normalized_code, code_obj)
+            
+            # URL relativa requerida por Microsoft Graph para $batch
+            url = f"/users/{user_email}/drive/items/{item_id}/workbook/worksheets('{quote(code_obj.hoja)}')/range(address='{quote(code_obj.coordinate)}')"
+            
+            read_requests.append({
+                "id": str(req_id),
+                "method": "GET",
+                "url": url,
+                "headers": {"workbook-session-id": session_id} if session_id else {}
+            })
+            req_id += 1
+
+        # Ejecutar peticiones en lotes de 20 simultáneamente
+        if read_requests:
+            chunks = [read_requests[i:i+20] for i in range(0, len(read_requests), 20)]
+            batch_tasks = [onedrive_service.execute_batch(chunk) for chunk in chunks]
+            batch_results = await asyncio.gather(*batch_tasks)
+
+            # Reemplazar resultados en el HTML
+            for chunk_responses in batch_results:
+                for resp in chunk_responses:
+                    request_id = resp.get("id")
+                    if not request_id or request_id not in mapping:
+                        continue
+
+                    norm_code, c_obj = mapping[request_id]
+                    rendered_value = None
+
+                    if resp.get("status") == 200:
+                        body = resp.get("body", {})
+                        text_block = body.get("text")
+                        values_block = body.get("values")
+
+                        # Prioriza texto renderizado (text), fallback a crudo (values)
+                        if isinstance(text_block, list) and text_block and isinstance(text_block[0], list) and text_block[0]:
+                            rendered_value = text_block[0][0]
+                        elif isinstance(values_block, list) and values_block and isinstance(values_block[0], list) and values_block[0]:
+                            rendered_value = values_block[0][0]
+
+                    if rendered_value is None or str(rendered_value).strip() == "":
+                        html_content = html_content.replace(norm_code, f"<p><em>[Sin valor: {c_obj.nombre}]</em></p>")
+                    else:
+                        html_content = html_content.replace(norm_code, str(rendered_value))
 
     html_content = _sanitize_text(html_content)
     html_content = html_content.replace("<code>", "<b>").replace("</code>", "</b>")
 
-    pdf = FPDF()
-
+    # Formato de portada
+    cover_html = ""
     if report.portada and report.portada.portada and report.portada.portada.url:
-        pdf.add_page()
-        try:
-            pdf.image(report.portada.portada.url, x=0, y=0, w=pdf.w, h=pdf.h)
-        except Exception:
-            pass
+        cover_url = report.portada.portada.url
+        cover_html = f"""
+        <div class="cover-container">
+            <img src="{cover_url}" class="cover-image" />
+        </div>
+        """
 
-    pdf.add_page()
-    pdf.set_font("Helvetica", size=12)
-    try:
-        pdf.write_html(html_content)
-    except Exception as e:
-        pdf.multi_cell(0, 10, txt=f"Error renderizando contenido: {str(e)}")
+    # Ensamblado HTML
+    full_html = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            @page {{ margin: 0; }}
+            body {{
+                font-family: Helvetica, Arial, sans-serif;
+                font-size: 12px; color: #000; margin: 0; padding: 0; background-color: #fff;
+            }}
+            .cover-container {{ width: 100vw; height: 100vh; page-break-after: always; }}
+            .cover-image {{ width: 100%; height: 100%; object-fit: cover; }}
+            .content-container {{ padding: 20mm; box-sizing: border-box; }}
+            p {{ text-align: justify; }}
+        </style>
+    </head>
+    <body>
+        {cover_html}
+        <div class="content-container">
+            {html_content}
+        </div>
+    </body>
+    </html>
+    """
 
+    # Generacion de PDF
     fd, temp_path = tempfile.mkstemp(suffix=".pdf")
     os.close(fd)
 
-    pdf.output(temp_path)
+    context = await browser.new_context()
+    page = await context.new_page()
+    try:
+        await page.set_content(full_html, wait_until="networkidle")
+        await page.pdf(path=temp_path, format="A4", print_background=True)
+    finally:
+        await page.close()
+        await context.close()
 
-    # Lógica de limitación de páginas
+    # Procesamiento de preview
     if is_preview:
         reader = PdfReader(temp_path)
         if len(reader.pages) > 2:
             writer = PdfWriter()
             writer.add_page(reader.pages[0])
             writer.add_page(reader.pages[1])
-
-            # Sobrescribir el archivo temporal con la versión de 2 páginas
             with open(temp_path, "wb") as f:
                 writer.write(f)
 
