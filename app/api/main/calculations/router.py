@@ -167,7 +167,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
         try:
             payload_data = await _enrich_payload_with_excel_outputs(
                 payload_data,
-                master_item_id, # Usamos el maestro como calculadora
+                master_item_id,
                 include_resultados=True,
                 include_sensibilizacion=include_sensibilizacion,
                 existing_session_id=prewarmed_session_id
@@ -180,8 +180,6 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
         user_id=payload.user_id,
         code=payload.code,
         type=calc_type,
-        #calculation_file_id=(file_meta.get("onedrive_item_id") or "")[:36] or None,
-        #data=_normalize_calculation_data(payload_data, #file_meta=file_meta),
         calculation_file_id=None,
         data=_normalize_calculation_data(payload_data),
     )
@@ -207,6 +205,7 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
         include_resultados_history = True
         include_sensibilizacion_history = True
         base_changed = True
+        enriched_sensibilizacion = None
 
         _inject_macro_data_into_payload(db, update_data["data"])
 
@@ -225,11 +224,9 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
             )
             has_beta_for_sensitivity = incoming_input_raw.get("beta_desapalancado") is not None
             base_changed = bool(incoming_input_base) and incoming_input_base != current_input_base
-
             include_input_history = True
             include_resultados_history = base_changed
             include_sensibilizacion_history = has_beta_for_sensitivity
-
             existing_session = None
 
             #  Prioridad: La sesión que acaba de mandar el frontend
@@ -248,9 +245,15 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
                     include_sensibilizacion=has_beta_for_sensitivity,
                     existing_session_id=existing_session
                 )
+                if isinstance(update_data["data"], dict):
+                    enriched_sensibilizacion = update_data["data"].get("sensibilizacion")
                 print(f"[TIMER] TIEMPO TOTAL DEL ENDPOINT PUT: {time.perf_counter() - t_put:.2f} seg", flush=True)
             except (HTTPException, ValueError, TypeError, RuntimeError, httpx.TimeoutException, httpx.HTTPError) as exc:
                 logger.warning("Could not enrich kapital update payload from Excel: %s", exc)
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="No se pudo recalcular el cálculo Kapital en Excel"
+                ) from exc
 
         update_data["data"] = _normalize_calculation_data(
             payload_data=update_data["data"],
@@ -260,6 +263,10 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
             include_sensibilizacion_history=include_sensibilizacion_history,
         )
 
+        if has_beta_for_sensitivity and isinstance(update_data["data"], dict):
+            if not update_data["data"].get("sensibilizacion") and isinstance(enriched_sensibilizacion, list):
+                update_data["data"]["sensibilizacion"] = enriched_sensibilizacion
+
         if isinstance(update_data["data"], dict) and "active_session_id" not in update_data["data"]:
             update_data["data"]["active_session_id"] = existing_session
 
@@ -268,6 +275,71 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
     db.commit()
     db.refresh(calculation)
     return CalculationResponse.model_validate(calculation)
+
+
+@router.post("/calculations/{calculation_id}/refresh", response_model=CalculationResponse)
+async def refresh_calculation(
+    calculation_id: int, 
+    payload: dict = Body({}), 
+    db: Session = Depends(get_db)
+):
+    """
+    Sincroniza y recalcula el estado de la hoja de cálculo en OneDrive.
+    Acepta un prewarmed_session_id para optimizar recursos de Microsoft Graph.
+    """
+    calculation = db.get(Calculation, calculation_id)
+    if not calculation:
+        raise HTTPException(status_code=404, detail="Calculation not found")
+
+    if calculation.type != CalculationType.KAPITAL:
+        return CalculationResponse.model_validate(calculation)
+
+    latest_input = _extract_latest_input_from_history(calculation.data)
+    if not latest_input:
+        raise HTTPException(status_code=400, detail="No se encontraron inputs históricos")
+
+    # Recuperar el ID precalentado enviado por el cliente frontend
+    prewarmed_session_id = payload.get("prewarmed_session_id")
+
+    refresh_payload = {"inputs": [latest_input]}
+    _inject_macro_data_into_payload(db, refresh_payload)
+
+    source_template = get_default_or_latest_master_template(db)
+    if not source_template or not source_template.onedrive_item_id:
+        raise HTTPException(status_code=400, detail="Plantilla maestra no configurada")
+
+    try:
+        # Enriquecer y forzar recálculo usando la sesión existente o creando una nueva
+        enriched_data = await _enrich_payload_with_excel_outputs(
+            payload_data=refresh_payload,
+            item_id=source_template.onedrive_item_id,
+            include_resultados=True,
+            include_sensibilizacion=latest_input.get("beta_desapalancado") is not None,
+            existing_session_id=prewarmed_session_id
+        )
+    except Exception as exc:
+        logger.error(f"Fallo durante la ejecución de actualización del Excel: {exc}")
+        raise HTTPException(status_code=500, detail="Error de sincronización con el motor de cálculo")
+
+    # Mantener e inyectar el session id activo resultante para que lo herede el PDF posterior
+    session_id_to_persist = enriched_data.get("active_session_id") or prewarmed_session_id
+
+    calculation.data = _normalize_calculation_data(
+        payload_data=enriched_data,
+        existing_data=calculation.data,
+        include_resultados_history=True,
+        include_sensibilizacion_history=False
+    )
+
+    if isinstance(calculation.data, dict):
+        calculation.data["active_session_id"] = session_id_to_persist
+
+    db.commit()
+    db.refresh(calculation)
+
+    return CalculationResponse.model_validate(calculation)
+
+
 
 @router.delete("/calculations/{calculation_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_calculation(calculation_id: int, db: Session = Depends(get_db)):

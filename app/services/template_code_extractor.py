@@ -13,6 +13,7 @@ import logging
 from typing import List, Dict, Literal, Optional
 from io import BytesIO
 import openpyxl
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 from app.core.constants import TEMPLATE_SHEET_TO_TYPE
 
@@ -184,12 +185,17 @@ class TemplateCodeExtractor:
                         continue
                     seen_codes.add(code_formatted)
 
+                    # Obtener coordenada del valor (2 columnas a la derecha) e.g. "G67", "F13", etc.
+                    target_col = cell.column + 2
+                    coordinate_value = f"{get_column_letter(target_col)}{cell.row}" if target_col > 0 else None
+
                     codes.append({
                         "code": code_formatted,
                         "nombre": self._get_cell_name(cell),
                         "value": self._get_cell_value(cell),
                         "hoja": sheet_name,
                         "type": template_type,
+                        "coordinate": coordinate_value,
                     })
 
         return codes

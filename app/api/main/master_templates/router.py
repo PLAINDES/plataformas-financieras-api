@@ -648,6 +648,7 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
             "nombre": code.nombre,
             "code": normalized_code,
             "value": code.value,
+            "coordinate": code.coordinate,
             "template_ids": [t.id for t in code.master_templates] if hasattr(code, "master_templates") else [],
             "created_at": code.created_at,
             "updated_at": code.updated_at,
