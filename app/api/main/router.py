@@ -1,33 +1,30 @@
 # app/api/main/router.py
-import os
 import logging
-from typing import List, Optional, Any
 from datetime import datetime
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select, or_
-from app.models.cms import Media
+from typing import Any, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.db.database import get_db
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
-from fastapi.encoders import jsonable_encoder
-from app.services.query_service import apply_filters
 from app.models.main import (
-    TemplateComplement,
+    AppConfiguration,
     Calculation,
-    Report,
-    Cover,
     CalculationType,
-    AppConfiguration
+    TemplateComplement,
 )
-from app.api.main.calculations.router import get_default_or_latest_master_template
+
 logger = logging.getLogger(__name__)
-from app.services.aws_service import s3_service
 from app.schemas.main import (
-    ReportUpdate,
-    TemplateComplementCreate, TemplateComplementUpdate, TemplateComplementResponse,
-    AppConfigurationUpdate
+    AppConfigurationUpdate,
+    TemplateComplementCreate,
+    TemplateComplementResponse,
+    TemplateComplementUpdate,
 )
 
 router = APIRouter(prefix="/main", tags=["Main"])
+
 
 def _get_latest_calculation_by_user_and_type(
     db: Session, user_id: int, calc_type: CalculationType
@@ -47,6 +44,7 @@ def _get_latest_calculation_by_user_and_type(
 def main_health():
     return {"status": "ok"}
 
+
 # ==================== TEMPLATE COMPLEMENTS ====================
 @router.get("/template-complements", response_model=List[TemplateComplementResponse])
 def list_template_complements(db: Session = Depends(get_db)):
@@ -58,7 +56,10 @@ def list_template_complements(db: Session = Depends(get_db)):
     complement = result.scalars().first()
     return [TemplateComplementResponse.model_validate(complement)] if complement else []
 
-@router.get("/template-complements/{complement_id}", response_model=TemplateComplementResponse)
+
+@router.get(
+    "/template-complements/{complement_id}", response_model=TemplateComplementResponse
+)
 def get_template_complement_by_id(complement_id: int, db: Session = Depends(get_db)):
     complement = db.get(TemplateComplement, complement_id)
     if not complement or complement.deleted_at is not None:
@@ -74,19 +75,19 @@ def get_template_complement(
     country: Optional[str] = Query(None),
     year: Optional[int] = Query(None),
     period: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Any:
 
     if only_name and complement_name != "damodaran":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El query parameter 'only-name' es exclusivo para el complemento 'damodaran'."
+            detail="El query parameter 'only-name' es exclusivo para el complemento 'damodaran'.",
         )
 
     if only_date and complement_name != "rf":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El query parameter 'only-date' es exclusivo para el complemento 'rf'."
+            detail="El query parameter 'only-date' es exclusivo para el complemento 'rf'.",
         )
 
     result = db.execute(
@@ -129,8 +130,12 @@ def get_template_complement(
                 if db_fecha == search_year and db_periodo == search_period:
                     # Buscar la llave del país ignorando mayúsculas y espacios
                     country_key = next(
-                        (k for k in item.keys() if str(k).strip().lower() == search_country),
-                        None
+                        (
+                            k
+                            for k in item.keys()
+                            if str(k).strip().lower() == search_country
+                        ),
+                        None,
                     )
                     if country_key:
                         return {"valor": item.get(country_key)}
@@ -180,34 +185,41 @@ def get_template_complement(
     response_model=TemplateComplementResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_template_complement(payload: TemplateComplementCreate, db: Session = Depends(get_db)):
+def create_template_complement(
+    payload: TemplateComplementCreate, db: Session = Depends(get_db)
+):
     """
     Creates a new complement. Soft-deletes any existing complement with the same nombre
     so that only one active record per nombre exists at a time.
     """
     # Soft-delete all previous records with the same nombre
-    old_records = db.execute(
-        select(TemplateComplement)
-        .where(TemplateComplement.nombre == payload.nombre)
-        .where(TemplateComplement.deleted_at.is_(None))
-    ).scalars().all()
+    old_records = (
+        db.execute(
+            select(TemplateComplement)
+            .where(TemplateComplement.nombre == payload.nombre)
+            .where(TemplateComplement.deleted_at.is_(None))
+        )
+        .scalars()
+        .all()
+    )
 
     merged_data = payload.data
 
     # Lógica de Merge si ya existe historial
     if old_records and payload.nombre in ["damodaran", "riesgo", "tax"]:
-        old_record = old_records[0] # El activo más reciente
+        old_record = old_records[0]  # El activo más reciente
         old_data = old_record.data if isinstance(old_record.data, list) else []
         new_data = payload.data if isinstance(payload.data, list) else []
 
         # Extraer los años que vienen en el nuevo Excel para no duplicarlos
-        incoming_years = {str(item.get("fecha")) for item in new_data if item.get("fecha")}
+        incoming_years = {
+            str(item.get("fecha")) for item in new_data if item.get("fecha")
+        }
 
         # Retener solo los datos del JSON antiguo que NO correspondan a los años subidos
         # (Esto permite actualizar un año si se vuelve a subir)
         retained_data = [
-            item for item in old_data
-            if str(item.get("fecha")) not in incoming_years
+            item for item in old_data if str(item.get("fecha")) not in incoming_years
         ]
 
         # Combinar el historial retenido con la nueva carga
@@ -229,7 +241,9 @@ def create_template_complement(payload: TemplateComplementCreate, db: Session = 
     return TemplateComplementResponse.model_validate(complement)
 
 
-@router.put("/template-complements/{complement_id}", response_model=TemplateComplementResponse)
+@router.put(
+    "/template-complements/{complement_id}", response_model=TemplateComplementResponse
+)
 def update_template_complement(
     complement_id: int, payload: TemplateComplementUpdate, db: Session = Depends(get_db)
 ):
@@ -244,7 +258,9 @@ def update_template_complement(
     return TemplateComplementResponse.model_validate(complement)
 
 
-@router.delete("/template-complements/{complement_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/template-complements/{complement_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 def delete_template_complement(complement_id: int, db: Session = Depends(get_db)):
     complement = db.get(TemplateComplement, complement_id)
     if not complement or complement.deleted_at is not None:
@@ -253,350 +269,20 @@ def delete_template_complement(complement_id: int, db: Session = Depends(get_db)
     db.commit()
     return None
 
-# ==================== COVERS ====================
-
-@router.get("/covers")
-def list_covers(db: Session = Depends(get_db)):
-    result = db.execute(
-        select(Cover)
-        .where(Cover.deleted_at.is_(None))
-        .options(
-            joinedload(Cover.portada),
-            joinedload(Cover.primer_imagen_footer),
-            joinedload(Cover.segundo_imagen_footer),
-            joinedload(Cover.logo_superior),
-            joinedload(Cover.imagen_central),
-            joinedload(Cover.logo_inferior),
-            joinedload(Cover.imagen_fondo),
-        )
-    )
-    covers = result.unique().scalars().all()
-    return [_cover_to_dict(c) for c in covers]
-
-
-@router.get("/covers/{cover_id}")
-def get_cover(cover_id: int, db: Session = Depends(get_db)):
-    result = db.execute(
-        select(Cover)
-        .where(Cover.id == cover_id, Cover.deleted_at.is_(None))
-        .options(
-            joinedload(Cover.portada),
-            joinedload(Cover.primer_imagen_footer),
-            joinedload(Cover.segundo_imagen_footer),
-            joinedload(Cover.logo_superior),
-            joinedload(Cover.imagen_central),
-            joinedload(Cover.logo_inferior),
-            joinedload(Cover.imagen_fondo),
-        )
-    )
-    cover = result.unique().scalar_one_or_none()
-    if not cover:
-        raise HTTPException(status_code=404, detail="Cover not found")
-    return _cover_to_dict(cover)
-
-
-def _create_media_from_upload(db: Session, file: UploadFile) -> Optional[int]:
-    if not file or not file.filename:
-        return None
-
-    try:
-        s3_result = s3_service.upload_file(file, folder="covers")
-    except Exception as e:
-        # Si falla AWS S3, lanzamos un 400 para que el frontend lo pueda mostrar
-        # y no cause un 500 que rompe los headers CORS.
-        raise HTTPException(status_code=400, detail=f"Error subiendo archivo a AWS S3: {str(e)}")
-
-    media = Media(
-        filename=s3_result["object_key"].split("/")[-1],
-        original_name=file.filename,
-        mime_type=file.content_type or "application/octet-stream",
-        url=s3_result["file_url"],
-        storage_path=s3_result["object_key"],
-        folder="/covers"
-    )
-    db.add(media)
-    db.flush()  # Para obtener el ID generado
-    return media.id
-
-
-@router.post("/covers", status_code=status.HTTP_201_CREATED)
-def create_cover(
-    nombre: str = Form(...),
-    tipo: str = Form(...),
-    portada_id: Optional[int] = Form(None),
-    primer_imagen_footer_id: Optional[int] = Form(None),
-    segundo_imagen_footer_id: Optional[int] = Form(None),
-    logo_superior_id: Optional[int] = Form(None),
-    imagen_central_id: Optional[int] = Form(None),
-    logo_inferior_id: Optional[int] = Form(None),
-    imagen_fondo_id: Optional[int] = Form(None),
-
-    portada: Optional[UploadFile] = File(None),
-    primer_imagen_footer: Optional[UploadFile] = File(None),
-    segundo_imagen_footer: Optional[UploadFile] = File(None),
-    logo_superior: Optional[UploadFile] = File(None),
-    imagen_central: Optional[UploadFile] = File(None),
-    logo_inferior: Optional[UploadFile] = File(None),
-    imagen_fondo: Optional[UploadFile] = File(None),
-
-    db: Session = Depends(get_db)
-):
-    # Subir nuevos archivos a S3 y crear los Media correspondientes si existen
-    if portada and portada.filename:
-        portada_id = _create_media_from_upload(db, portada)
-    if primer_imagen_footer and primer_imagen_footer.filename:
-        primer_imagen_footer_id = _create_media_from_upload(db, primer_imagen_footer)
-    if segundo_imagen_footer and segundo_imagen_footer.filename:
-        segundo_imagen_footer_id = _create_media_from_upload(db, segundo_imagen_footer)
-    if logo_superior and logo_superior.filename:
-        logo_superior_id = _create_media_from_upload(db, logo_superior)
-    if imagen_central and imagen_central.filename:
-        imagen_central_id = _create_media_from_upload(db, imagen_central)
-    if logo_inferior and logo_inferior.filename:
-        logo_inferior_id = _create_media_from_upload(db, logo_inferior)
-    if imagen_fondo and imagen_fondo.filename:
-        imagen_fondo_id = _create_media_from_upload(db, imagen_fondo)
-
-    cover = Cover(
-        nombre=nombre,
-        tipo=tipo,
-        portada_id=portada_id,
-        primer_imagen_footer_id=primer_imagen_footer_id,
-        segundo_imagen_footer_id=segundo_imagen_footer_id,
-        logo_superior_id=logo_superior_id,
-        imagen_central_id=imagen_central_id,
-        logo_inferior_id=logo_inferior_id,
-        imagen_fondo_id=imagen_fondo_id,
-    )
-    db.add(cover)
-    db.commit()
-    db.refresh(cover)
-    return get_cover(cover.id, db)
-
-
-@router.put("/covers/{cover_id}")
-def update_cover(
-    cover_id: int,
-    nombre: Optional[str] = Form(None),
-    tipo: Optional[str] = Form(None),
-    portada_id: Optional[int] = Form(None),
-    primer_imagen_footer_id: Optional[int] = Form(None),
-    segundo_imagen_footer_id: Optional[int] = Form(None),
-    logo_superior_id: Optional[int] = Form(None),
-    imagen_central_id: Optional[int] = Form(None),
-    logo_inferior_id: Optional[int] = Form(None),
-    imagen_fondo_id: Optional[int] = Form(None),
-
-    portada: Optional[UploadFile] = File(None),
-    primer_imagen_footer: Optional[UploadFile] = File(None),
-    segundo_imagen_footer: Optional[UploadFile] = File(None),
-    logo_superior: Optional[UploadFile] = File(None),
-    imagen_central: Optional[UploadFile] = File(None),
-    logo_inferior: Optional[UploadFile] = File(None),
-    imagen_fondo: Optional[UploadFile] = File(None),
-
-    db: Session = Depends(get_db),
-):
-    cover = db.get(Cover, cover_id)
-    if not cover or cover.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Cover not found")
-
-    now = datetime.utcnow()
-
-    # Si vienen nuevos archivos, intentar eliminar los antiguos en S3
-    # y marcar los Media existentes como borrados (soft-delete) antes de subir
-    if portada and portada.filename:
-        existing = getattr(cover, "portada")
-        if existing:
-            try:
-                s3_service.delete_file(existing.storage_path)
-            except Exception:
-                pass
-            existing.deleted_at = now
-            db.add(existing)
-            cover.portada_id = None
-        portada_id = _create_media_from_upload(db, portada)
-
-    if primer_imagen_footer and primer_imagen_footer.filename:
-        existing = getattr(cover, "primer_imagen_footer")
-        if existing:
-            try:
-                s3_service.delete_file(existing.storage_path)
-            except Exception:
-                pass
-            existing.deleted_at = now
-            db.add(existing)
-            cover.primer_imagen_footer_id = None
-        primer_imagen_footer_id = _create_media_from_upload(db, primer_imagen_footer)
-
-    if segundo_imagen_footer and segundo_imagen_footer.filename:
-        existing = getattr(cover, "segundo_imagen_footer")
-        if existing:
-            try:
-                s3_service.delete_file(existing.storage_path)
-            except Exception:
-                pass
-            existing.deleted_at = now
-            db.add(existing)
-            cover.segundo_imagen_footer_id = None
-        segundo_imagen_footer_id = _create_media_from_upload(db, segundo_imagen_footer)
-
-    if logo_superior and logo_superior.filename:
-        existing = getattr(cover, "logo_superior")
-        if existing:
-            try:
-                s3_service.delete_file(existing.storage_path)
-            except Exception:
-                pass
-            existing.deleted_at = now
-            db.add(existing)
-            cover.logo_superior_id = None
-        logo_superior_id = _create_media_from_upload(db, logo_superior)
-
-    if imagen_central and imagen_central.filename:
-        existing = getattr(cover, "imagen_central")
-        if existing:
-            try:
-                s3_service.delete_file(existing.storage_path)
-            except Exception:
-                pass
-            existing.deleted_at = now
-            db.add(existing)
-            cover.imagen_central_id = None
-        imagen_central_id = _create_media_from_upload(db, imagen_central)
-
-    if logo_inferior and logo_inferior.filename:
-        existing = getattr(cover, "logo_inferior")
-        if existing:
-            try:
-                s3_service.delete_file(existing.storage_path)
-            except Exception:
-                pass
-            existing.deleted_at = now
-            db.add(existing)
-            cover.logo_inferior_id = None
-        logo_inferior_id = _create_media_from_upload(db, logo_inferior)
-
-    if imagen_fondo and imagen_fondo.filename:
-        existing = getattr(cover, "imagen_fondo")
-        if existing:
-            try:
-                s3_service.delete_file(existing.storage_path)
-            except Exception:
-                pass
-            existing.deleted_at = now
-            db.add(existing)
-            cover.imagen_fondo_id = None
-        imagen_fondo_id = _create_media_from_upload(db, imagen_fondo)
-
-    # Actualizar campos si se proporcionaron
-    if nombre is not None:
-        cover.nombre = nombre
-    if tipo is not None:
-        cover.tipo = tipo
-
-    # Asociar nuevos media ids si fueron proporcionados
-    if portada_id is not None:
-        cover.portada_id = portada_id
-    if primer_imagen_footer_id is not None:
-        cover.primer_imagen_footer_id = primer_imagen_footer_id
-    if segundo_imagen_footer_id is not None:
-        cover.segundo_imagen_footer_id = segundo_imagen_footer_id
-    if logo_superior_id is not None:
-        cover.logo_superior_id = logo_superior_id
-    if imagen_central_id is not None:
-        cover.imagen_central_id = imagen_central_id
-    if logo_inferior_id is not None:
-        cover.logo_inferior_id = logo_inferior_id
-    if imagen_fondo_id is not None:
-        cover.imagen_fondo_id = imagen_fondo_id
-
-    db.commit()
-    db.refresh(cover)
-    return get_cover(cover_id, db)
-
-
-@router.delete("/covers/{cover_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_cover(cover_id: int, db: Session = Depends(get_db)):
-    cover = db.get(Cover, cover_id)
-    if not cover or cover.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Cover not found")
-    now = datetime.utcnow()
-
-    # Campos de Media relacionados con la cover
-    media_fields = [
-        "portada",
-        "primer_imagen_footer",
-        "segundo_imagen_footer",
-        "logo_superior",
-        "imagen_central",
-        "logo_inferior",
-        "imagen_fondo",
-    ]
-
-    # Intentar eliminar objetos en S3 y marcar los Media como borrados (soft-delete)
-    for field in media_fields:
-        media = getattr(cover, field)
-        if media:
-            try:
-                # storage_path contiene el object key
-                s3_service.delete_file(media.storage_path)
-            except Exception:
-                # No interrumpimos si falla la eliminación en S3; marcamos el media como borrado de todos modos
-                pass
-
-            media.deleted_at = now
-            db.add(media)
-            # Desasociar la media de la cover
-            setattr(cover, f"{field}_id", None)
-
-    cover.deleted_at = now
-    db.commit()
-    return None
-
-
-# ==================== HELPER FUNCTIONS ====================
-
-def _media_to_dict(media: Media | None) -> dict | None:
-    if not media:
-        return None
-    return {
-        "id": media.id,
-        "url": media.url,
-        "filename": media.filename,
-        "original_name": media.original_name,
-        "mime_type": media.mime_type,
-        "alt_text": media.alt_text,
-    }
-
-
-def _cover_to_dict(cover: Cover | None) -> dict | None:
-    if not cover:
-        return None
-    return {
-        "id": cover.id,
-        "nombre": cover.nombre,
-        "tipo": cover.tipo.value,
-        "portada": _media_to_dict(cover.portada),
-        "primer_imagen_footer": _media_to_dict(cover.primer_imagen_footer),
-        "segundo_imagen_footer": _media_to_dict(cover.segundo_imagen_footer),
-        "logo_superior": _media_to_dict(cover.logo_superior),
-        "imagen_central": _media_to_dict(cover.imagen_central),
-        "logo_inferior": _media_to_dict(cover.logo_inferior),
-        "imagen_fondo": _media_to_dict(cover.imagen_fondo),
-    }
-
 
 # ==================== APP CONFIGURATIONS ====================
+
 
 @router.get("/settings/{module}", response_model=dict)
 def get_app_settings(module: str, db: Session = Depends(get_db)):
     """
     Obtiene la configuración de un módulo en formato JSON.
     """
-    config = db.execute(
-        select(AppConfiguration).where(AppConfiguration.module == module)
-    ).scalars().first()
+    config = (
+        db.execute(select(AppConfiguration).where(AppConfiguration.module == module))
+        .scalars()
+        .first()
+    )
 
     if not config:
         # Valores por defecto inyectados si la tabla está vacía
@@ -609,16 +295,16 @@ def get_app_settings(module: str, db: Session = Depends(get_db)):
 
 @router.patch("/settings/{module}", response_model=dict)
 def update_app_settings(
-    module: str,
-    payload: AppConfigurationUpdate,
-    db: Session = Depends(get_db)
+    module: str, payload: AppConfigurationUpdate, db: Session = Depends(get_db)
 ):
     """
     Crea o actualiza la configuración JSON de un módulo.
     """
-    config = db.execute(
-        select(AppConfiguration).where(AppConfiguration.module == module)
-    ).scalars().first()
+    config = (
+        db.execute(select(AppConfiguration).where(AppConfiguration.module == module))
+        .scalars()
+        .first()
+    )
 
     if config:
         # Se genera un nuevo diccionario en memoria utilizando dict()
@@ -627,10 +313,7 @@ def update_app_settings(
         config.settings = current_settings
     else:
         # Si es la primera vez que se guarda, creamos el registro
-        config = AppConfiguration(
-            module=module,
-            settings=payload.settings
-        )
+        config = AppConfiguration(module=module, settings=payload.settings)
         db.add(config)
 
     db.commit()

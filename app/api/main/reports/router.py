@@ -1,38 +1,45 @@
 # app/api/main/reports/router.py
 
-from urllib.parse import quote
 import asyncio
-import os
 import logging
-from typing import Optional
-from fastapi.responses import FileResponse
+import os
 import tempfile
+from typing import Optional
+from urllib.parse import quote
+
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse
+from pypdf import PdfReader, PdfWriter
+from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload
+
+from app.api.main.calculations.router import get_default_or_latest_master_template
+from app.db.database import get_db
+from app.models.main import Calculation, CalculationType, Cover, Report, TemplateCode
 from app.models.templates import MasterTemplate
 from app.services.onedrive_service import get_onedrive_service
-from pypdf import PdfReader, PdfWriter
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select
-from app.db.database import get_db
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status, UploadFile, File, Form
-from fastapi.encoders import jsonable_encoder
 from app.services.query_service import apply_filters
-from app.models.main import (
-    Report,
-    Cover,
-    CalculationType,
-    Calculation,
-    TemplateCode
-)
-from .utils import _sanitize_text, flatten_dict
-from app.api.main.calculations.router import get_default_or_latest_master_template
+
 logger = logging.getLogger(__name__)
-from app.schemas.main import (
-    ReportUpdate
-)
-from app.api.main.router import _cover_to_dict
+from app.api.main.covers.router import _cover_to_dict
 from app.api.main.master_templates import router as master_templates_router
+from app.schemas.main import ReportUpdate
+
+from .utils import _sanitize_text
 
 router = APIRouter(prefix="/main", tags=["Main"])
+
 
 # Función para borrar el archivo temporal
 def delete_temp_file(path: str):
@@ -40,12 +47,14 @@ def delete_temp_file(path: str):
         os.remove(path)
         print(f"Archivo temporal eliminado: {path}")
 
+
 def _report_to_response(report: Report) -> dict:
     def _iso(v):
         try:
             return v.isoformat() if v is not None and hasattr(v, "isoformat") else v
         except Exception:
             return str(v)
+
     return {
         "id": report.id,
         "nombre": report.nombre,
@@ -150,7 +159,7 @@ async def get_current_codes(db: Session = Depends(get_db)):
                     "code": code_val,
                     "type": t,
                     "hoja": None,
-                    "value": None
+                    "value": None,
                 }
             else:
                 try:
@@ -159,11 +168,14 @@ async def get_current_codes(db: Session = Depends(get_db)):
                     c_dict = dict(c)
                 entry = {
                     "id": c_dict.get("id", -1),
-                    "nombre": c_dict.get("nombre") or c_dict.get("original_name") or c_dict.get("filename") or c_dict.get("code"),
+                    "nombre": c_dict.get("nombre")
+                    or c_dict.get("original_name")
+                    or c_dict.get("filename")
+                    or c_dict.get("code"),
                     "code": c_dict.get("code"),
                     "type": t,
                     "hoja": c_dict.get("hoja"),
-                    "value": c_dict.get("value")
+                    "value": c_dict.get("value"),
                 }
 
             img_url = image_map.get(entry.get("code"))
@@ -174,7 +186,9 @@ async def get_current_codes(db: Session = Depends(get_db)):
         return result
 
     # `get_template_codes` returns keys: template_id, template_name, codes, statistics
-    codes_block = codes_payload.get("codes", {}) if isinstance(codes_payload, dict) else {}
+    codes_block = (
+        codes_payload.get("codes", {}) if isinstance(codes_payload, dict) else {}
+    )
 
     return {
         "template_id": codes_payload.get("template_id"),
@@ -195,6 +209,7 @@ async def get_current_codes(db: Session = Depends(get_db)):
 async def get_default_template_codes(db: Session = Depends(get_db)):
     """Alias explícito para obtener los códigos de la plantilla maestra por defecto."""
     return await get_current_codes(db)
+
 
 @router.get("/reports/{report_id}")
 def get_report(report_id: int, db: Session = Depends(get_db)):
@@ -243,14 +258,16 @@ def create_report(data: ReportUpdate, db: Session = Depends(get_db)):
         contentEditor=data.contentEditor,
         portada_id=data.portada_id,
         activo=data.activo if data.activo is not None else True,
-        type=CalculationType(data.type) if getattr(data, "type", None) else CalculationType.KAPITAL,
+        type=CalculationType(data.type)
+        if getattr(data, "type", None)
+        else CalculationType.KAPITAL,
     )
 
     db.add(report)
     db.commit()
     db.refresh(report)
     logger.info(f"_report_to_response(report): {_report_to_response(report)}")
-    response =_report_to_response(report)
+    response = _report_to_response(report)
     return jsonable_encoder(response)
 
 
@@ -294,6 +311,7 @@ def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_
 
 
 STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../files")
+
 
 @router.post("/reports/{report_id}/upload", status_code=status.HTTP_200_OK)
 async def upload_report_file(
@@ -345,6 +363,7 @@ def get_report_content(report_id: int, db: Session = Depends(get_db)):
     with open(html_path, "r", encoding="utf-8") as f:
         return {"html": f.read()}
 
+
 @router.get("/reports/{report_id}/generate", response_class=FileResponse)
 async def generate_report_pdf(
     request: Request,
@@ -352,7 +371,7 @@ async def generate_report_pdf(
     calculation_id: int,
     background_tasks: BackgroundTasks,
     is_preview: bool = True,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     report = db.get(Report, report_id)
     calculation = db.get(Calculation, calculation_id)
@@ -366,17 +385,28 @@ async def generate_report_pdf(
     onedrive_service = get_onedrive_service()
     html_content = report.contentEditor or ""
 
-    session_id = calculation.data.get("active_session_id") if isinstance(calculation.data, dict) else None
+    session_id = (
+        calculation.data.get("active_session_id")
+        if isinstance(calculation.data, dict)
+        else None
+    )
     item_id = report.template.onedrive_item_id
 
-    template_codes = db.execute(
-        select(TemplateCode)
-        .join(TemplateCode.master_templates)
-        .where(MasterTemplate.id == report.template_id)
-    ).scalars().all()
+    template_codes = (
+        db.execute(
+            select(TemplateCode)
+            .join(TemplateCode.master_templates)
+            .where(MasterTemplate.id == report.template_id)
+        )
+        .scalars()
+        .all()
+    )
 
     def _is_image_code(code_obj: TemplateCode) -> bool:
-        return code_obj.template_code_image_id is not None or code_obj.template_code_image is not None
+        return (
+            code_obj.template_code_image_id is not None
+            or code_obj.template_code_image is not None
+        )
 
     def _normalise_code(raw_code: str) -> str:
         return f"$${str(raw_code).replace('$$', '').upper()}$$"
@@ -387,7 +417,7 @@ async def generate_report_pdf(
 
     for code_obj in template_codes:
         normalized_code = _normalise_code(code_obj.code)
-        
+
         if normalized_code not in html_content:
             continue
 
@@ -395,13 +425,13 @@ async def generate_report_pdf(
             image_codes.append((normalized_code, code_obj))
         else:
             text_codes.append((normalized_code, code_obj))
-    
+
     # 2. PROCESAMIENTO DE GRÁFICOS
     for normalized_code, code_obj in image_codes:
         if not code_obj.hoja or not code_obj.nombre:
             html_content = html_content.replace(
                 normalized_code,
-                f"<p><em>[Configuración incompleta: {normalized_code}]</em></p>"
+                f"<p><em>[Configuración incompleta: {normalized_code}]</em></p>",
             )
             continue
 
@@ -416,10 +446,15 @@ async def generate_report_pdf(
                 img_tag = f'<img src="data:image/png;base64,{base64_chart}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />'
                 html_content = html_content.replace(normalized_code, img_tag)
             else:
-                html_content = html_content.replace(normalized_code, f"<p><em>[Gráfico vacio: {code_obj.nombre}]</em></p>")
+                html_content = html_content.replace(
+                    normalized_code,
+                    f"<p><em>[Gráfico vacio: {code_obj.nombre}]</em></p>",
+                )
         except Exception as e:
             logger.error(f"Error procesando grafico {normalized_code}: {e}")
-            html_content = html_content.replace(normalized_code, f"<p><em>[Fallo al cargar: {code_obj.nombre}]</em></p>")
+            html_content = html_content.replace(
+                normalized_code, f"<p><em>[Fallo al cargar: {code_obj.nombre}]</em></p>"
+            )
 
     # 3. PROCESAMIENTO DE TEXTOS EN BATCH
     if text_codes:
@@ -433,26 +468,32 @@ async def generate_report_pdf(
             if not code_obj.hoja or not code_obj.coordinate:
                 html_content = html_content.replace(
                     normalized_code,
-                    f"<p><em>[Configuración incompleta: {normalized_code}]</em></p>"
+                    f"<p><em>[Configuración incompleta: {normalized_code}]</em></p>",
                 )
                 continue
 
             mapping[str(req_id)] = (normalized_code, code_obj)
-            
+
             # URL relativa requerida por Microsoft Graph para $batch
             url = f"/users/{user_email}/drive/items/{item_id}/workbook/worksheets('{quote(code_obj.hoja)}')/range(address='{quote(code_obj.coordinate)}')"
-            
-            read_requests.append({
-                "id": str(req_id),
-                "method": "GET",
-                "url": url,
-                "headers": {"workbook-session-id": session_id} if session_id else {}
-            })
+
+            read_requests.append(
+                {
+                    "id": str(req_id),
+                    "method": "GET",
+                    "url": url,
+                    "headers": {"workbook-session-id": session_id}
+                    if session_id
+                    else {},
+                }
+            )
             req_id += 1
 
         # Ejecutar peticiones en lotes de 20 simultáneamente
         if read_requests:
-            chunks = [read_requests[i:i+20] for i in range(0, len(read_requests), 20)]
+            chunks = [
+                read_requests[i : i + 20] for i in range(0, len(read_requests), 20)
+            ]
             batch_tasks = [onedrive_service.execute_batch(chunk) for chunk in chunks]
             batch_results = await asyncio.gather(*batch_tasks)
 
@@ -472,15 +513,29 @@ async def generate_report_pdf(
                         values_block = body.get("values")
 
                         # Prioriza texto renderizado (text), fallback a crudo (values)
-                        if isinstance(text_block, list) and text_block and isinstance(text_block[0], list) and text_block[0]:
+                        if (
+                            isinstance(text_block, list)
+                            and text_block
+                            and isinstance(text_block[0], list)
+                            and text_block[0]
+                        ):
                             rendered_value = text_block[0][0]
-                        elif isinstance(values_block, list) and values_block and isinstance(values_block[0], list) and values_block[0]:
+                        elif (
+                            isinstance(values_block, list)
+                            and values_block
+                            and isinstance(values_block[0], list)
+                            and values_block[0]
+                        ):
                             rendered_value = values_block[0][0]
 
                     if rendered_value is None or str(rendered_value).strip() == "":
-                        html_content = html_content.replace(norm_code, f"<p><em>[Sin valor: {c_obj.nombre}]</em></p>")
+                        html_content = html_content.replace(
+                            norm_code, f"<p><em>[Sin valor: {c_obj.nombre}]</em></p>"
+                        )
                     else:
-                        html_content = html_content.replace(norm_code, str(rendered_value))
+                        html_content = html_content.replace(
+                            norm_code, str(rendered_value)
+                        )
 
     html_content = _sanitize_text(html_content)
     html_content = html_content.replace("<code>", "<b>").replace("</code>", "</b>")
@@ -548,8 +603,8 @@ async def generate_report_pdf(
     background_tasks.add_task(delete_temp_file, temp_path)
 
     return FileResponse(
-        temp_path, 
-        media_type="application/pdf", 
+        temp_path,
+        media_type="application/pdf",
         filename=f"Reporte-{report.nombre}.pdf",
-        headers={"Content-Disposition": "inline"}
+        headers={"Content-Disposition": "inline"},
     )

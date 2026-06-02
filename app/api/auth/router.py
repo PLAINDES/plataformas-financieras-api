@@ -1,24 +1,23 @@
-
 # app/api/auth/router.py
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
-from app.db.database import get_db
-from app.schemas.user import UserLogin, TokenResponse, UserResponse, UserCreate, UserUpdate
-from app.models.user import User
-from app.services.auth_service import AuthService
+
 from app.api.deps import get_current_user
+from app.db.database import get_db
+from app.models.user import User
+from app.schemas.user import TokenResponse, UserCreate, UserLogin, UserResponse
+from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register(
-    user_data: UserCreate,
-    db: Session = Depends(get_db)
-):
+@router.post(
+    "/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED
+)
+def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """
     Registra un nuevo usuario
-    
+
     - **email**: Email único del usuario
     - **name**: Nombre del usuario
     - **lastname**: Apellido (opcional)
@@ -30,25 +29,19 @@ def register(
         auth_service = AuthService(db)
         return auth_service.register(user_data)
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error creating user"
+            detail="Error creating user",
         )
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(
-    credentials: UserLogin,
-    db: Session = Depends(get_db)
-):
+def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """
     Inicia sesión con email y contraseña
-    
+
     Retorna un token JWT y la información del usuario
     """
     try:
@@ -60,10 +53,10 @@ def login(
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error during login"
+            detail="Error during login",
         )
 
 
@@ -71,7 +64,7 @@ def login(
 def logout(
     authorization: str = Header(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Cierra sesión eliminando la sesión del servidor
@@ -79,25 +72,23 @@ def logout(
     try:
         # Extraer token del header "Bearer <token>"
         token = authorization.replace("Bearer ", "")
-        
+
         auth_service = AuthService(db)
         success = auth_service.logout(token)
-        
+
         if success:
             return {"message": "Successfully logged out"}
         else:
             return {"message": "Session not found"}
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error during logout"
+            detail="Error during logout",
         )
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(
-    current_user: User = Depends(get_current_user)
-):
+def get_me(current_user: User = Depends(get_current_user)):
     """
     Obtiene información del usuario actual
     """
@@ -109,22 +100,21 @@ def get_me(
         role=current_user.role.value,
         is_active=current_user.is_active,
         avatar=current_user.avatar,
-        created_at=current_user.created_at
+        created_at=current_user.created_at,
     )
 
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_token(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """
     Refresca el token de acceso
     Genera un nuevo token para el usuario actual
-    """    
+    """
     auth_service = AuthService(db)
     access_token = auth_service._create_access_token(current_user.id)
-    
+
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
@@ -136,7 +126,6 @@ def refresh_token(
             role=current_user.role.value,
             is_active=current_user.is_active,
             avatar=current_user.avatar,
-            created_at=current_user.created_at
-        )
+            created_at=current_user.created_at,
+        ),
     )
-
