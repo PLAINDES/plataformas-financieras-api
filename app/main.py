@@ -15,6 +15,7 @@ from .api.main.covers.router import router as covers_router
 from .api.main.master_templates.router import router as master_templates_router
 from .api.main.reports.router import router as reports_router
 from .api.main.router import router as main_router
+from .api.main.users.router import router as users_router
 from .api.storage.onedrive_router import router as onedrive_router
 from .core.config import settings
 
@@ -98,6 +99,7 @@ app.include_router(calculations_router, prefix=settings.API_V1_PREFIX)
 app.include_router(chatbot_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)
 app.include_router(covers_router, prefix=settings.API_V1_PREFIX)
+app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 
 
 # Global exception handler
