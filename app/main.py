@@ -1,19 +1,24 @@
 # app/main.py
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
-from playwright.async_api import async_playwright, Browser
-from contextlib import asynccontextmanager
-from .core.config import settings
+from fastapi.responses import JSONResponse
+from playwright.async_api import async_playwright
+
 from .api.auth.router import router as auth_router
 from .api.cms.router import router as cms_router
-from .api.main.router import router as main_router
-from .api.main.master_templates.router import router as master_templates_router
-from .api.storage.onedrive_router import router as onedrive_router
 from .api.main.calculations.router import router as calculations_router
 from .api.main.chatbot.router import router as chatbot_router
+from .api.main.covers.router import router as covers_router
+from .api.main.master_templates.router import router as master_templates_router
 from .api.main.reports.router import router as reports_router
+from .api.main.router import router as main_router
+from .api.main.users.router import router as users_router
+from .api.storage.onedrive_router import router as onedrive_router
+from .core.config import settings
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,8 +32,8 @@ async def lifespan(app: FastAPI):
             "--no-sandbox",
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
-            "--disable-gpu"
-        ]
+            "--disable-gpu",
+        ],
     )
 
     app.state.playwright = playwright
@@ -51,7 +56,7 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_PREFIX}/docs",
     redoc_url=f"{settings.API_V1_PREFIX}/redoc",
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS Middleware
@@ -63,13 +68,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Health check
 @app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
         "version": settings.VERSION,
-        "project": settings.PROJECT_NAME
+        "project": settings.PROJECT_NAME,
     }
 
 
@@ -79,7 +85,7 @@ async def root():
     return {
         "message": f"Welcome to {settings.PROJECT_NAME} API",
         "version": settings.VERSION,
-        "docs": f"{settings.API_V1_PREFIX}/docs"
+        "docs": f"{settings.API_V1_PREFIX}/docs",
     }
 
 
@@ -92,6 +98,9 @@ app.include_router(onedrive_router, prefix=settings.API_V1_PREFIX)
 app.include_router(calculations_router, prefix=settings.API_V1_PREFIX)
 app.include_router(chatbot_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)
+app.include_router(covers_router, prefix=settings.API_V1_PREFIX)
+app.include_router(users_router, prefix=settings.API_V1_PREFIX)
+
 
 # Global exception handler
 @app.exception_handler(Exception)
@@ -100,8 +109,8 @@ async def global_exception_handler(_, exc):
         status_code=500,
         content={
             "message": "Internal server error",
-            "detail": str(exc) if settings.DEBUG else "An error occurred"
-        }
+            "detail": str(exc) if settings.DEBUG else "An error occurred",
+        },
     )
 
 
