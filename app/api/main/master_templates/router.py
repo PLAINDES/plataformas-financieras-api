@@ -2,40 +2,44 @@
 """
 CRUD de Plantillas Maestras + integración OneDrive + Extracción nativa de gráficos vía Microsoft Graph.
 """
+
 import asyncio
 import io
-import time
 import logging
+import time
 from datetime import datetime
-from typing import Optional, Literal
-from urllib.parse import quote
+from typing import Literal, Optional
+
 import httpx
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
-from fastapi.responses import StreamingResponse
-
-from app.db.database import get_db
 from app.api.deps import get_current_admin
-from app.models.user import User
-from app.models.templates import MasterTemplate
-from app.models.main import TemplateCode, CalculationType
+from app.api.main.master_templates.services import (
+    _chart_candidate_dirs,
+    _clear_user_default_templates,
+    _ensure_user_has_default_template,
+    _extract_and_save_charts_via_graph,
+    _process_and_save_cell_codes,
+)
+from app.core.config import settings
+from app.db.database import get_db
 from app.models.cms import Media
+from app.models.main import CalculationType, TemplateCode
+from app.models.templates import MasterTemplate
+from app.models.user import User
 from app.schemas.templates import (
-    MasterTemplateCreate, MasterTemplateUpdate, MasterTemplateResponse,
+    MasterTemplateCreate,
+    MasterTemplateResponse,
+    MasterTemplateUpdate,
     PaginatedMasterTemplateResponse,
     TemplateCodeResponse,
 )
-from app.services.onedrive_service import get_onedrive_service, OneDriveConfig
-from app.services.template_code_extractor import get_template_code_extractor
 from app.services.aws_service import s3_service
-from app.core.config import settings
-
-from app.api.main.master_templates.services import (
-    _chart_candidate_dirs, _clear_user_default_templates, _ensure_user_has_default_template,
-    _process_and_save_cell_codes, _extract_and_save_charts_via_graph
-)
+from app.services.onedrive.service import OneDriveConfig, get_onedrive_service
+from app.services.template_code_extractor import get_template_code_extractor
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +76,11 @@ async def get_chart_image(chart_filename: str):
             if not base_dir.exists():
                 continue
             for ext in ["jpg", "png", "jpeg"]:
-                matches = sorted(base_dir.glob(f"*-{chart_filename}.{ext}"), key=lambda p: p.stat().st_mtime, reverse=True)
+                matches = sorted(
+                    base_dir.glob(f"*-{chart_filename}.{ext}"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
                 if matches:
                     chart_path = matches[0]
                     break
@@ -81,22 +89,41 @@ async def get_chart_image(chart_filename: str):
 
     if not chart_path or not chart_path.exists():
         raise HTTPException(404, f"Chart image not found: {chart_filename}")
-    return StreamingResponse(open(chart_path, "rb"), media_type="image/png" if chart_path.suffix.lower() == ".png" else "image/jpeg", headers={"Content-Disposition": f'inline; filename="{chart_path.name}"'})
+    return StreamingResponse(
+        open(chart_path, "rb"),
+        media_type="image/png" if chart_path.suffix.lower() == ".png" else "image/jpeg",
+        headers={"Content-Disposition": f'inline; filename="{chart_path.name}"'},
+    )
 
 
-
-@router.post("", response_model=MasterTemplateResponse, status_code=status.HTTP_201_CREATED)
-def create_master_template(payload: MasterTemplateCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_admin)):
+@router.post(
+    "", response_model=MasterTemplateResponse, status_code=status.HTTP_201_CREATED
+)
+def create_master_template(
+    payload: MasterTemplateCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
+):
 
     if not payload.nombre or len(payload.nombre) < 3:
         raise HTTPException(422, "Nombre requiere >= 3 caracteres")
 
-    user_templates_count = db.execute(select(MasterTemplate.id).where((MasterTemplate.deleted_at.is_(None)) & (MasterTemplate.created_by_user_id == current_user.id))).all()
+    user_templates_count = db.execute(
+        select(MasterTemplate.id).where(
+            (MasterTemplate.deleted_at.is_(None))
+            & (MasterTemplate.created_by_user_id == current_user.id)
+        )
+    ).all()
     should_be_default = payload.is_default or len(user_templates_count) == 0
     if should_be_default:
         _clear_user_default_templates(db, current_user.id)
 
-    obj = MasterTemplate(nombre=payload.nombre.strip(), description=payload.description.strip() if payload.description else None, is_default=should_be_default, created_by_user_id=current_user.id)
+    obj = MasterTemplate(
+        nombre=payload.nombre.strip(),
+        description=payload.description.strip() if payload.description else None,
+        is_default=should_be_default,
+        created_by_user_id=current_user.id,
+    )
     db.add(obj)
     db.commit()
     db.refresh(obj)
@@ -104,20 +131,48 @@ def create_master_template(payload: MasterTemplateCreate, db: Session = Depends(
 
 
 @router.get("", response_model=PaginatedMasterTemplateResponse)
-def list_master_templates(limit: int = 10, offset: int = 0, search: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_admin)):
-    query = select(MasterTemplate).where((MasterTemplate.deleted_at.is_(None)) & (MasterTemplate.created_by_user_id == current_user.id))
+def list_master_templates(
+    limit: int = 10,
+    offset: int = 0,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
+):
+    query = select(MasterTemplate).where(
+        (MasterTemplate.deleted_at.is_(None))
+        & (MasterTemplate.created_by_user_id == current_user.id)
+    )
     if search:
-        query = query.where(or_(MasterTemplate.nombre.ilike(f"%{search}%"), MasterTemplate.description.ilike(f"%{search}%")))
+        query = query.where(
+            or_(
+                MasterTemplate.nombre.ilike(f"%{search}%"),
+                MasterTemplate.description.ilike(f"%{search}%"),
+            )
+        )
 
-    total_query = select(MasterTemplate.id).where((MasterTemplate.deleted_at.is_(None)) & (MasterTemplate.created_by_user_id == current_user.id))
+    total_query = select(MasterTemplate.id).where(
+        (MasterTemplate.deleted_at.is_(None))
+        & (MasterTemplate.created_by_user_id == current_user.id)
+    )
     if search:
-        total_query = total_query.where(or_(MasterTemplate.nombre.ilike(f"%{search}%"), MasterTemplate.description.ilike(f"%{search}%")))
+        total_query = total_query.where(
+            or_(
+                MasterTemplate.nombre.ilike(f"%{search}%"),
+                MasterTemplate.description.ilike(f"%{search}%"),
+            )
+        )
 
     total_count = len(db.execute(total_query).all())
     pages = (total_count + limit - 1) // limit if limit > 0 else 1
     page = (offset // limit) + 1 if limit > 0 else 1
 
-    templates = db.execute(query.order_by(MasterTemplate.created_at.desc()).offset(offset).limit(limit)).scalars().all()
+    templates = (
+        db.execute(
+            query.order_by(MasterTemplate.created_at.desc()).offset(offset).limit(limit)
+        )
+        .scalars()
+        .all()
+    )
     return {
         "items": [MasterTemplateResponse.model_validate(t) for t in templates],
         "total": total_count,
@@ -128,7 +183,11 @@ def list_master_templates(limit: int = 10, offset: int = 0, search: Optional[str
 
 
 @router.get("/{template_id}", response_model=MasterTemplateResponse)
-def get_master_template(template_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_admin)):
+def get_master_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
+):
     obj = db.get(MasterTemplate, template_id)
     if not obj or obj.deleted_at:
         raise HTTPException(404, "Not found")
@@ -186,19 +245,46 @@ def set_default_master_template(
     db.refresh(obj)
     return MasterTemplateResponse.model_validate(obj)
 
+
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_master_template(template_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_admin)):
+def delete_master_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
+):
     obj = db.get(MasterTemplate, template_id)
     if not obj or obj.deleted_at:
         raise HTTPException(404, "Not found")
 
-    media_rows = db.execute(select(Media).where((Media.deleted_at.is_(None)) & (Media.folder.like(f"%master-templates/{template_id}%")))).scalars().all()
-    codes_to_soft_delete = {f"$${str(m.meta.get('chart_code')).replace('$$', '').upper()}$$" for m in media_rows if m.meta and m.meta.get("chart_code")}
+    media_rows = (
+        db.execute(
+            select(Media).where(
+                (Media.deleted_at.is_(None))
+                & (Media.folder.like(f"%master-templates/{template_id}%"))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    codes_to_soft_delete = {
+        f"$${str(m.meta.get('chart_code')).replace('$$', '').upper()}$$"
+        for m in media_rows
+        if m.meta and m.meta.get("chart_code")
+    }
     for m in media_rows:
         m.deleted_at = datetime.utcnow()
 
     if codes_to_soft_delete:
-        for code_row in db.execute(select(TemplateCode).where((TemplateCode.deleted_at.is_(None)) & (TemplateCode.code.in_(list(codes_to_soft_delete))))).scalars().all():
+        for code_row in (
+            db.execute(
+                select(TemplateCode).where(
+                    (TemplateCode.deleted_at.is_(None))
+                    & (TemplateCode.code.in_(list(codes_to_soft_delete)))
+                )
+            )
+            .scalars()
+            .all()
+        ):
             code_row.deleted_at = datetime.utcnow()
 
     obj.template_codes = []
@@ -208,15 +294,20 @@ def delete_master_template(template_id: int, db: Session = Depends(get_db), curr
     db.commit()
     return None
 
+
 # ==============================================================================
 # RUTAS DE PROCESAMIENTO REFACTORIZADAS
 # ==============================================================================
 
+
 @router.post("/{template_id}/upload")
 async def upload_and_extract_codes(
-    template_id: int, file: UploadFile = File(...), folder: Folder = Form("plantillas_maestras"), db: Session = Depends(get_db)
+    template_id: int,
+    file: UploadFile = File(...),
+    folder: Folder = Form("plantillas_maestras"),
+    db: Session = Depends(get_db),
 ):
-    if not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls")):
         raise HTTPException(422, "Debe ser .xlsx/.xls")
 
     content = await file.read()
@@ -243,16 +334,32 @@ async def upload_and_extract_codes(
                 old_code_sets["kapital"].add(code.code)
 
     # Capturar Media (gráficos) que están ACTIVOS para esta plantilla
-    old_media_rows = db.execute(
-        select(Media).where(
-            (Media.deleted_at.is_(None))
-            & (Media.folder.like(f"%master-templates/{template_id}%"))
+    old_media_rows = (
+        db.execute(
+            select(Media).where(
+                (Media.deleted_at.is_(None))
+                & (Media.folder.like(f"%master-templates/{template_id}%"))
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     for media in old_media_rows:
-        mt = media.meta.get("template_type", "valora") if media.meta else ("kapital" if "kapital" in (media.folder or "").lower() else "valora")
-        c = str(media.meta.get("chart_code", media.filename.replace(".png", "").replace(".jpg", ""))).replace("$$", "").upper()
+        mt = (
+            media.meta.get("template_type", "valora")
+            if media.meta
+            else ("kapital" if "kapital" in (media.folder or "").lower() else "valora")
+        )
+        c = (
+            str(
+                media.meta.get(
+                    "chart_code", media.filename.replace(".png", "").replace(".jpg", "")
+                )
+            )
+            .replace("$$", "")
+            .upper()
+        )
         old_code_sets[mt].add(f"$${c}$$")
         old_image_sets[mt].add(media.filename)
 
@@ -288,11 +395,17 @@ async def upload_and_extract_codes(
     unique_onedrive_name = f"{template_id}-{original_name}"
 
     try:
-        item = await service.upload_file(content=content, filename=unique_onedrive_name, env=env, folder=folder)
+        item = await service.upload_file(
+            content=content, filename=unique_onedrive_name, env=env, folder=folder
+        )
     except Exception as e:
         raise HTTPException(502, f"Error OneDrive: {e}")
 
-    obj.onedrive_env, obj.onedrive_folder, obj.onedrive_item_id = env, folder, item.get("id")
+    obj.onedrive_env, obj.onedrive_folder, obj.onedrive_item_id = (
+        env,
+        folder,
+        item.get("id"),
+    )
 
     obj.onedrive_filename = unique_onedrive_name
     obj.original_filename = original_name
@@ -305,10 +418,16 @@ async def upload_and_extract_codes(
     extractor = get_template_code_extractor()
     extraction_result = await asyncio.to_thread(extractor.extract_from_bytes, content)
 
-    new_codes, _ = _process_and_save_cell_codes(db, obj, extraction_result, old_code_sets)
+    new_codes, _ = _process_and_save_cell_codes(
+        db, obj, extraction_result, old_code_sets
+    )
 
     # 3. EXTRAER GRÁFICOS (GRAPH API)
-    extracted_chart_images, total_charts, chart_errors = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
+    (
+        extracted_chart_images,
+        total_charts,
+        chart_errors,
+    ) = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
     new_images = {"valora": [], "kapital": []}
 
     for template_type, charts in extracted_chart_images.items():
@@ -325,7 +444,7 @@ async def upload_and_extract_codes(
             "total": total_charts,
             "valora": len(extracted_chart_images.get("valora", [])),
             "kapital": len(extracted_chart_images.get("kapital", [])),
-            "errors": chart_errors
+            "errors": chart_errors,
         },
         "comparison": {
             "new_codes": new_codes,
@@ -340,7 +459,10 @@ async def upload_and_extract_codes(
 
 @router.post("/{template_id}/re-upload")
 async def re_upload_and_extract_codes(
-    template_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_admin)
+    template_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
 ):
     start_total = time.perf_counter()
 
@@ -355,7 +477,7 @@ async def re_upload_and_extract_codes(
         raise HTTPException(404, "Not found")
 
     # ====== 1. SNAPSHOT PREVIO - Capturar códigos EXISTENTES DE ESTA PLANTILLA ======
-    t0 = time.perf_counter() # time
+    t0 = time.perf_counter()  # time
     old_code_sets = {"valora": set(), "kapital": set()}
     old_image_sets = {"valora": set(), "kapital": set()}
 
@@ -368,15 +490,32 @@ async def re_upload_and_extract_codes(
                 old_code_sets["kapital"].add(code.code)
 
     # Capturar Media (gráficos) que están ACTIVOS para esta plantilla
-    old_media_rows = db.execute(
-        select(Media).where(
-            (Media.deleted_at.is_(None)) & (Media.folder.like(f"%master-templates/{template_id}%"))
+    old_media_rows = (
+        db.execute(
+            select(Media).where(
+                (Media.deleted_at.is_(None))
+                & (Media.folder.like(f"%master-templates/{template_id}%"))
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     for m in old_media_rows:
-        mt = m.meta.get("template_type", "valora") if m.meta else ("kapital" if "kapital" in (m.folder or "").lower() else "valora")
-        c = str(m.meta.get("chart_code", m.filename.replace(".png", "").replace(".jpg", ""))).replace("$$", "").upper()
+        mt = (
+            m.meta.get("template_type", "valora")
+            if m.meta
+            else ("kapital" if "kapital" in (m.folder or "").lower() else "valora")
+        )
+        c = (
+            str(
+                m.meta.get(
+                    "chart_code", m.filename.replace(".png", "").replace(".jpg", "")
+                )
+            )
+            .replace("$$", "")
+            .upper()
+        )
         old_code_sets[mt].add(f"$${c}$$")
         old_image_sets[mt].add(m.filename)
 
@@ -393,11 +532,16 @@ async def re_upload_and_extract_codes(
     obj.template_codes = []
     db.commit()  # Commit para guardar desvinculos antes de borrar Media
 
-    media_to_delete = db.execute(
-        select(Media).where(
-            (Media.deleted_at.is_(None)) & (Media.folder.like(f"%master-templates/{template_id}%"))
+    media_to_delete = (
+        db.execute(
+            select(Media).where(
+                (Media.deleted_at.is_(None))
+                & (Media.folder.like(f"%master-templates/{template_id}%"))
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     # 2. Hard-delete de Media (eliminar completamente los gráficos viejos BD + S3)
     async def delete_s3_file(path):
@@ -406,7 +550,9 @@ async def re_upload_and_extract_codes(
         except Exception as e:
             logger.warning(f"Error eliminando archivo S3 {path}: {e}")
 
-    s3_delete_tasks = [delete_s3_file(m.storage_path) for m in media_to_delete if m.storage_path]
+    s3_delete_tasks = [
+        delete_s3_file(m.storage_path) for m in media_to_delete if m.storage_path
+    ]
     if s3_delete_tasks:
         await asyncio.gather(*s3_delete_tasks)
 
@@ -416,7 +562,9 @@ async def re_upload_and_extract_codes(
 
     db.commit()
 
-    print(f"[TIMER] 2. Hard-Delete (BD + S3 asincrono): {time.perf_counter() - t0:.2f}s")
+    print(
+        f"[TIMER] 2. Hard-Delete (BD + S3 asincrono): {time.perf_counter() - t0:.2f}s"
+    )
     # ====== 3. Reemplazar archivo en OneDrive ======
     t0 = time.perf_counter()
     service = get_onedrive_service()
@@ -431,19 +579,26 @@ async def re_upload_and_extract_codes(
 
     env: Environment = settings.ENVIRONMENT
     try:
-        item = await service.upload_file(content=content, filename=unique_onedrive_name, env=env, folder=obj.onedrive_folder or "plantillas_maestras")
+        item = await service.upload_file(
+            content=content,
+            filename=unique_onedrive_name,
+            env=env,
+            folder=obj.onedrive_folder or "plantillas_maestras",
+        )
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 423:
             raise HTTPException(
-                status_code=400, 
-                detail="La plantilla está actualmente en uso por un cálculo activo. Espere a que las sesiones expiren e intente de nuevo."
+                status_code=400,
+                detail="La plantilla está actualmente en uso por un cálculo activo. Espere a que las sesiones expiren e intente de nuevo.",
             )
         raise HTTPException(status_code=e.response.status_code, detail=str(e))
 
     obj.onedrive_item_id = item.get("id")
     obj.onedrive_filename = unique_onedrive_name
     obj.original_filename = original_name
-    obj.onedrive_path = service.build_path(env, obj.onedrive_folder or "plantillas_maestras", unique_onedrive_name)
+    obj.onedrive_path = service.build_path(
+        env, obj.onedrive_folder or "plantillas_maestras", unique_onedrive_name
+    )
 
     db.commit()
     print(f"[TIMER] 3. Upload a OneDrive: {time.perf_counter() - t0:.2f}s")
@@ -453,12 +608,18 @@ async def re_upload_and_extract_codes(
     extractor = get_template_code_extractor()
     extraction_result = await asyncio.to_thread(extractor.extract_from_bytes, content)
 
-    _, new_codes = _process_and_save_cell_codes(db, obj, extraction_result, old_code_sets)
-    print(f"[TIMER] 4. Extracción Celdas (Openpyxl + BD): {time.perf_counter() - t0:.2f}s")
+    _, new_codes = _process_and_save_cell_codes(
+        db, obj, extraction_result, old_code_sets
+    )
+    print(
+        f"[TIMER] 4. Extracción Celdas (Openpyxl + BD): {time.perf_counter() - t0:.2f}s"
+    )
 
     # ====== 5. Extraer e insertar gráficos (Motor Graph API) ======
     t0 = time.perf_counter()
-    extracted_charts, _, chart_errors = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
+    extracted_charts, _, chart_errors = await _extract_and_save_charts_via_graph(
+        db, template_id, obj, service
+    )
     new_images = {"valora": [], "kapital": []}
 
     for template_type, charts in extracted_charts.items():
@@ -466,10 +627,12 @@ async def re_upload_and_extract_codes(
             if chart["filename"] not in old_image_sets[template_type]:
                 new_images[template_type].append(chart["filename"])
 
-    print(f"[TIMER] 5. Extracción Gráficos (Graph API + S3): {time.perf_counter() - t0:.2f}s")
+    print(
+        f"[TIMER] 5. Extracción Gráficos (Graph API + S3): {time.perf_counter() - t0:.2f}s"
+    )
     print(f"[TIMER] TOTAL RE-UPLOAD: {time.perf_counter() - start_total:.2f}s")
     return {
-        "template_id": template_id, 
+        "template_id": template_id,
         "template": MasterTemplateResponse.model_validate(obj),
         "comparison": {
             "new_codes": new_codes,
@@ -485,7 +648,9 @@ async def re_upload_and_extract_codes(
 async def extract_template_codes(template_id: int, db: Session = Depends(get_db)):
     obj = db.get(MasterTemplate, template_id)
     if not obj or obj.deleted_at:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Master template not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Master template not found"
+        )
 
     if not obj.onedrive_item_id:
         raise HTTPException(
@@ -514,7 +679,11 @@ async def extract_template_codes(template_id: int, db: Session = Depends(get_db)
 
     created_codes, _ = _process_and_save_cell_codes(db, obj, extraction_result)
 
-    extracted_charts, total_charts, chart_errors = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
+    (
+        extracted_charts,
+        total_charts,
+        chart_errors,
+    ) = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
 
     return {
         "template_id": template_id,
@@ -536,7 +705,9 @@ async def extract_template_codes(template_id: int, db: Session = Depends(get_db)
 async def extract_template_charts(template_id: int, db: Session = Depends(get_db)):
     obj = db.get(MasterTemplate, template_id)
     if not obj or obj.deleted_at:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Master template not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Master template not found"
+        )
     if not obj.onedrive_item_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -551,14 +722,19 @@ async def extract_template_charts(template_id: int, db: Session = Depends(get_db
             detail="OneDrive no está configurado.",
         )
 
-    extracted_charts, total_charts, chart_errors = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
+    (
+        extracted_charts,
+        total_charts,
+        chart_errors,
+    ) = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
 
     return {
         "template_id": template_id,
         "template_name": obj.nombre,
         "valora": extracted_charts.get("valora", []),
         "kapital": extracted_charts.get("kapital", []),
-        "total": len(extracted_charts.get("valora", [])) + len(extracted_charts.get("kapital", [])),
+        "total": len(extracted_charts.get("valora", []))
+        + len(extracted_charts.get("kapital", [])),
         "statistics": {
             "total": total_charts,
             "extracted_valora": len(extracted_charts.get("valora", [])),
@@ -567,16 +743,22 @@ async def extract_template_charts(template_id: int, db: Session = Depends(get_db
         },
     }
 
+
 @router.get("/{template_id}/codes")
 async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
     obj = db.get(MasterTemplate, template_id)
     if not obj or obj.deleted_at:
         raise HTTPException(404, "Master template not found")
 
-    selected_codes = [code for code in obj.template_codes if code and code.deleted_at is None]
+    selected_codes = [
+        code for code in obj.template_codes if code and code.deleted_at is None
+    ]
 
     if not selected_codes:
-        logger.info("[Codes] No linked codes found for template %s, using backward-compatible fallback", template_id)
+        logger.info(
+            "[Codes] No linked codes found for template %s, using backward-compatible fallback",
+            template_id,
+        )
 
         media_query = select(Media).where(
             (Media.deleted_at.is_(None))
@@ -603,7 +785,9 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
                         for item in extraction_result.get(t, []):
                             raw_code = item.get("code", "")
                             if raw_code:
-                                allowed_codes.add(f"$${raw_code.replace('$$', '').upper()}$$")
+                                allowed_codes.add(
+                                    f"$${raw_code.replace('$$', '').upper()}$$"
+                                )
         except Exception as exc:
             logger.warning(
                 "[Codes] Could not extract fallback codes from OneDrive file for template %s: %s",
@@ -612,12 +796,16 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
             )
 
         if allowed_codes:
-            selected_codes = db.execute(
-                select(TemplateCode).where(
-                    (TemplateCode.deleted_at.is_(None))
-                    & (TemplateCode.code.in_(list(allowed_codes)))
+            selected_codes = (
+                db.execute(
+                    select(TemplateCode).where(
+                        (TemplateCode.deleted_at.is_(None))
+                        & (TemplateCode.code.in_(list(allowed_codes)))
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
     if not selected_codes:
         return {
@@ -636,7 +824,9 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
         if code.template_code_image:
             image_url = code.template_code_image.url
             if not image_url and code.template_code_image.filename:
-                image_stem = code.template_code_image.filename.replace(".jpg", "").replace(".png", "")
+                image_stem = code.template_code_image.filename.replace(
+                    ".jpg", ""
+                ).replace(".png", "")
                 image_url = f"/api/v1/main/master-templates/chart-file/{image_stem}"
 
         code_data = {
@@ -649,7 +839,9 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
             "code": normalized_code,
             "value": code.value,
             "coordinate": code.coordinate,
-            "template_ids": [t.id for t in code.master_templates] if hasattr(code, "master_templates") else [],
+            "template_ids": [t.id for t in code.master_templates]
+            if hasattr(code, "master_templates")
+            else [],
             "created_at": code.created_at,
             "updated_at": code.updated_at,
             "deleted_at": code.deleted_at,
@@ -671,7 +863,7 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
             "total": len(valora_codes) + len(kapital_codes),
             "valora": len(valora_codes),
             "kapital": len(kapital_codes),
-        }
+        },
     }
 
 
@@ -679,19 +871,31 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
 def get_template_chart_images(template_id: int, db: Session = Depends(get_db)):
     obj = db.get(MasterTemplate, template_id)
     if not obj or obj.deleted_at:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUNDt, detail="Master template not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUNDt, detail="Master template not found"
+        )
 
-    query = select(Media).where(
-        (Media.deleted_at.is_(None)) &
-        (Media.folder.like(f"%master-templates/{template_id}%"))
-    ).order_by(Media.created_at.desc())
+    query = (
+        select(Media)
+        .where(
+            (Media.deleted_at.is_(None))
+            & (Media.folder.like(f"%master-templates/{template_id}%"))
+        )
+        .order_by(Media.created_at.desc())
+    )
 
     media_files = db.execute(query).scalars().all()
 
     valora_images = []
     kapital_images = []
     for media in media_files:
-        chart_code = media.meta.get("chart_code", media.filename.replace(".jpg", "").replace(".png", "")) if media.meta else media.filename.replace(".jpg", "").replace(".png", "")
+        chart_code = (
+            media.meta.get(
+                "chart_code", media.filename.replace(".jpg", "").replace(".png", "")
+            )
+            if media.meta
+            else media.filename.replace(".jpg", "").replace(".png", "")
+        )
 
         if not chart_code.startswith("$$"):
             chart_code = f"$${chart_code}$$"
@@ -748,14 +952,22 @@ async def download_from_onedrive(template_id: int, db: Session = Depends(get_db)
     service = get_onedrive_service()
     config = OneDriveConfig()
     if not config.is_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no está configurado.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OneDrive no está configurado.",
+        )
 
     try:
         content = await service.download_file(obj.onedrive_item_id)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al descargar de OneDrive: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al descargar de OneDrive: {e}",
+        )
 
-    filename = obj.original_filename or obj.onedrive_filename or f"plantilla_{obj.id}.xlsx"
+    filename = (
+        obj.original_filename or obj.onedrive_filename or f"plantilla_{obj.id}.xlsx"
+    )
 
     return StreamingResponse(
         io.BytesIO(content),

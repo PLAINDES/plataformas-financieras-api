@@ -28,7 +28,7 @@ from app.api.main.calculations.router import get_default_or_latest_master_templa
 from app.db.database import get_db
 from app.models.main import Calculation, CalculationType, Cover, Report, TemplateCode
 from app.models.templates import MasterTemplate
-from app.services.onedrive_service import get_onedrive_service
+from app.services.onedrive.service import get_onedrive_service
 from app.services.query_service import apply_filters
 
 logger = logging.getLogger(__name__)
