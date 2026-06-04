@@ -2,15 +2,16 @@
 Módulo de Pruebas de Integración para el Router de OneDrive.
 """
 
-import os
 import asyncio
+import os
 import time
+
 from fastapi.testclient import TestClient
+
+from app.api.deps import get_current_admin, get_current_user
 from app.core.config import settings
 from app.main import app
-from app.api.deps import get_current_admin, get_current_user
-from app.services.onedrive_service import get_onedrive_service
-
+from app.services.onedrive.service import get_onedrive_service
 
 PREFIX = "/api/v1/storage/onedrive"
 
@@ -30,17 +31,15 @@ def test_onedrive_folder_lifecycle(client: TestClient):
     Crea -> Consulta -> Lista -> Elimina recursivamente.
     """
     current_env = getattr(settings, "ENVIRONMENT", "test")
-    assert current_env == "test", "ERROR: Intentando crear/borrar carpetas fuera del entorno 'test'."
+    assert current_env == "test", (
+        "ERROR: Intentando crear/borrar carpetas fuera del entorno 'test'."
+    )
 
     test_folder_name = f"sandbox_{os.urandom(4).hex()}"
 
     # 1. SETUP: Le decimos que asegure la existencia de PLATAFORMAS_FINANCIERAS/test
     # y que cree nuestro sandbox adentro.
-    setup_payload = {
-        "PLATAFORMAS_FINANCIERAS": {
-            current_env: [test_folder_name]
-        }
-    }
+    setup_payload = {"PLATAFORMAS_FINANCIERAS": {current_env: [test_folder_name]}}
 
     setup_response = client.post(f"{PREFIX}/setup", json=setup_payload)
     assert setup_response.status_code == 200
@@ -103,7 +102,7 @@ def test_onedrive_files_list_and_delete(client: TestClient):
             content=b"dummy content",
             filename=filename,
             env=current_env,
-            folder=folder_name
+            folder=folder_name,
         )
     )
     item_id = upload_result["id"]

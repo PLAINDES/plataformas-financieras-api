@@ -2,29 +2,44 @@
 import logging
 import time
 import traceback
-from uuid import uuid4
 from typing import Optional
+
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, status, Body, Request
-from sqlalchemy.orm import Session
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
 from app.db.database import get_db
 from app.models.main import Calculation, CalculationType
-from app.schemas.main import CalculationCreate, CalculationUpdate, CalculationResponse, PaginatedCalculationResponse
-from app.services.onedrive_service import get_onedrive_service
-from app.core.config import settings
+from app.schemas.main import (
+    CalculationCreate,
+    CalculationResponse,
+    CalculationUpdate,
+    PaginatedCalculationResponse,
+)
+from app.services.onedrive.service import get_onedrive_service
 
+from .excel_engine import _enrich_payload_with_excel_outputs, _extract_input_payload
 from .graphs import _generate_calculation_images
-
-from .utils import (
-    _extract_input_payload,
-    _to_calc_type,
-    _sanitize_input_for_history,
-    _extract_latest_input_from_history,
-    _enrich_payload_with_excel_outputs,
-    _normalize_calculation_data,
+from .macros_service import (
     _inject_macro_data_into_payload,
-    get_default_or_latest_master_template
+    get_default_or_latest_master_template,
+)
+from .payload_manager import (
+    _extract_latest_input_from_history,
+    _normalize_calculation_data,
+    _sanitize_input_for_history,
+    _to_calc_type,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,6 +48,7 @@ router = APIRouter(prefix="/main", tags=["Calculations"])
 
 # ==================== ENDPOINTS ====================
 
+
 @router.get("/calculations", response_model=PaginatedCalculationResponse)
 def list_calculations(
     user_id: Optional[int] = None,
@@ -40,7 +56,7 @@ def list_calculations(
     limit: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None, max_length=64),
     type: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     query = select(Calculation)
 
@@ -57,7 +73,11 @@ def list_calculations(
     count_query = select(func.count()).select_from(query.subquery())
     total = db.execute(count_query).scalar()
 
-    query = query.offset((page - 1) * limit).limit(limit).order_by(Calculation.created_at.desc())
+    query = (
+        query.offset((page - 1) * limit)
+        .limit(limit)
+        .order_by(Calculation.created_at.desc())
+    )
     calculations = db.execute(query).scalars().all()
 
     return {
@@ -65,17 +85,17 @@ def list_calculations(
         "total": total,
         "page": page,
         "limit": limit,
-        "pages": (total + limit - 1) // limit
+        "pages": (total + limit - 1) // limit,
     }
 
 
 @router.get("/calculations/{calculation_id}", response_model=CalculationResponse)
 async def get_calculation(
     request: Request,
-    calculation_id: int, 
+    calculation_id: int,
     include_graphs: bool = Query(False),
     bot_token: Optional[str] = Header(None, alias="X-Bot-Token"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     calculation = db.get(Calculation, calculation_id)
     if not calculation:
@@ -87,19 +107,27 @@ async def get_calculation(
         if bot_token != settings.BOT_API_KEY:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="API Key inválida o ausente."
+                detail="API Key inválida o ausente.",
             )
         browser = request.app.state.browser
         if not browser:
-            raise HTTPException(status_code=500, detail="Browser instance not available")
+            raise HTTPException(
+                status_code=500, detail="Browser instance not available"
+            )
 
         try:
             # Generar imágenes delegando a la función utilitaria
-            base64_images = await _generate_calculation_images(calculation.data, browser)
+            base64_images = await _generate_calculation_images(
+                calculation.data, browser
+            )
             response_data["graphs_base64"] = base64_images
         except Exception as e:
-            logger.error(f"Error rendering graphs for calculation {calculation_id}: {e}")
-            raise HTTPException(status_code=500, detail="Error generating calculation graphs")
+            logger.error(
+                f"Error rendering graphs for calculation {calculation_id}: {e}"
+            )
+            raise HTTPException(
+                status_code=500, detail="Error generating calculation graphs"
+            )
 
     return response_data
 
@@ -107,14 +135,16 @@ async def get_calculation(
 @router.get("/calculations/by-code/{code}", response_model=CalculationResponse)
 async def get_calculation_by_code(
     request: Request,
-    code: str, 
+    code: str,
     include_graphs: bool = Query(False),
     bot_token: Optional[str] = Header(None, alias="X-Bot-Token"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    calculation = db.execute(
-        select(Calculation).where(Calculation.code == code)
-    ).scalars().first()
+    calculation = (
+        db.execute(select(Calculation).where(Calculation.code == code))
+        .scalars()
+        .first()
+    )
 
     if not calculation:
         raise HTTPException(status_code=404, detail="Calculation not found")
@@ -126,14 +156,18 @@ async def get_calculation_by_code(
         if bot_token != settings.BOT_API_KEY:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="API Key inválida o ausente."
+                detail="API Key inválida o ausente.",
             )
         browser = getattr(request.app.state, "browser", None)
         if not browser:
-            logger.error("La instancia del navegador Playwright no está disponible en app.state")
+            logger.error(
+                "La instancia del navegador Playwright no está disponible en app.state"
+            )
         else:
             try:
-                graphs_dict = await _generate_calculation_images(calculation.data, browser)
+                graphs_dict = await _generate_calculation_images(
+                    calculation.data, browser
+                )
                 response_data["graphs_base64"] = graphs_dict
             except Exception as e:
                 logger.error(f"Error generando capturas para el código {code}: {e}")
@@ -141,12 +175,16 @@ async def get_calculation_by_code(
 
     return response_data
 
-@router.post("/calculations", response_model=CalculationResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/calculations",
+    response_model=CalculationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_calculation(payload: CalculationCreate, db: Session = Depends(get_db)):
 
     t_post = time.perf_counter()
     calc_type = _to_calc_type(payload.type)
-
 
     payload_data = dict(payload.data) if isinstance(payload.data, dict) else {}
     prewarmed_session_id = payload_data.pop("prewarmed_session_id", None)
@@ -170,7 +208,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
                 master_item_id,
                 include_resultados=True,
                 include_sensibilizacion=include_sensibilizacion,
-                existing_session_id=prewarmed_session_id
+                existing_session_id=prewarmed_session_id,
             )
         except Exception as exc:
             logger.warning(f"Error procesando en RAM: {exc}")
@@ -188,17 +226,22 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
     db.commit()
     db.refresh(calculation)
 
-    print(f"[TIMER] TIEMPO TOTAL DEL ENDPOINT POST: {time.perf_counter() - t_post:.2f} seg", flush=True)
+    print(
+        f"[TIMER] TIEMPO TOTAL DEL ENDPOINT POST: {time.perf_counter() - t_post:.2f} seg",
+        flush=True,
+    )
 
     return CalculationResponse.model_validate(calculation)
 
+
 @router.put("/calculations/{calculation_id}", response_model=CalculationResponse)
-async def update_calculation(calculation_id: int, payload: CalculationUpdate, db: Session = Depends(get_db)):
+async def update_calculation(
+    calculation_id: int, payload: CalculationUpdate, db: Session = Depends(get_db)
+):
     calculation = db.get(Calculation, calculation_id)
     if not calculation:
         raise HTTPException(status_code=404, detail="Calculation not found")
     update_data = payload.model_dump(exclude_unset=True)
-
 
     if "data" in update_data:
         include_input_history = True
@@ -213,7 +256,9 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
             # 1. Obtenemos el ID de la plantilla maestra
             source_template = get_default_or_latest_master_template(db)
             if not source_template or not source_template.onedrive_item_id:
-                raise HTTPException(status_code=400, detail="Master template no configurada.")
+                raise HTTPException(
+                    status_code=400, detail="Master template no configurada."
+                )
 
             master_item_id = source_template.onedrive_item_id
 
@@ -222,19 +267,27 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
             current_input_base = _sanitize_input_for_history(
                 _extract_latest_input_from_history(calculation.data)
             )
-            has_beta_for_sensitivity = incoming_input_raw.get("beta_desapalancado") is not None
-            base_changed = bool(incoming_input_base) and incoming_input_base != current_input_base
+            has_beta_for_sensitivity = (
+                incoming_input_raw.get("beta_desapalancado") is not None
+            )
+            base_changed = (
+                bool(incoming_input_base) and incoming_input_base != current_input_base
+            )
             include_input_history = True
             include_resultados_history = base_changed
             include_sensibilizacion_history = has_beta_for_sensitivity
             existing_session = None
 
             #  Prioridad: La sesión que acaba de mandar el frontend
-            if isinstance(update_data["data"], dict) and update_data["data"].get("active_session_id"):
+            if isinstance(update_data["data"], dict) and update_data["data"].get(
+                "active_session_id"
+            ):
                 existing_session = update_data["data"].get("active_session_id")
 
             # Si el frontend no mandó nada, intentamos usar la de la BD
-            elif isinstance(calculation.data, dict) and calculation.data.get("active_session_id"):
+            elif isinstance(calculation.data, dict) and calculation.data.get(
+                "active_session_id"
+            ):
                 existing_session = calculation.data.get("active_session_id")
             try:
                 t_put = time.perf_counter()
@@ -243,16 +296,30 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
                     master_item_id,
                     include_resultados=base_changed,
                     include_sensibilizacion=has_beta_for_sensitivity,
-                    existing_session_id=existing_session
+                    existing_session_id=existing_session,
                 )
                 if isinstance(update_data["data"], dict):
-                    enriched_sensibilizacion = update_data["data"].get("sensibilizacion")
-                print(f"[TIMER] TIEMPO TOTAL DEL ENDPOINT PUT: {time.perf_counter() - t_put:.2f} seg", flush=True)
-            except (HTTPException, ValueError, TypeError, RuntimeError, httpx.TimeoutException, httpx.HTTPError) as exc:
-                logger.warning("Could not enrich kapital update payload from Excel: %s", exc)
+                    enriched_sensibilizacion = update_data["data"].get(
+                        "sensibilizacion"
+                    )
+                print(
+                    f"[TIMER] TIEMPO TOTAL DEL ENDPOINT PUT: {time.perf_counter() - t_put:.2f} seg",
+                    flush=True,
+                )
+            except (
+                HTTPException,
+                ValueError,
+                TypeError,
+                RuntimeError,
+                httpx.TimeoutException,
+                httpx.HTTPError,
+            ) as exc:
+                logger.warning(
+                    "Could not enrich kapital update payload from Excel: %s", exc
+                )
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="No se pudo recalcular el cálculo Kapital en Excel"
+                    detail="No se pudo recalcular el cálculo Kapital en Excel",
                 ) from exc
 
         update_data["data"] = _normalize_calculation_data(
@@ -264,10 +331,15 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
         )
 
         if has_beta_for_sensitivity and isinstance(update_data["data"], dict):
-            if not update_data["data"].get("sensibilizacion") and isinstance(enriched_sensibilizacion, list):
+            if not update_data["data"].get("sensibilizacion") and isinstance(
+                enriched_sensibilizacion, list
+            ):
                 update_data["data"]["sensibilizacion"] = enriched_sensibilizacion
 
-        if isinstance(update_data["data"], dict) and "active_session_id" not in update_data["data"]:
+        if (
+            isinstance(update_data["data"], dict)
+            and "active_session_id" not in update_data["data"]
+        ):
             update_data["data"]["active_session_id"] = existing_session
 
     for key, value in update_data.items():
@@ -277,11 +349,11 @@ async def update_calculation(calculation_id: int, payload: CalculationUpdate, db
     return CalculationResponse.model_validate(calculation)
 
 
-@router.post("/calculations/{calculation_id}/refresh", response_model=CalculationResponse)
+@router.post(
+    "/calculations/{calculation_id}/refresh", response_model=CalculationResponse
+)
 async def refresh_calculation(
-    calculation_id: int, 
-    payload: dict = Body({}), 
-    db: Session = Depends(get_db)
+    calculation_id: int, payload: dict = Body({}), db: Session = Depends(get_db)
 ):
     """
     Sincroniza y recalcula el estado de la hoja de cálculo en OneDrive.
@@ -296,7 +368,9 @@ async def refresh_calculation(
 
     latest_input = _extract_latest_input_from_history(calculation.data)
     if not latest_input:
-        raise HTTPException(status_code=400, detail="No se encontraron inputs históricos")
+        raise HTTPException(
+            status_code=400, detail="No se encontraron inputs históricos"
+        )
 
     # Recuperar el ID precalentado enviado por el cliente frontend
     prewarmed_session_id = payload.get("prewarmed_session_id")
@@ -315,20 +389,24 @@ async def refresh_calculation(
             item_id=source_template.onedrive_item_id,
             include_resultados=True,
             include_sensibilizacion=latest_input.get("beta_desapalancado") is not None,
-            existing_session_id=prewarmed_session_id
+            existing_session_id=prewarmed_session_id,
         )
     except Exception as exc:
         logger.error(f"Fallo durante la ejecución de actualización del Excel: {exc}")
-        raise HTTPException(status_code=500, detail="Error de sincronización con el motor de cálculo")
+        raise HTTPException(
+            status_code=500, detail="Error de sincronización con el motor de cálculo"
+        )
 
     # Mantener e inyectar el session id activo resultante para que lo herede el PDF posterior
-    session_id_to_persist = enriched_data.get("active_session_id") or prewarmed_session_id
+    session_id_to_persist = (
+        enriched_data.get("active_session_id") or prewarmed_session_id
+    )
 
     calculation.data = _normalize_calculation_data(
         payload_data=enriched_data,
         existing_data=calculation.data,
         include_resultados_history=True,
-        include_sensibilizacion_history=False
+        include_sensibilizacion_history=False,
     )
 
     if isinstance(calculation.data, dict):
@@ -338,7 +416,6 @@ async def refresh_calculation(
     db.refresh(calculation)
 
     return CalculationResponse.model_validate(calculation)
-
 
 
 @router.delete("/calculations/{calculation_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -364,19 +441,19 @@ async def prewarm_excel_session(db: Session = Depends(get_db)):
     service = get_onedrive_service()
     try:
         session_id = await service._create_workbook_session(
-            source_template.onedrive_item_id,
-            persist_changes=True
+            source_template.onedrive_item_id, persist_changes=True
         )
         return {"session_id": session_id}
     except Exception as e:
         logger.error(f"Error en pre-warm: {e}")
-        raise HTTPException(status_code=500, detail="No se pudo pre-calentar la sesión de Excel")
+        raise HTTPException(
+            status_code=500, detail="No se pudo pre-calentar la sesión de Excel"
+        )
 
 
 @router.post("/calculations/prewarm/keep-alive", status_code=status.HTTP_200_OK)
 async def keep_alive_excel_session(
-    session_id: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
+    session_id: str = Body(..., embed=True), db: Session = Depends(get_db)
 ):
     """Mantiene viva una sesión de Excel previamente pre-calentada."""
     source_template = get_default_or_latest_master_template(db)
@@ -384,5 +461,7 @@ async def keep_alive_excel_session(
         return {"status": "ignored"}
 
     service = get_onedrive_service()
-    await service._refresh_workbook_session(source_template.onedrive_item_id, session_id)
+    await service._refresh_workbook_session(
+        source_template.onedrive_item_id, session_id
+    )
     return {"status": "refreshed"}

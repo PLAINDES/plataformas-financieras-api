@@ -3,13 +3,17 @@ Módulo de Pruebas de Integración para OneDriveService.
 """
 
 import os
+
 import pytest
-from app.services.onedrive_service import get_onedrive_service
+
 from app.core.config import settings
+from app.services.onedrive.service import get_onedrive_service
+
 
 @pytest.fixture
 def anyio_backend():
-    return 'asyncio'
+    return "asyncio"
+
 
 @pytest.mark.anyio
 async def test_onedrive_connection_health():
@@ -21,6 +25,7 @@ async def test_onedrive_connection_health():
     assert info["status"] == "connected"
     assert "drive_id" in info
 
+
 def test_build_path_generation():
     """
     Valida que el servicio construya las rutas internas correctamente (solo lógica, sin red).
@@ -30,6 +35,7 @@ def test_build_path_generation():
     path = service.build_path(env="test", folder="valora", filename="reporte.xlsx")
     assert path == "PLATAFORMAS_FINANCIERAS/test/valora/reporte.xlsx"
 
+
 @pytest.mark.anyio
 async def test_upload_download_and_delete_file_roundtrip():
     """
@@ -38,7 +44,9 @@ async def test_upload_download_and_delete_file_roundtrip():
     current_env = getattr(settings, "ENVIRONMENT", "test")
 
     # Verificación de seguridad: Evita ejecución si el entorno no es test
-    assert current_env == "test", "ERROR: Intentando ejecutar pruebas fuera del entorno 'test'."
+    assert current_env == "test", (
+        "ERROR: Intentando ejecutar pruebas fuera del entorno 'test'."
+    )
 
     service = get_onedrive_service()
     file_content = b"Contenido de prueba para el CI de Plataformas Financieras"
@@ -49,7 +57,7 @@ async def test_upload_download_and_delete_file_roundtrip():
         content=file_content,
         filename=filename,
         env=current_env,
-        folder="valora" # Esto se guardará en PLATAFORMAS_FINANCIERAS/test/valora/
+        folder="valora",  # Esto se guardará en PLATAFORMAS_FINANCIERAS/test/valora/
     )
 
     assert "id" in upload_result
@@ -86,7 +94,7 @@ async def test_list_files_and_get_download_url():
         # Usamos el path completo que construimos
         folder_path = f"PLATAFORMAS_FINANCIERAS/{current_env}/valora"
         files = await service.list_files(path=folder_path)
-        
+
         assert len(files) > 0
         assert any(f["id"] == item_id for f in files)
 
