@@ -1,19 +1,34 @@
 # app/api/main/chatbot/services.py
-import httpx, re, asyncio, logging,json
-from app.core.config import settings
+import asyncio
+import logging
+import re
+
+import httpx
+
+from app.api.main.chatbot.boa import calculate_sector_beta
 from app.api.main.chatbot.constants import (
     DANGEROUS_PATTERNS,
-    SYSTEM_PROMPT_TEMPLATE,
     FALLBACK_MODELS,
+    GEMINI_API_BASE_URL,
     GENERATION_CONFIG,
-    GEMINI_API_BASE_URL
-    )
-from app.api.main.chatbot.schemas import ChatRequest, ChatResponse, AnalyzeCompaniesRequest, YahooFinanceResponse
-from app.api.main.chatbot.utils import extract_tickers, extract_beta_update, build_form_context
-from app.api.main.chatbot.boa import calculate_sector_beta
+    SYSTEM_PROMPT_TEMPLATE,
+)
+from app.api.main.chatbot.schemas import (
+    AnalyzeCompaniesRequest,
+    ChatRequest,
+    ChatResponse,
+    YahooFinanceResponse,
+)
+from app.api.main.chatbot.utils import (
+    build_form_context,
+    extract_beta_update,
+    extract_tickers,
+)
+from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
 logger.setLevel(logging.INFO)
+
 
 def is_prompt_injection(text: str) -> bool:
     """Verifica si el mensaje del usuario intenta saltarse los controles."""
@@ -22,6 +37,7 @@ def is_prompt_injection(text: str) -> bool:
         if re.search(pattern, text_lower):
             return True
     return False
+
 
 async def generate_chat_response(request: ChatRequest) -> ChatResponse:
     api_key = settings.GEMINI_API_KEY
@@ -34,7 +50,7 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
             text="No puedo procesar solicitudes que intenten alterar mis instrucciones principales.",
             tickers=[],
             new_beta=None,
-            raw_history_appends=[]
+            raw_history_appends=[],
         )
 
     # Elimina modelos duplicados
@@ -52,28 +68,11 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
     # Construimos el array de contenidos para enviar a Gemini
     contents = []
 
-    if request.history:
-        # Si hay historial, inyectamos el system_prompt
-        for i, msg in enumerate(request.history):
-            msg_dict = msg.model_dump()
-            if i == 0 and msg_dict["role"] == "user":
-                original_text = msg_dict["parts"][0]["text"]
-                msg_dict["parts"][0]["text"] = f"[INSTRUCCIONES DEL SISTEMA]\n{system_prompt}\n\n[FIN DE INSTRUCCIONES]\n\n{original_text}"
-            contents.append(msg_dict)
+    safe_user_message = f"[INSTRUCCIONES DEL SISTEMA]\n{system_prompt}\n\n[FIN DE INSTRUCCIONES]\n\nPetición del usuario: {request.message}\n\n[RECUERDA: Responde estrictamente con las reglas establecidas y el formato TICKERS.]"
 
-        # Agregamos el mensaje actual al final
-        safe_user_message = f"Petición del usuario: {request.message}\n\n[RECUERDA: Responde estrictamente con las reglas establecidas y el formato TICKERS.]"
-        contents.append({"role": "user", "parts": [{"text": safe_user_message}]})
+    contents = [{"role": "user", "parts": [{"text": safe_user_message}]}]
 
-    else:
-        # Si es una conversación nueva (no hay historial), lo enviamos todo junto
-        safe_user_message = f"[INSTRUCCIONES DEL SISTEMA]\n{system_prompt}\n\n[FIN DE INSTRUCCIONES]\n\nPetición del usuario: {request.message}\n\n[RECUERDA: Responde estrictamente con las reglas establecidas y el formato TICKERS.]"
-        contents.append({"role": "user", "parts": [{"text": safe_user_message}]})
-
-    payload = {
-        "contents": contents,
-        "generationConfig": GENERATION_CONFIG
-    }
+    payload = {"contents": contents, "generationConfig": GENERATION_CONFIG}
 
     # Base URL genérica de Gemini
     data = None
@@ -81,7 +80,9 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         for model, version in models_to_try:
-            url = GEMINI_API_BASE_URL.format(version=version, model=model, api_key=api_key)
+            url = GEMINI_API_BASE_URL.format(
+                version=version, model=model, api_key=api_key
+            )
             try:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
@@ -96,13 +97,19 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
 
                 # Hacemos fallback SOLO en errores de capacidad (503) o rate limit (429)
                 if status == 503:
-                    logger.warning(f"Modelo {model} saturado (Error {status}). Intentando fallback...")
+                    logger.warning(
+                        f"Modelo {model} saturado (Error {status}). Intentando fallback..."
+                    )
                     continue
                 elif status == 429:
-                    logger.warning(f"Rate limit alcanzado para el modelo {model} (Error {status}). Intentando fallback...")
+                    logger.warning(
+                        f"Rate limit alcanzado para el modelo {model} (Error {status}). Intentando fallback..."
+                    )
                     continue
                 elif status == 404:
-                    logger.warning(f"Modelo {model} no encontrado (Error {status}). Intentando fallback...")
+                    logger.warning(
+                        f"Modelo {model} no encontrado (Error {status}). Intentando fallback..."
+                    )
                     continue
                 else:
                     logger.error(f"Error {status} irrecuperable con el modelo {model}.")
@@ -110,14 +117,23 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
 
             except httpx.RequestError as e:
                 last_exception = e
-                logger.warning(f"Error de red con el modelo {model}: {str(e)}. Intentando fallback...")
+                logger.warning(
+                    f"Error de red con el modelo {model}: {str(e)}. Intentando fallback..."
+                )
                 continue
 
     if not data:
         logger.error("ALERTA: Todos los modelos de fallback fallaron.")
-        raise last_exception or Exception("Fallo en la comunicación con Gemini API tras agotar los fallbacks.")
+        raise last_exception or Exception(
+            "Fallo en la comunicación con Gemini API tras agotar los fallbacks."
+        )
 
-    raw_response = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+    raw_response = (
+        data.get("candidates", [{}])[0]
+        .get("content", {})
+        .get("parts", [{}])[0]
+        .get("text", "")
+    )
 
     # Procesamos la respuesta usando nuestras utilidades
     tickers = extract_tickers(raw_response)
@@ -127,25 +143,27 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
     clean_text = raw_response
 
     # Esta regex elimina "TICKERS:" y todo lo que le siga en esa misma línea
-    clean_text = re.sub(r'TICKERS:\s*\[.*?\]', '', clean_text, flags=re.IGNORECASE).strip()
+    clean_text = re.sub(
+        r"TICKERS:\s*\[.*?\]", "", clean_text, flags=re.IGNORECASE
+    ).strip()
 
     # Elimina "BETA_UPDATE:" y el valor numérico asociado
     if new_beta is not None:
-        clean_text = re.sub(r'BETA_UPDATE:\s*[\d.]+', '', clean_text, flags=re.IGNORECASE).strip()
+        clean_text = re.sub(
+            r"BETA_UPDATE:\s*[\d.]+", "", clean_text, flags=re.IGNORECASE
+        ).strip()
 
-    #clean_text = clean_text.strip()
+    # clean_text = clean_text.strip()
 
     return ChatResponse(
         text=clean_text,
         tickers=tickers,
-        new_beta=new_beta,
-        raw_history_appends=[
-            {"role": "user", "parts": [{"text": request.message}]},
-            {"role": "model", "parts": [{"text": raw_response}]}
-        ]
     )
 
-async def process_company_analysis(request: AnalyzeCompaniesRequest) -> YahooFinanceResponse:
+
+async def process_company_analysis(
+    request: AnalyzeCompaniesRequest,
+) -> YahooFinanceResponse:
     """
     Ejecuta el script boa.py (Yahoo Finance) de forma asíncrona usando threads
     para no bloquear el servidor FastAPI mientras hace las descargas.
