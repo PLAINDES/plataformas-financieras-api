@@ -14,14 +14,14 @@ from app.models.main import (
     CalculationType,
     TemplateComplement,
 )
-
-logger = logging.getLogger(__name__)
 from app.schemas.main import (
     AppConfigurationUpdate,
     TemplateComplementCreate,
     TemplateComplementResponse,
     TemplateComplementUpdate,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/main", tags=["Main"])
 

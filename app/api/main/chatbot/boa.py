@@ -21,15 +21,66 @@ Ajustes post-pruebas (v3.1):
 ──────────────────────────────────────────────────────────────────────────────
 """
 
-import concurrent.futures, random, logging, time
-import yfinance as yf
-import pandas as pd
+import concurrent.futures
+import logging
+import os
+import random
+import tempfile
+import time
+
 import numpy as np
+import pandas as pd
+import requests
+import xlrd
+import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
-# CONSTANTES
-# Solo para casos irrecuperables - Formato: "TICKER": (tasa, "razón")
+# ═══════════════════════════════════════════
+# TASA DE IR GLOBAL — Damodaran wacc.xls › Industry Averages › F13
+# ═══════════════════════════════════════════
+_DAMODARAN_URL = "https://www.stern.nyu.edu/~adamodar/pc/datasets/wacc.xls"
+_DAMODARAN_ROW = 12
+_DAMODARAN_COL = 5
+_DAMODARAN_FALLBACK = 0.2549
+
+
+def fetch_damodaran_effective_tax() -> tuple[float, str]:
+    try:
+        r = requests.get(
+            _DAMODARAN_URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=20
+        )
+        r.raise_for_status()
+
+        tmp = tempfile.NamedTemporaryFile(suffix=".xls", delete=False)
+        tmp.write(r.content)
+        tmp.close()
+
+        wb = xlrd.open_workbook(tmp.name)
+        os.unlink(tmp.name)
+
+        sheet_name = next(
+            (s for s in wb.sheet_names() if "industry" in s.lower()),
+            wb.sheet_names()[0],
+        )
+        ws = wb.sheet_by_name(sheet_name)
+        value = ws.cell_value(_DAMODARAN_ROW, _DAMODARAN_COL)
+
+        if not isinstance(value, (int, float)) or not (0 < value < 1):
+            raise ValueError(f"Valor inesperado: {value}")
+
+        return float(value), f"Damodaran wacc.xls > '{sheet_name}' F13"
+
+    except Exception as exc:
+        logger.warning(f"No se pudo obtener IR de Damodaran ({exc}). Usando fallback.")
+        return _DAMODARAN_FALLBACK, "fallback hardcoded (Damodaran no disponible)"
+
+
+DAMODARAN_TAX_RATE, DAMODARAN_TAX_SOURCE = fetch_damodaran_effective_tax()
+
+# ══════════════════════════════
+# CONSTANTES Y ETIQUETAS
+# ══════════════════════════════
 
 TAX_OVERRIDES: dict[str, tuple[float, str]] = {
     # "1742.HK": (0.165, "statutory HK — todos los años con unusual alto"),
@@ -37,25 +88,78 @@ TAX_OVERRIDES: dict[str, tuple[float, str]] = {
 
 # Tasas statutory por país (último recurso)
 STATUTORY_TAX_RATES: dict[str, float] = {
-    "SE": 0.206, "NO": 0.22,  "DK": 0.22,  "FI": 0.20,
-    "DE": 0.30,  "FR": 0.25,  "NL": 0.258, "GB": 0.25,
-    "CA": 0.265, "AU": 0.30,  "MY": 0.24,  "HK": 0.165,
-    "SG": 0.17,  "PL": 0.19,  "US": 0.21,  "BE": 0.25,
-    "JP": 0.304, "CN": 0.25,  "IN": 0.258, "KR": 0.22,
-    "ID": 0.22,  "TH": 0.20,  "PH": 0.25,  "TW": 0.20,
+    "SE": 0.206,
+    "NO": 0.22,
+    "DK": 0.22,
+    "FI": 0.20,
+    "DE": 0.30,
+    "FR": 0.25,
+    "NL": 0.258,
+    "GB": 0.25,
+    "CA": 0.265,
+    "AU": 0.30,
+    "MY": 0.24,
+    "HK": 0.165,
+    "SG": 0.17,
+    "PL": 0.19,
+    "US": 0.21,
+    "BE": 0.25,
+    "JP": 0.304,
+    "CN": 0.25,
+    "IN": 0.258,
+    "KR": 0.22,
+    "ID": 0.22,
+    "TH": 0.20,
+    "PH": 0.25,
+    "TW": 0.20,
 }
 
 CURRENCY_PAIRS_INIT = [
-    "CAD", "MXN", "BRL", "ARS", "CLP", "COP", "PEN", "UYU",
-    "EUR", "GBP", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK",
-    "HUF", "RON", "TRY",                          # HRK eliminada (EUR desde 2023)
-    "JPY", "CNY", "HKD", "SGD", "KRW", "TWD", "INR", "MYR",
-    "THB", "IDR", "PHP", "VND", "AUD", "NZD",
-    "AED", "SAR", "ILS", "ZAR", "EGP", "NGN", "KWD", "QAR",
+    "CAD",
+    "MXN",
+    "BRL",
+    "ARS",
+    "CLP",
+    "COP",
+    "PEN",
+    "UYU",
+    "EUR",
+    "GBP",
+    "CHF",
+    "SEK",
+    "NOK",
+    "DKK",
+    "PLN",
+    "CZK",
+    "HUF",
+    "RON",
+    "TRY",
+    "JPY",
+    "CNY",
+    "HKD",
+    "SGD",
+    "KRW",
+    "TWD",
+    "INR",
+    "MYR",
+    "THB",
+    "IDR",
+    "PHP",
+    "VND",
+    "AUD",
+    "NZD",
+    "AED",
+    "SAR",
+    "ILS",
+    "ZAR",
+    "EGP",
+    "NGN",
+    "KWD",
+    "QAR",
 ]
 
-UNUSUAL_THRESHOLD = 0.30   # unusual/pretax > 30% → año sospechoso
-TAX_MAX           = 0.60   # tasa > 60% → anómala
+UNUSUAL_THRESHOLD = 0.30  # unusual/pretax > 30% → año sospechoso
+TAX_MAX = 0.60  # tasa > 60% → anómala
 
 EQUITY_LABELS = [
     "Stockholders Equity",
@@ -63,11 +167,19 @@ EQUITY_LABELS = [
     "Total Equity Gross Minority Interest",
     "Common Stock Equity",
 ]
-DEBT_LABELS = [
-    "Long Term Debt",
+
+DEBT_LABELS_LT = [
     "Long Term Debt And Capital Lease Obligation",
+    "Long Term Debt",
     "Debt Long Term Total",
 ]
+
+DEBT_LABELS_ST = [
+    "Current Debt And Capital Lease Obligation",
+    "Current Debt",
+    "Short Term Debt",
+]
+
 TOTAL_ASSETS_LABELS = [
     "Total Assets",
     "Total Assets As Reported",
@@ -75,6 +187,7 @@ TOTAL_ASSETS_LABELS = [
 
 # HELPERS
 # 1. FUNCIÓN DE TIPO DE CAMBIO
+
 
 def get_fx_rate(currency: str, fx_cache: dict) -> float:
     currency = currency.upper().strip()
@@ -97,6 +210,7 @@ def get_fx_rate(currency: str, fx_cache: dict) -> float:
         fx_cache[currency] = 1.0
         return 1.0
 
+
 def first_valid(df: pd.DataFrame, labels: list) -> float | None:
     """Devuelve el primer valor no-NaN encontrado entre los labels dados."""
     for lbl in labels:
@@ -107,8 +221,9 @@ def first_valid(df: pd.DataFrame, labels: list) -> float | None:
     return None
 
 
-
-def get_clean_tax_rate(inc: pd.DataFrame, ticker: str, country: str) -> tuple[float, str]:
+def get_clean_tax_rate(
+    inc: pd.DataFrame, ticker: str, country: str
+) -> tuple[float, str]:
     """
     Busca la tasa impositiva más limpia disponible:
       1. Recorre columnas de más reciente a más antigua.
@@ -116,19 +231,33 @@ def get_clean_tax_rate(inc: pd.DataFrame, ticker: str, country: str) -> tuple[fl
       3. Descarta años con tasa calculada fuera de [0, TAX_MAX].
       4. Devuelve (tasa, fuente) describiendo qué año/método se usó.
     """
-    pretax_label = "Pretax Income" if "Pretax Income" in inc.index else "Income Before Tax" if "Income Before Tax" in inc.index else None
-    tax_label = "Tax Provision" if "Tax Provision" in inc.index else "Income Tax Expense" if "Income Tax Expense" in inc.index else None
-    unusual_label = "Total Unusual Items" if "Total Unusual Items" in inc.index else None
+    pretax_label = (
+        "Pretax Income"
+        if "Pretax Income" in inc.index
+        else "Income Before Tax"
+        if "Income Before Tax" in inc.index
+        else None
+    )
+    tax_label = (
+        "Tax Provision"
+        if "Tax Provision" in inc.index
+        else "Income Tax Expense"
+        if "Income Tax Expense" in inc.index
+        else None
+    )
+    unusual_label = (
+        "Total Unusual Items" if "Total Unusual Items" in inc.index else None
+    )
 
     if pretax_label is None or tax_label is None:
-        statutory = STATUTORY_TAX_RATES.get(country, 0.27)
+        statutory = STATUTORY_TAX_RATES.get(country, DAMODARAN_TAX_RATE)
         return statutory, f"statutory {country} (sin labels IS)"
 
     for col in inc.columns:
         year = str(col)[:10]
 
         pre = inc.loc[pretax_label, col]
-        tax = inc.loc[tax_label,    col]
+        tax = inc.loc[tax_label, col]
         unu = inc.loc[unusual_label, col] if unusual_label else None
 
         pre = float(pre) if pd.notna(pre) else None
@@ -151,7 +280,7 @@ def get_clean_tax_rate(inc: pd.DataFrame, ticker: str, country: str) -> tuple[fl
 
         return tasa, f"año {year} (unusual={unusual_ratio:.1%})"
 
-    statutory = STATUTORY_TAX_RATES.get(country, 0.27)
+    statutory = STATUTORY_TAX_RATES.get(country, DAMODARAN_TAX_RATE)
     return statutory, f"statutory {country} (todos los años descartados)"
 
 
@@ -185,13 +314,13 @@ def _process_single_ticker(ticker: str):
 
     try:
         stock = yf.Ticker(ticker)
-        info  = stock.info
+        info = stock.info
     except Exception:
         return None
 
     listing_currency = info.get("currency", "USD")
     reporting_currency = info.get("financialCurrency", listing_currency)
-    
+
     fx_rate = get_fx_rate(reporting_currency, global_fx_pairs)
     # Se añade la tasa de conversion especifica para la capitalizacion de mercado
     fx_listing = get_fx_rate(listing_currency, global_fx_pairs)
@@ -199,23 +328,19 @@ def _process_single_ticker(ticker: str):
     country = info.get("country", "")
 
     bs = stock.balance_sheet
-    equity_value, debt_value, total_assets = None, None, None
+    debt_value = None
+    debt_lt = 0.0
+    debt_st = 0.0
+    total_assets = None
 
     if bs is not None and not bs.empty:
-        raw_eq = first_valid(bs, EQUITY_LABELS)
-        if raw_eq is not None:
-            equity_value = raw_eq * fx_rate
+        raw_debt_lt = first_valid(bs, DEBT_LABELS_LT)
+        raw_debt_st = first_valid(bs, DEBT_LABELS_ST)
+        debt_lt = (raw_debt_lt * fx_rate) if raw_debt_lt is not None else 0.0
+        debt_st = (raw_debt_st * fx_rate) if raw_debt_st is not None else 0.0
 
-        raw_debt = first_valid(bs, DEBT_LABELS)
-        if raw_debt is not None:
-            debt_value = raw_debt * fx_rate
-
-        raw_ta = first_valid(bs, TOTAL_ASSETS_LABELS)
-        if raw_ta is not None:
-            total_assets = raw_ta * fx_rate
-        elif equity_value is not None and debt_value is not None:
-            total_assets = equity_value + debt_value
-
+        if raw_debt_lt is not None or raw_debt_st is not None:
+            debt_value = debt_lt + debt_st
 
     # Tasa Impositiva robusta
     inc = stock.financials
@@ -225,15 +350,19 @@ def _process_single_ticker(ticker: str):
     elif inc is not None and not inc.empty:
         tax_rate_val, tax_source = get_clean_tax_rate(inc, ticker, country)
     else:
-        tax_rate_val = STATUTORY_TAX_RATES.get(country, 0.27)
+        tax_rate_val = STATUTORY_TAX_RATES.get(country, DAMODARAN_TAX_RATE)
         tax_source = f"statutory {country} (IS vacío)"
 
     # Beta y D/E
     beta_levered = info.get("beta", None)
     market_cap = info.get("marketCap", None)
-
     # Conversion de Market Cap a USD usando la moneda de cotizacion
     market_cap_usd = market_cap * fx_listing if market_cap is not None else None
+
+    if market_cap_usd is not None and debt_value is not None:
+        total_assets = market_cap_usd + debt_value
+    elif market_cap_usd is not None:
+        total_assets = market_cap_usd
 
     # Calculo de D/E ratio basado en Market Cap
     de_ratio = None
@@ -252,16 +381,16 @@ def _process_single_ticker(ticker: str):
     print(f"Ticker {ticker}: Boa: beta_unlevered={fmt(beta_unlevered, '.4f')}")
 
     # PORCENTAJES DE ESTRUCTURA DE CAPITAL ORIGINALES
-    pct_debt   = None
+    pct_debt = None
     pct_equity = None
     if debt_value is not None and market_cap_usd is not None:
-        total_cap  = debt_value + market_cap_usd
+        total_cap = debt_value + market_cap_usd
         if total_cap != 0:
-            pct_debt   = debt_value   / total_cap
+            pct_debt = debt_value / total_cap
             pct_equity = market_cap_usd / total_cap
 
     # GUARDAMOS PARA PANDAS
-    raw_data = ({
+    raw_data = {
         "Ticker": ticker,
         "Moneda cotización": listing_currency,
         "Moneda EE.FF": reporting_currency,
@@ -278,7 +407,7 @@ def _process_single_ticker(ticker: str):
         "%Equity": pct_equity,
         "Market Cap": market_cap,
         "País": country,
-    })
+    }
 
     api_data = None
     if beta_levered is not None and de_ratio is not None:
@@ -300,10 +429,11 @@ def _process_single_ticker(ticker: str):
             "beta_unlevered": round(beta_unlevered, 4) if beta_unlevered else 0.0,
             "pct_debt": pct_debt,
             "pct_equity": pct_equity,
-            "market_cap": market_cap
+            "market_cap": market_cap,
         }
 
     return raw_data, api_data
+
 
 def calculate_sector_beta(target_tickers: list[str]) -> dict:
     results = []
@@ -314,7 +444,10 @@ def calculate_sector_beta(target_tickers: list[str]) -> dict:
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         # Enviamos las tareas al pool
-        futures_map = {executor.submit(_process_single_ticker, ticker): ticker for ticker in target_tickers}
+        futures_map = {
+            executor.submit(_process_single_ticker, ticker): ticker
+            for ticker in target_tickers
+        }
 
         # Recogemos los resultados conforme vayan terminando
         for future in concurrent.futures.as_completed(futures_map):
@@ -355,9 +488,7 @@ def calculate_sector_beta(target_tickers: list[str]) -> dict:
         w_bl = wpond("Beta Levered")
         w_de = wpond("D/E Ratio")
         w_tx = wpond("Tasa Impositiva")
-
-        denom_bu = 1 + (1 - w_tx) * w_de
-        w_bu = w_bl / denom_bu if denom_bu != 0 else 0.0
+        w_bu = wpond("Beta Unlevered")
 
     return {
         "success": True,
@@ -365,6 +496,6 @@ def calculate_sector_beta(target_tickers: list[str]) -> dict:
         "group_statistics": {
             "avg_beta_unlevered": round(w_bu, 4) if not np.isnan(w_bu) else 0.0,
             "avg_dc_ratio": round(w_de, 4) if not np.isnan(w_de) else 0.0,
-            "avg_tax_rate": round(w_tx, 4) if not np.isnan(w_tx) else 0.0
-        }
+            "avg_tax_rate": round(w_tx, 4) if not np.isnan(w_tx) else 0.0,
+        },
     }
