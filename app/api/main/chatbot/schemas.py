@@ -1,27 +1,34 @@
 # app/api/chatbot/schemas.py
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
-from typing import List, Dict, Optional, Any
+
 
 class ChatHistoryPart(BaseModel):
     text: str
+
 
 class ChatHistoryMessage(BaseModel):
     role: str
     parts: List[ChatHistoryPart]
 
+
 class ChatRequest(BaseModel):
     message: str
-    history: List[ChatHistoryMessage] = []
     form_data: Dict[str, Any] = {}
+    # history: List[ChatHistoryMessage] = []
+
 
 class ChatResponse(BaseModel):
     text: str
     tickers: List[str] = []
-    new_beta: Optional[float] = None
-    raw_history_appends: List[ChatHistoryMessage] = []
+    # new_beta: Optional[float] = None
+    # raw_history_appends: List[ChatHistoryMessage] = []
+
 
 class AnalyzeCompaniesRequest(BaseModel):
     tickers: List[str]
+
 
 class CompanyData(BaseModel):
     ticker: str
@@ -43,10 +50,12 @@ class CompanyData(BaseModel):
     pct_equity: Optional[float] = None
     market_cap: Optional[float] = None
 
+
 class GroupStatistics(BaseModel):
     avg_beta_unlevered: float
     avg_dc_ratio: float
     avg_tax_rate: float
+
 
 class YahooFinanceResponse(BaseModel):
     success: bool
