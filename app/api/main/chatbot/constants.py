@@ -7,9 +7,10 @@ GEMINI_API_VERSION = os.getenv("GEMINI_API_VERSION", "v1")
 
 FALLBACK_MODELS = [
     (PRIMARY_MODEL, GEMINI_API_VERSION),
-    ("gemini-2.5-flash-lite", "v1"),
+    ("gemini-2.5-pro", "v1"), 
+    # Como último recurso, el flash-lite más moderno, evitando versiones "preview" antiguas
+    ("gemini-3.5-flash-lite", "v1"),
     ("gemini-3.1-flash-lite", "v1beta"),
-    ("gemini-3.1-flash-lite-preview", "v1beta"),
 ]
 
 GENERATION_CONFIG = {
