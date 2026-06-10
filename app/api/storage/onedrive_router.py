@@ -12,14 +12,13 @@ Endpoints:
   DELETE /storage/onedrive/folder/{id}    -> Eliminar carpeta (recursivo)
 """
 
-import io
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, status
-from fastapi.responses import StreamingResponse
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 
 from app.api.deps import get_current_user
-from app.services.onedrive_service import get_onedrive_service, OneDriveConfig
+from app.services.onedrive.service import OneDriveConfig, get_onedrive_service
 
 router = APIRouter(
     prefix="/storage/onedrive",
@@ -65,21 +64,24 @@ async def check_onedrive_connection():
 # === SETUP ====================================================================
 @router.post("/setup")
 async def setup_onedrive_structure(
-    body: dict = Body(..., example={
-        "PLATAFORMAS_FINANCIERAS": {
-            "development": ["plantillas_maestras", "kapital", "valora"],
-            "production": ["plantillas_maestras", "kapital", "valora"],
-            "test": ["plantillas_maestras", "kapital", "valora"]
-        }
-    })
+    body: dict = Body(
+        ...,
+        example={
+            "PLATAFORMAS_FINANCIERAS": {
+                "development": ["plantillas_maestras", "kapital", "valora"],
+                "production": ["plantillas_maestras", "kapital", "valora"],
+                "test": ["plantillas_maestras", "kapital", "valora"],
+            }
+        },
+    ),
 ):
     """
     Crea la estructura de carpetas especificada en OneDrive.
-    
+
     La estructura es OBLIGATORIA. No hay plantilla por defecto.
-    
+
     Ejemplos de estructura:
-    
+
     **Estructura jerárquica (3 niveles):**
     ```json
     {
@@ -90,14 +92,14 @@ async def setup_onedrive_structure(
       }
     }
     ```
-    
+
     **Estructura plana (2 niveles):**
     ```json
     {
       "proyecto_x": ["reportes", "datos", "backups"]
     }
     ```
-    
+
     **Estructura mixta:**
     ```json
     {
@@ -142,19 +144,24 @@ async def setup_onedrive_structure(
 # === LIST FOLDERS =============================================================
 @router.get("/folders")
 async def list_onedrive_folders(
-    path: Optional[str] = Query(None,
-                                description="Ruta donde listar carpetas (ej: PLATAFORMAS_FINANCIERAS/development)")
+    path: Optional[str] = Query(
+        None,
+        description="Ruta donde listar carpetas (ej: PLATAFORMAS_FINANCIERAS/development)",
+    ),
 ):
     """
     Lista todas las CARPETAS en una ruta de OneDrive.
     Si 'path' no se proporciona, lista desde root.
-    
+
     Ejemplo:
       GET /storage/onedrive/folders?path=PLATAFORMAS_FINANCIERAS
     """
     config = OneDriveConfig()
     if not config.is_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no configurado")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OneDrive no configurado",
+        )
 
     service = get_onedrive_service()
     try:
@@ -166,31 +173,42 @@ async def list_onedrive_folders(
         }
     except Exception as e:
         logger.error(f"Error listing folders: {e}")
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al listar carpetas: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al listar carpetas: {str(e)}",
+        )
 
 
 # === FOLDER INFO ==============================================================
 @router.get("/folder-info")
 async def get_folder_info(
-    path: str = Query(...,
-                      description="Ruta absoluta de la carpeta (ej: PLATAFORMAS_FINANCIERAS/development/kapital)")
+    path: str = Query(
+        ...,
+        description="Ruta absoluta de la carpeta (ej: PLATAFORMAS_FINANCIERAS/development/kapital)",
+    ),
 ):
     """
     Obtiene información detallada de una carpeta específica.
     Retorna: id, name, created_at, modified_at, web_url, etc.
-    
+
     Ejemplo:
       GET /storage/onedrive/folder-info?path=PLATAFORMAS_FINANCIERAS/development
     """
     config = OneDriveConfig()
     if not config.is_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no configurado")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OneDrive no configurado",
+        )
 
     service = get_onedrive_service()
     try:
         info = await service.get_folder_by_path(path)
         if not info:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Carpeta no encontrada: {path}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Carpeta no encontrada: {path}",
+            )
         return {
             "id": info.get("id"),
             "name": info.get("name"),
@@ -203,7 +221,10 @@ async def get_folder_info(
         raise
     except Exception as e:
         logger.error(f"Error getting folder info: {e}")
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al obtener info: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al obtener info: {str(e)}",
+        )
 
 
 # === DELETE ITEM (FILE) =======================================================
@@ -214,7 +235,10 @@ async def delete_onedrive_item(item_id: str):
     """
     config = OneDriveConfig()
     if not config.is_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no configurado")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OneDrive no configurado",
+        )
 
     service = get_onedrive_service()
     try:
@@ -225,7 +249,10 @@ async def delete_onedrive_item(item_id: str):
         }
     except Exception as e:
         logger.error(f"Error deleting item: {e}")
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al eliminar: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al eliminar: {str(e)}",
+        )
 
 
 # === DELETE FOLDER (RECURSIVE) ================================================
@@ -233,7 +260,7 @@ async def delete_onedrive_item(item_id: str):
 async def delete_onedrive_folder_recursive(folder_id: str):
     """
     Elimina una CARPETA completa y todo su contenido de forma RECURSIVA.
-    
+
     Esta es una operación DESTRUCTIVA.
     Se eliminarán:
       - Todos los archivos dentro de la carpeta
@@ -242,7 +269,10 @@ async def delete_onedrive_folder_recursive(folder_id: str):
     """
     config = OneDriveConfig()
     if not config.is_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no configurado")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OneDrive no configurado",
+        )
 
     service = get_onedrive_service()
     try:
@@ -264,17 +294,23 @@ async def delete_onedrive_folder_recursive(folder_id: str):
 # === LIST ALL FILES IN FOLDER =================================================
 @router.get("/files")
 async def list_all_files_in_folder(
-    path: str = Query(..., description="Ruta donde listar archivos (ej: PLATAFORMAS_FINANCIERAS/development/plantillas_maestras)")
+    path: str = Query(
+        ...,
+        description="Ruta donde listar archivos (ej: PLATAFORMAS_FINANCIERAS/development/plantillas_maestras)",
+    ),
 ):
     """
     Lista TODOS los archivos (no carpetas) en una ruta específica.
-    
+
     Ejemplo:
       GET /storage/onedrive/files?path=PLATAFORMAS_FINANCIERAS/development/plantillas_maestras
     """
     config = OneDriveConfig()
     if not config.is_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no configurado")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OneDrive no configurado",
+        )
 
     service = get_onedrive_service()
     try:
@@ -282,7 +318,11 @@ async def list_all_files_in_folder(
         return {"path": path, "file_count": len(files), "files": files}
     except Exception as e:
         logger.error(f"Error listing files: {e}")
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al listar archivos: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al listar archivos: {str(e)}",
+        )
+
 
 @router.post("/excel/read")
 async def read_excel_cell(
@@ -298,17 +338,29 @@ async def read_excel_cell(
     """
     config = OneDriveConfig()
     if not config.is_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no configurado")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OneDrive no configurado",
+        )
 
     service = get_onedrive_service()
     try:
         values = await service.read_excel_cell_with_session(
             item_id=item_id, sheet_name=sheet_name, cell_address=cell
         )
-        return {"item_id": item_id, "sheet_name": sheet_name, "cell": cell, "values": values}
+        return {
+            "item_id": item_id,
+            "sheet_name": sheet_name,
+            "cell": cell,
+            "values": values,
+        }
     except Exception as e:
         logger.error(f"Error reading excel cell: {e}")
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al leer celda: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al leer celda: {str(e)}",
+        )
+
 
 @router.post("/excel/update")
 async def update_excel_cell(
@@ -320,7 +372,10 @@ async def update_excel_cell(
     """Actualiza una celda/rango del archivo Excel en OneDrive."""
     config = OneDriveConfig()
     if not config.is_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OneDrive no configurado")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OneDrive no configurado",
+        )
 
     service = get_onedrive_service()
     try:
@@ -330,7 +385,15 @@ async def update_excel_cell(
             cell_address=cell,
             value=value,
         )
-        return {"item_id": item_id, "sheet_name": sheet_name, "cell": cell, "values": values}
+        return {
+            "item_id": item_id,
+            "sheet_name": sheet_name,
+            "cell": cell,
+            "values": values,
+        }
     except Exception as e:
         logger.error(f"Error updating excel cell: {e}")
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Error al actualizar celda: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error al actualizar celda: {str(e)}",
+        )

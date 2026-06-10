@@ -1,186 +1,198 @@
-# Financiera Project Documentation
+# Financiera API - Backend Documentation
 
 ## Overview
 
-Financiera is a full-stack web application for financial management and content management. The project consists of a backend API built with FastAPI and a frontend built with React/TypeScript.
+Financiera is a comprehensive backend API built with FastAPI that powers a financial management platform and a Content Management System (CMS). It handles advanced financial calculations, automated Excel integrations via Microsoft Graph API, PDF report generation, and an embedded chatbot service.
+
+The entire infrastructure is fully containerized using Docker, enabling seamless deployments across local, testing, and production environments.
 
 ## Architecture
 
 ### Backend
+
 - **Framework**: FastAPI (Python)
 - **Database**: MySQL with SQLAlchemy ORM
 - **Authentication**: JWT-based with bcrypt password hashing
 - **Migration Tool**: Alembic
-- **Key Dependencies**:
-  - fastapi: Web framework
-  - sqlalchemy: ORM
-  - pymysql: MySQL driver
-  - pydantic: Data validation
-  - python-jose: JWT handling
-
-### Frontend
-- **Framework**: React 19 with TypeScript
-- **Build Tool**: Vite
-- **Styling**: TailwindCSS
-- **State Management**: Zustand
-- **Routing**: React Router DOM
-- **Key Dependencies**:
-  - react/react-dom: UI framework
-  - @heroicons/react: Icons
-  - react-router-dom: Routing
+- **External Integrations**:
+  - **Microsoft Graph API / OneDrive**: For cloud-based Excel calculation engines.
+  - **Playwright**: For headless HTML-to-PDF report generation.
+- **Containerization**: Docker & Docker Compose
+- **CI/CD**: GitHub Actions
 
 ## Project Structure
 
-```
+```text
 backend/
 ├── app/
-│   ├── api/          # API routes (auth, cms, kapital, valora)
-│   ├── core/         # Configuration, security, permissions
-│   ├── db/           # Database connection and base models
-│   ├── models/       # SQLAlchemy models (user, cms)
-│   ├── repositories/ # Data access layer
-│   ├── schemas/      # Pydantic schemas
-│   └── services/     # Business logic
-├── migrations/       # Alembic migrations
-└── requirements.txt  # Python dependencies
-
-frontend/
-├── src/
-│   ├── app/          # Page components (admin, kapital, valora, landing)
-│   ├── components/   # Reusable components
-│   ├── context/      # React contexts
-│   ├── hooks/        # Custom hooks
-│   ├── services/     # API services
-│   ├── store/        # Zustand stores
-│   ├── styles/       # Global styles
-│   ├── types/        # TypeScript type definitions
-│   └── utils/        # Utilities and helpers
-└── package.json      # Node dependencies
+│   ├── api/
+│   │   ├── auth/           # Authentication and authorization routes
+│   │   ├── cms/            # Content Management System routes
+│   │   ├── main/
+│   │   │   ├── calculations/   # Modularized finance logic (engine, formatters, payload, macros)
+│   │   │   ├── chatbot/        # "Boa" chatbot services and schemas
+│   │   │   ├── master_templates/ # Excel template extraction pipelines
+│   │   │   ├── reports/        # PDF and HTML report generation
+│   │   │   └── users/          # User management
+│   │   └── storage/        # OneDrive & AWS storage routers
+│   ├── core/               # App configuration, constants, and security
+│   ├── db/                 # Database setup and sessions
+│   ├── models/             # SQLAlchemy ORM models
+│   ├── repositories/       # Data Access Layer
+│   └── services/           # Reusable business logic (e.g., modularized OneDrive Mixins)
+├── migrations/             # Alembic migration versions
+├── tests/                  # Pytest unit and integration tests
+├── Dockerfile              # Python 3.11 slim + Playwright setup
+└── compose.*.yaml          # Environment-specific Docker configurations
 ```
 
 ## Key Features
 
-- User authentication and authorization
-- Content Management System (CMS) for pages, content, and media
-- Financial analysis modules (Kapital, Valora)
-- Admin panel for content editing
-- Responsive frontend with modern UI
-- New Chatbot service
+- Advanced Financial Engine: Seamless integration with Microsoft OneDrive to run complex financial models (WACC, Valora) dynamically using Excel Online as a calculation engine.
+- CMS Integration: Headless CMS capabilities for managing landing pages, interactive sections, and media uploads.
+- Boa Chatbot: Embedded conversational AI logic specific to financial advisory.
+- Report Generation: Automated extraction of Excel charts and data to generate polished PDF reports using Playwright.
+- Master Template Extraction: Automated parsing of .xlsx files to map dynamic variables ($$CODE$$) into the database.
 
-## Extraccion de Plantillas Maestras
+## Master Templates Extraction Pipeline
 
-Este proyecto incluye un flujo dedicado para plantillas maestras (`main_master_templates`) que extrae codigos de plantilla y graficos desde archivos Excel.
+This project includes a dedicated pipeline (`main_master_templates`) that extracts template codes and charts directly from Excel files.
 
-### Como funciona la extraccion de codigos
+### How Extraction Works
 
-El extractor revisa solo las hojas definidas por el mapeo:
+The extractor exclusively scans worksheets defined by the system mapping (e.g., `Plantilla Usuario` for Valora, `WACC` for Kapital)
 
-- `Plantilla Usuario` -> `valora`
-- `WACC` -> `kapital`
+#### Pipeline steps:
 
-Pasos del proceso:
+1. Loads the workbook from bytes using `openpyxl`.
+2. Iterates through mapped worksheets.
+3. Detects codes with pattern `$$CODIGO$$`.
+4. Normalizes each code to a consistent format.
+5. Reads the associated name from the adjacent cell.
+6. Returns results grouped by type (`valora` and `kapital`).
 
-1. Carga el workbook desde bytes con `openpyxl`.
-2. Recorre celdas en las hojas mapeadas.
-3. Detecta codigos con patron `$$CODIGO$$`.
-4. Normaliza cada codigo a formato consistente.
-5. Lee el nombre asociado desde la celda contigua.
-6. Devuelve resultados agrupados por tipo (`valora` y `kapital`).
+### Partial Failure Tolerance
 
-Persistencia en BD:
+The pipeline is designed to be resilient:
 
-- Cada codigo se guarda en `main_template_codes`.
-- Se relaciona al master template por `main_template_codes_master_templates`.
-- Si el codigo corresponde a grafico, se referencia su imagen por `template_code_image_id` (FK a `cms_media.id`).
+- If AWS S3 credentials fail, code extraction continues.
+- If a chart fails to render/upload via Graph API, the process falls back gracefully and still returns the available text codes.
+- If OneDrive is misconfigured, the endpoint halts early with a controlled error.
 
-### Comportamiento ante fallas parciales
+**Note on** `.xlsx` compatibility: The extractor is optimized for files natively generated by Microsoft Excel. Editing master templates with third-party software (LibreOffice, OnlyOffice) may strip internal metadata and cause extraction failures.
 
-El pipeline tolera fallas parciales:
+## Docker Setup & Deployment Guide
 
-- Si falta credencial S3, la extraccion de codigos no se bloquea.
-- Si un chart falla al renderizar/subir, el proceso puede responder igual con codigos disponibles.
-- Si OneDrive no esta configurado, el endpoint corta temprano con error controlado.
+The project relies entirely on Docker Compose. Depending on your environment, you will use different compose files.
 
-Esta separacion evita que la ruta textual (codigos) dependa de la ruta de entrega de imagenes.
+### 1. Local Development
 
-### Compatibilidad de formatos xlsx
+Runs the API with hot-reloading and mounts your local volumes so changes reflect immediately.
 
-El extractor esta diseñado para ser compatible con XLSX generados por Excel, se recomienda usar Excel durante desarrollo si se planea modificar el archivo xlsx de prueba, ya que editar la plantilla maestra con otro software (LibreOffice, OnlyOffice) puede causar incompatibilidades y perdida de información.
+**Prerequisites**: Create a `.env.local` file based on your environment variables.
+
+```bash
+docker compose -f compose.yaml -f compose.override.yaml --env-file .env.local up --build
+```
+
+- The API will be available at: `http://localhost:8000`
+- Swagger Documentation: `http://localhost:8000/api/v1/docs`
+
+### 2. Testing Environment
+
+Spins up a temporary database, runs the `pytest` suite, and tears down the containers automatically.
+Prerequisites: Create a `.env.ci` file.
+
+```bash
+docker compose -p financiera_ci -f compose.yaml -f compose.ci.yaml --env-file .env.ci up --build --abort-on-container-exit --exit-code-from backend
+
+# Remember to clean up volumes after tests to avoid conflicts
+docker compose -p financiera_ci -f compose.yaml -f compose.ci.yaml --env-file .env.ci down -v
+```
+
+### 3. Main/Dev Branch Deployment
+
+Its the same as local development but with production environment variables. Make sure to create a `.env.prod` file with the correct settings.
+
+```bash
+# Change the compose file for dev or prod as needed
+docker compose -f compose.yaml -f compose.prod.yaml up -d
+```
+
+## CI/CD Workflows
+
+The repository includes GitHub Actions for automated quality assurance and deployment:
+
+- `test.yaml`: Triggers on PRs to dev. Builds the CI docker environment and runs all tests.
+- `deploy-test.yaml`: Triggers on pushes to dev. Syncs code to the staging server via rsync and deploys using compose.test.yaml.
+- `deploy.yaml`: Triggers on pushes to main for production releases.
 
 ## Technical Debt
 
 ### 1. Database Type Mismatch in CMS Auditory Logs
+
 **Issue**: The migration for `cms_auditory_logs` table uses `mysql.BIGINT(unsigned=True)` for primary key and foreign key columns, but the SQLAlchemy model uses `BigInteger` (which defaults to signed BIGINT).
 
 **Impact**: This creates a type inconsistency between the database schema and the ORM model. Signed vs unsigned integers have different value ranges:
+
 - Signed BIGINT: -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807
 - Unsigned BIGINT: 0 to 18,446,744,073,709,551,615
 
 **Risk**: Potential data integrity issues, especially with foreign key relationships. If the application tries to insert negative values or values exceeding the signed range, it could cause database errors.
 
-**Recommendation**: 
+**Recommendation**:
+
 - Update the model to use `BigInteger(unsigned=True)` or specify the column type explicitly
 - Or modify the migration to use signed BIGINT to match the model
 - Consider adding database constraints and validation in the application layer
 
 ### 2. Code Structure and Organization
+
 **Issues**:
+
 - Mixed use of Spanish and English in code comments and naming
 - Some empty directories (kapital/, valora/ in API)
 - Potential circular imports in services/repositories pattern
 - Lack of comprehensive error handling and logging
 
 ### 3. Testing and Quality Assurance
+
 **Issues**:
+
 - No visible test files or test configuration
 - No CI/CD pipeline mentioned
 - Missing code coverage metrics
 - No linting/formatting standards enforced
 
 ### 4. Security Considerations
+
 **Potential Issues**:
+
 - CORS configuration allows all origins (`allow_origins=settings.BACKEND_CORS_ORIGINS`)
 - No rate limiting implemented
 - Password hashing uses bcrypt but should verify implementation
 - JWT tokens may lack proper expiration handling
 
 ### 5. Performance and Scalability
+
 **Issues**:
+
 - No caching layer implemented
 - Database queries may not be optimized
 - No pagination in API responses
 - Static file serving not configured
 
-## Setup Instructions
+### Development Recommendations
 
-### Backend
-1. Install Python 3.11+
-2. `cd backend`
-3. `pip install -r requirements.txt`
-4. Configure environment variables in `.env`
-5. `alembic upgrade head` to run migrations
-6. `uvicorn app.main:app --reload`
+Try to use a linter (e.g., flake8, pylint) and formatter (e.g., black) to enforce consistent code style and catch potential issues early.
 
-### Frontend
-1. Install Node.js 18+
-2. `cd frontend`
-3. `npm install`
-4. `npm run dev`
-
-## Development Notes
-
-- Backend runs on port 8000 by default
-- Frontend runs on port 5173 (Vite dev server)
-- Database: MySQL (configure connection in backend/.env)
-- API documentation available at `/api/v1/docs`
+- `Recommendation`: Install Ruff for linting and for formating.
 
 ## Future Improvements
 
 1. Resolve the BIGINT type mismatch
-2. Add comprehensive test suite
-3. Implement proper logging and monitoring
-4. Add API rate limiting and security headers
-5. Optimize database queries and add indexing
-6. Implement caching for improved performance
-7. Add internationalization support
-8. Set up CI/CD pipeline
+2. Implement proper logging and monitoring
+3. Add API rate limiting and security headers
+4. Optimize database queries and add indexing
+5. Implement caching for improved performance
+6. Add internationalization support
