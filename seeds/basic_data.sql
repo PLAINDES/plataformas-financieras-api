@@ -117,6 +117,16 @@ VALUES (
         'footer',
         1,
         NULL
+    ),
+    (
+        50,
+        'header',
+        'Header',
+        'Headers',
+        '{"logo": "string", "logo_right": "string"}',
+        'layout',
+        1,
+        NULL
     );
 INSERT IGNORE INTO `cms_pages`
 VALUES (
@@ -602,6 +612,22 @@ VALUES (
         NULL,
         '2026-03-05 12:12:03',
         '2026-03-05 12:12:03',
+        NULL
+    ),
+    (
+        311,
+        1,
+        50,
+        'header',
+        'Configuración del Header',
+        '{"logo": "images/logo.png", "logo_right": "images/logo.png"}',
+        'published',
+        1,
+        NULL,
+        NULL,
+        NULL,
+        '2026-06-09 18:44:50',
+        '2026-06-09 18:44:50',
         NULL
     );
 INSERT IGNORE INTO `cms_section_contents`
