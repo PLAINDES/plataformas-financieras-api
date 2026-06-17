@@ -352,6 +352,8 @@ async def _enrich_payload_with_excel_outputs(
 
     if include_sensibilizacion and latest_input.get("beta_desapalancado") is not None:
         sensibilidad_entry["boa"] = _extract_number(latest_input["beta_desapalancado"])
+        if isinstance(latest_input.get("subsector"), str):
+            sensibilidad_entry["subsector"] = latest_input.get("subsector", "").strip()
 
     enriched["resultados"] = [resultados_entry] if include_resultados else []
     enriched["sensibilizacion"] = (
