@@ -4,32 +4,6 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 
-class ChatHistoryPart(BaseModel):
-    text: str
-
-
-class ChatHistoryMessage(BaseModel):
-    role: str
-    parts: List[ChatHistoryPart]
-
-
-class ChatRequest(BaseModel):
-    message: str
-    form_data: Dict[str, Any] = {}
-    # history: List[ChatHistoryMessage] = []
-
-
-class ChatResponse(BaseModel):
-    text: str
-    tickers: List[str] = []
-    # new_beta: Optional[float] = None
-    # raw_history_appends: List[ChatHistoryMessage] = []
-
-
-class AnalyzeCompaniesRequest(BaseModel):
-    tickers: List[str]
-
-
 class CompanyData(BaseModel):
     ticker: str
     company_name: str
@@ -49,15 +23,55 @@ class CompanyData(BaseModel):
     pct_debt: Optional[float] = None
     pct_equity: Optional[float] = None
     market_cap: Optional[float] = None
+    suffix_used: Optional[str] = None
 
 
-class GroupStatistics(BaseModel):
-    avg_beta_unlevered: float
-    avg_dc_ratio: float
-    avg_tax_rate: float
+class SubsectorBoaError(BaseModel):
+    ticker: str
+    suffix_usado: Optional[str] = None
+    mensaje: str
 
 
-class YahooFinanceResponse(BaseModel):
-    success: bool
+class SubsectorBoaResponse(BaseModel):
+    success: bool = True
     valid_companies: List[CompanyData] = []
-    group_statistics: Optional[GroupStatistics] = None
+    errors: List[SubsectorBoaError] = []
+    total: int = 0
+    processed: int = 0
+    failed: int = 0
+    job_id: Optional[str] = None
+
+
+class SubsectorBoaProgressResponse(BaseModel):
+    status: str
+    total: int = 0
+    processed: int = 0
+    failed: int = 0
+    errors: List[SubsectorBoaError] = []
+    result: Optional[dict] = None
+
+
+class ChatHistoryPart(BaseModel):
+    text: str
+
+
+class ChatHistoryMessage(BaseModel):
+    role: str
+    parts: List[ChatHistoryPart]
+
+
+class ChatRequest(BaseModel):
+    message: str
+    form_data: Dict[str, Any] = {}
+
+
+class ChatResponse(BaseModel):
+    text: str
+    tickers: List[str] = []
+
+
+class AnalyzeCompaniesRequest(BaseModel):
+    tickers: List[str]
+
+
+

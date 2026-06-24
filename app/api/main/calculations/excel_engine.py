@@ -8,6 +8,7 @@ from uuid import uuid4
 import httpx
 
 from app.core.constants import (
+    KAPITAL_CUSTOM_INPUT_CELL_MAP,
     KAPITAL_DAMODARAN_CELL_MAP,
     KAPITAL_EMBI_CELL_MAP,
     KAPITAL_INPUT_CELL_MAP,
@@ -115,6 +116,7 @@ async def _write_inputs_to_excel(
 
     add_write_req(input_payload, KAPITAL_INPUT_CELL_MAP)
     add_write_req(input_payload, KAPITAL_SENSITIVITY_INPUT_CELL_MAP)
+    add_write_req(input_payload, KAPITAL_CUSTOM_INPUT_CELL_MAP, KAPITAL_RESULTS_SHEET)
 
     # tasa impositiva y devaluacion para WACC
     add_write_req(input_payload, KAPITAL_INPUT_WACC, KAPITAL_RESULTS_SHEET)
@@ -292,7 +294,7 @@ async def _enrich_payload_with_excel_outputs(
     if not session_id:
         t0 = time.perf_counter()
         session_id = await service._create_workbook_session(
-            item_id, persist_changes=True
+            item_id, persist_changes=False
         )
         print(
             f"[RAM] Nueva sesión creada: {time.perf_counter() - t0:.2f} seg", flush=True
@@ -347,13 +349,16 @@ async def _enrich_payload_with_excel_outputs(
     print(f"TIEMPO TOTAL ENRICH: {time.perf_counter() - t_start:.2f} seg", flush=True)
 
     # Inyección explícita del BOA desde el input del usuario para asegurar su persistencia
-    if include_resultados and latest_input.get("beta_desapalancado") is not None:
-        resultados_entry["boa"] = _extract_number(latest_input["beta_desapalancado"])
+    if include_resultados:
+        if latest_input.get("beta_desapalancado_custom") is not None:
+            resultados_entry["boa"] = _extract_number(latest_input["beta_desapalancado_custom"])
+        elif latest_input.get("beta_desapalancado") is not None:
+            resultados_entry["boa"] = _extract_number(latest_input["beta_desapalancado"])
 
     if include_sensibilizacion and latest_input.get("beta_desapalancado") is not None:
         sensibilidad_entry["boa"] = _extract_number(latest_input["beta_desapalancado"])
-        if isinstance(latest_input.get("subsector"), str):
-            sensibilidad_entry["subsector"] = latest_input.get("subsector", "").strip()
+        if isinstance(latest_input.get("subsector_sensibilizacion"), str):
+            sensibilidad_entry["subsector"] = latest_input.get("subsector_sensibilizacion", "").strip()
 
     enriched["resultados"] = [resultados_entry] if include_resultados else []
     enriched["sensibilizacion"] = (

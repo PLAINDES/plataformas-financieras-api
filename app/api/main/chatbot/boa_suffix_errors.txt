@@ -1,0 +1,731 @@
+[2026-06-22T01:19:30.308506] PUB -> usó sufijo .L
+[2026-06-22T01:20:28.269152] 030000 -> usó sufijo .VI
+[2026-06-22T01:20:40.401510] 2433 -> usó sufijo .TW
+[2026-06-22T01:20:57.157745] IPG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:21:02.264462] S4C -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:21:04.833251] M&C -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:21:24.849202] EXPN -> usó sufijo .L
+[2026-06-22T01:21:40.411536] OML -> usó sufijo .L
+[2026-06-22T01:21:41.605696] SAX -> usó sufijo .DE
+[2026-06-22T01:21:56.629385] TRMR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:22:22.332261] APGN -> usó sufijo .SW
+[2026-06-22T01:22:23.953862] SECG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:22:32.697788] NLSN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:22:51.220113] 002027 -> usó sufijo .KS
+[2026-06-22T01:23:13.619106] PUBL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:23:49.430523] MWTR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:24:03.243505] NOC -> usó sufijo .DE
+[2026-06-22T01:24:05.162705] ERJ -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:24:10.757522] 000768 -> usó sufijo .SZ
+[2026-06-22T01:24:12.954670] BBD.B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:24:25.089221] HO -> usó sufijo .PA
+[2026-06-22T01:24:33.855868] HAG -> usó sufijo .DE
+[2026-06-22T01:24:47.549391] LDO -> usó sufijo .MI
+[2026-06-22T01:24:59.012959] MHI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:25:12.553520] SNR -> usó sufijo .L
+[2026-06-22T01:25:17.684273] MRO -> usó sufijo .L
+[2026-06-22T01:25:22.383971] BA. -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:25:31.764712] SPR -> usó sufijo .L
+[2026-06-22T01:25:39.559168] SAAB B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:25:53.132230] ETL -> usó sufijo .L
+[2026-06-22T01:26:02.510002] ESLT -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:26:13.352223] LHA -> usó sufijo .DE
+[2026-06-22T01:26:26.046282] TGI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:26:52.060645] MOG.A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:27:07.491987] S63 -> usó sufijo .SI
+[2026-06-22T01:27:17.604627] 0019 -> usó sufijo .HK
+[2026-06-22T01:27:29.743461] PARRO -> usó sufijo .PA
+[2026-06-22T01:27:42.772322] THYAO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:27:50.156292] 7012 -> usó sufijo .DE
+[2026-06-22T01:27:50.342050] ATSG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:28:10.394546] 0293 -> usó sufijo .DE
+[2026-06-22T01:28:18.688043] QAN -> usó sufijo .DE
+[2026-06-22T01:28:25.817316] 042660 -> usó sufijo .KS
+[2026-06-22T01:28:28.207437] ANA -> usó sufijo .MC
+[2026-06-22T01:28:31.394712] 329180 -> usó sufijo .KS
+[2026-06-22T01:28:42.165132] WIZZ -> usó sufijo .L
+[2026-06-22T01:28:52.196473] 7011 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:29:00.996116] SAVE -> usó sufijo .L
+[2026-06-22T01:29:02.648266] C6L -> usó sufijo .SI
+[2026-06-22T01:29:40.424845] 5238 -> usó sufijo .KL
+[2026-06-22T01:29:47.879242] JAL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:29:47.908166] DHL -> usó sufijo .DE
+[2026-06-22T01:29:56.069085] KNIN -> usó sufijo .DE
+[2026-06-22T01:30:05.992283] CEB -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:30:27.509606] AIRASIA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:30:29.262294] 003490 -> usó sufijo .KS
+[2026-06-22T01:30:38.274616] AENA -> usó sufijo .MC
+[2026-06-22T01:30:43.018782] AOT -> usó sufijo .L
+[2026-06-22T01:31:17.882738] FHZN -> usó sufijo .SW
+[2026-06-22T01:31:20.057054] ZTO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:31:26.251276] MESA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:31:41.514093] ADS -> usó sufijo .DE
+[2026-06-22T01:31:45.876864] S58 -> usó sufijo .SI
+[2026-06-22T01:31:45.910451] PUM -> usó sufijo .DE
+[2026-06-22T01:31:53.794438] 600009 -> usó sufijo .SS
+[2026-06-22T01:32:01.330295] 2020 -> usó sufijo .TO
+[2026-06-22T01:32:16.831943] RMS -> usó sufijo .PA
+[2026-06-22T01:32:44.948182] BRK.B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:32:45.570986] MONC -> usó sufijo .MI
+[2026-06-22T01:32:49.594633] 2331 -> usó sufijo .TW
+[2026-06-22T01:32:51.509300] BRBY -> usó sufijo .L
+[2026-06-22T01:33:00.253610] ITX -> usó sufijo .L
+[2026-06-22T01:33:14.236997] SKX -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:33:25.784181] 1913 -> usó sufijo .HK
+[2026-06-22T01:33:30.839661] SFER -> usó sufijo .MI
+[2026-06-22T01:34:12.758446] 9983 -> usó sufijo .HK
+[2026-06-22T01:34:18.929188] HM B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:34:22.523146] DELG -> usó sufijo .DE
+[2026-06-22T01:34:38.409528] CALN -> usó sufijo .SW
+[2026-06-22T01:34:54.380863] GES -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:34:58.271918] PNDORA -> usó sufijo .CO
+[2026-06-22T01:35:07.233224] VOW3 -> usó sufijo .DE
+[2026-06-22T01:35:09.015250] HBI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:35:19.047525] BMW -> usó sufijo .DE
+[2026-06-22T01:35:43.130842] PAGEIND -> usó sufijo .NS
+[2026-06-22T01:36:02.917407] 1910 -> usó sufijo .HK
+[2026-06-22T01:36:19.591522] 7201 -> usó sufijo .KL
+[2026-06-22T01:36:45.157444] 7267 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:36:50.598887] 7269 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:37:12.841491] HYMTF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:37:30.454152] 8TRA -> usó sufijo .DE
+[2026-06-22T01:37:33.288513] KIMTF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:37:40.460383] 7202 -> usó sufijo .DE
+[2026-06-22T01:37:46.207021] 1211 -> usó sufijo .HK
+[2026-06-22T01:38:26.652428] ZK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:38:28.776028] IVG -> usó sufijo .MI
+[2026-06-22T01:38:38.005548] VOLV B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:38:49.699562] NAV -> usó sufijo .V
+[2026-06-22T01:38:55.515555] 7205 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:38:57.907804] KTA -> usó sufijo .DE
+[2026-06-22T01:38:59.915544] TATAMOTORS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:39:05.555895] 7272 -> usó sufijo .DE
+[2026-06-22T01:39:59.272827] REVG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:40:10.766596] 7203 -> usó sufijo .KL
+[2026-06-22T01:40:21.435795] BAJAJ-AUTO -> usó sufijo .NS
+[2026-06-22T01:40:21.446990] HEROMOTOCO -> usó sufijo .NS
+[2026-06-22T01:40:24.344425] TVSMOTOR -> usó sufijo .NS
+[2026-06-22T01:40:39.068421] FRVIA -> usó sufijo .PA
+[2026-06-22T01:41:15.213877] ML -> usó sufijo .PA
+[2026-06-22T01:41:22.009002] M&M -> usó sufijo .NS
+[2026-06-22T01:41:34.669626] 6902 -> usó sufijo .TW
+[2026-06-22T01:41:52.459513] 7259 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:42:04.968952] 5108 -> usó sufijo .KL
+[2026-06-22T01:42:06.818258] PIRC -> usó sufijo .MI
+[2026-06-22T01:42:27.909286] 5110 -> usó sufijo .KL
+[2026-06-22T01:42:39.619267] 5101 -> usó sufijo .KL
+[2026-06-22T01:43:09.195539] 161390 -> usó sufijo .KS
+[2026-06-22T01:43:19.859602] 096770 -> usó sufijo .KS
+[2026-06-22T01:43:38.184854] 373220 -> usó sufijo .KS
+[2026-06-22T01:43:38.975465] 300750 -> usó sufijo .SZ
+[2026-06-22T01:43:48.200589] 006400 -> usó sufijo .KS
+[2026-06-22T01:43:50.428300] FREY -> usó sufijo .PA
+[2026-06-22T01:44:06.379515] MEKO -> usó sufijo .ST
+[2026-06-22T01:44:22.171914] HEIA -> usó sufijo .AS
+[2026-06-22T01:44:23.811416] 6752 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:44:57.398740] PCRFY -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:45:10.994700] 2501 -> usó sufijo .DE
+[2026-06-22T01:45:14.801463] CARL B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:45:28.956083] 0168 -> usó sufijo .KL
+[2026-06-22T01:45:29.965653] 2502 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:45:36.346394] 2503 -> usó sufijo .HK
+[2026-06-22T01:45:54.973831] ALLAN -> usó sufijo .PA
+[2026-06-22T01:46:00.037825] NAPA -> usó sufijo .OL
+[2026-06-22T01:46:03.546380] VWE -> usó sufijo .V
+[2026-06-22T01:46:34.439037] 291 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:46:35.304866] TWE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:46:40.691008] CPR -> usó sufijo .MI
+[2026-06-22T01:47:10.002572] AC -> usó sufijo .PA
+[2026-06-22T01:47:17.440000] BF.B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:47:19.188917] 2587 -> usó sufijo .HK
+[2026-06-22T01:47:32.822391] Y92 -> usó sufijo .SI
+[2026-06-22T01:47:33.762178] 0291 -> usó sufijo .KL
+[2026-06-22T01:47:40.847071] NESN -> usó sufijo .DE
+[2026-06-22T01:47:40.880121] OSP -> usó sufijo .L
+[2026-06-22T01:48:06.599529] BVIC -> usó sufijo .JK
+[2026-06-22T01:48:23.801169] AKO.B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:48:40.196668] 2593 -> usó sufijo .KL
+[2026-06-22T01:48:42.272419] 0220 -> usó sufijo .KL
+[2026-06-22T01:48:53.531468] 2267 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:48:56.966421] JDEP -> usó sufijo .AS
+[2026-06-22T01:49:03.033386] 0322 -> usó sufijo .KL
+[2026-06-22T01:49:09.301347] RRTL -> usó sufijo .DE
+[2026-06-22T01:49:43.215273] SALM -> usó sufijo .OL
+[2026-06-22T01:49:58.262131] PARA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:50:11.792707] TGNA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:50:19.902995] CMLS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:50:28.454106] AUDA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:50:51.429849] RTL -> usó sufijo .MI
+[2026-06-22T01:51:01.491426] IGG -> usó sufijo .L
+[2026-06-22T01:51:03.967344] CMCX -> usó sufijo .L
+[2026-06-22T01:51:18.132653] HOLN -> usó sufijo .DE
+[2026-06-22T01:51:22.192834] LGF.A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:51:24.258865] BANJ -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:51:40.392740] SUM -> usó sufijo .V
+[2026-06-22T01:51:44.011421] IFP -> usó sufijo .TO
+[2026-06-22T01:51:44.894951] CFP -> usó sufijo .TO
+[2026-06-22T01:51:54.106054] STERV -> usó sufijo .DE
+[2026-06-22T01:51:56.774554] BZU -> usó sufijo .MI
+[2026-06-22T01:52:10.313358] 5201 -> usó sufijo .DE
+[2026-06-22T01:52:10.857395] SGO -> usó sufijo .PA
+[2026-06-22T01:52:13.525531] METSB -> usó sufijo .HE
+[2026-06-22T01:52:20.728879] 5233 -> usó sufijo .HK
+[2026-06-22T01:52:34.732891] KRX -> usó sufijo .V
+[2026-06-22T01:52:39.561926] BECN -> usó sufijo .V
+[2026-06-22T01:53:00.481115] RFP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:53:04.616197] 5202 -> usó sufijo .KL
+[2026-06-22T01:53:09.051244] X -> usó sufijo .MC
+[2026-06-22T01:53:36.093553] RDUS -> usó sufijo .VI
+[2026-06-22T01:53:36.978289] AKZA -> usó sufijo .AS
+[2026-06-22T01:53:46.519164] ROCK B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:53:53.151984] HEN3 -> usó sufijo .DE
+[2026-06-22T01:53:57.249951] CAP -> usó sufijo .DE
+[2026-06-22T01:54:13.309505] 4612 -> usó sufijo .HK
+[2026-06-22T01:54:20.688583] ASIANPAINT -> usó sufijo .NS
+[2026-06-22T01:54:25.157175] PAGE -> usó sufijo .L
+[2026-06-22T01:54:36.837568] PSG -> usó sufijo .MC
+[2026-06-22T01:54:54.462572] 4613 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:55:15.295007] FCN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:55:24.170761] MTO -> usó sufijo .L
+[2026-06-22T01:55:27.181839] ISS -> usó sufijo .CO
+[2026-06-22T01:55:28.165255] 6098 -> usó sufijo .HK
+[2026-06-22T01:55:43.286585] SECU B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:56:00.952856] RRD -> usó sufijo .TO
+[2026-06-22T01:56:31.912036] N/A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:56:49.397889] 1448 -> usó sufijo .HK
+[2026-06-22T01:56:52.205921] IVC -> usó sufijo .NS
+[2026-06-22T01:56:55.804518] STON -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:56:56.905467] 4902 -> usó sufijo .DE
+[2026-06-22T01:57:15.229708] CCA -> usó sufijo .TO
+[2026-06-22T01:57:29.863717] CAJ -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:57:49.445680] 7752 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:57:51.786381] TIT -> usó sufijo .MI
+[2026-06-22T01:57:58.096044] TEF -> usó sufijo .DE
+[2026-06-22T01:58:02.947343] COMM -> usó sufijo .L
+[2026-06-22T01:58:09.514473] ATUS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:58:20.594155] TC1 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:58:21.239365] CASA -> usó sufijo .V
+[2026-06-22T01:58:27.443692] 4188 -> usó sufijo .L
+[2026-06-22T01:58:42.958858] OCI -> usó sufijo .L
+[2026-06-22T01:58:48.424791] ORAN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T01:58:57.756979] YAR -> usó sufijo .OL
+[2026-06-22T01:59:07.708540] SOL -> usó sufijo .DE
+[2026-06-22T01:59:18.789909] 2010 -> usó sufijo .TW
+[2026-06-22T01:59:22.807454] 1301 -> usó sufijo .TW
+[2026-06-22T01:59:57.723089] PHOR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:00:15.566502] 2168 -> usó sufijo .HK
+[2026-06-22T02:00:16.516791] 4091 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:00:21.374076] BAS -> usó sufijo .L
+[2026-06-22T02:00:28.418555] 4063 -> usó sufijo .HK
+[2026-06-22T02:00:28.504331] 4043 -> usó sufijo .HK
+[2026-06-22T02:00:33.433650] EVK -> usó sufijo .DE
+[2026-06-22T02:01:02.964996] 4042 -> usó sufijo .HK
+[2026-06-22T02:01:13.991241] 1326 -> usó sufijo .TW
+[2026-06-22T02:01:22.151062] SOLB -> usó sufijo .DE
+[2026-06-22T02:01:28.136152] AKE -> usó sufijo .PA
+[2026-06-22T02:01:30.521281] 051910 -> usó sufijo .KS
+[2026-06-22T02:01:30.523374] 3402 -> usó sufijo .DE
+[2026-06-22T02:01:43.946146] SY1 -> usó sufijo .DE
+[2026-06-22T02:01:45.395622] 4005 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:01:48.652741] SNP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:01:51.186240] JMAT -> usó sufijo .L
+[2026-06-22T02:01:52.987033] 4452 -> usó sufijo .DE
+[2026-06-22T02:02:02.320921] VIE -> usó sufijo .DE
+[2026-06-22T02:02:10.321334] SIKA -> usó sufijo .DE
+[2026-06-22T02:02:17.093620] BAYN -> usó sufijo .DE
+[2026-06-22T02:02:17.304938] KEMIRA -> usó sufijo .HE
+[2026-06-22T02:02:22.908061] UPL -> usó sufijo .L
+[2026-06-22T02:02:33.430442] 3401 -> usó sufijo .HK
+[2026-06-22T02:02:46.671237] ARCH -> usó sufijo .PA
+[2026-06-22T02:03:07.616521] 6370 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:03:18.642713] 600500 -> usó sufijo .SS
+[2026-06-22T02:03:24.965507] GLEN -> usó sufijo .L
+[2026-06-22T02:03:34.623274] 000553 -> usó sufijo .SZ
+[2026-06-22T02:03:41.013573] S32 -> usó sufijo .L
+[2026-06-22T02:03:52.332429] WHC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:04:04.015298] YAL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:04:14.229420] SAND -> usó sufijo .ST
+[2026-06-22T02:04:15.181101] 1088 -> usó sufijo .HK
+[2026-06-22T02:04:30.678673] TCS -> usó sufijo .DE
+[2026-06-22T02:04:54.935823] 6301 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:04:56.481733] CYBR -> usó sufijo .L
+[2026-06-22T02:05:00.383685] EPI A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:05:10.144040] WNS -> usó sufijo .L
+[2026-06-22T02:05:17.560588] 0992 -> usó sufijo .DE
+[2026-06-22T02:05:32.056266] 9613 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:05:32.879561] PSTG -> usó sufijo .DE
+[2026-06-22T02:06:08.967095] 2357 -> usó sufijo .TW
+[2026-06-22T02:06:09.806522] 2353 -> usó sufijo .TW
+[2026-06-22T02:06:17.252569] 005930 -> usó sufijo .KS
+[2026-06-22T02:06:55.828518] 6448 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:06:55.984177] 6724 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:07:04.876426] GMS -> usó sufijo .L
+[2026-06-22T02:07:15.623808] 2352 -> usó sufijo .TW
+[2026-06-22T02:07:16.490560] SHI -> usó sufijo .L
+[2026-06-22T02:07:26.358130] 000660 -> usó sufijo .KS
+[2026-06-22T02:07:43.435086] 285A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:07:58.436240] 2408 -> usó sufijo .TW
+[2026-06-22T02:08:19.888571] RWC -> usó sufijo .TO
+[2026-06-22T02:08:32.829088] 0669 -> usó sufijo .HK
+[2026-06-22T02:08:35.688769] 6586 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:08:52.793157] GEBN -> usó sufijo .SW
+[2026-06-22T02:08:55.288506] HUSQ B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:09:19.011034] 5332 -> usó sufijo .KL
+[2026-06-22T02:09:29.554091] EXO -> usó sufijo .AS
+[2026-06-22T02:09:45.907973] 5938 -> usó sufijo .HK
+[2026-06-22T02:10:07.609592] 6501 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:10:12.513338] INVE B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:10:17.454400] J36 -> usó sufijo .SI
+[2026-06-22T02:10:23.124345] 0001 -> usó sufijo .KL
+[2026-06-22T02:10:48.229236] BLUE -> usó sufijo .PA
+[2026-06-22T02:11:03.243670] 9984 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:11:49.109921] AKRO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:11:51.476083] VERV -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:11:54.171447] 068270 -> usó sufijo .KS
+[2026-06-22T02:11:59.728678] BIOCON -> usó sufijo .NS
+[2026-06-22T02:12:06.661499] 207940 -> usó sufijo .KS
+[2026-06-22T02:12:16.847137] HIK -> usó sufijo .L
+[2026-06-22T02:12:21.604040] ENDP -> usó sufijo .L
+[2026-06-22T02:12:25.957253] SDZ -> usó sufijo .SW
+[2026-06-22T02:13:15.951356] VIRP -> usó sufijo .PA
+[2026-06-22T02:13:25.358582] SUNPHARMA -> usó sufijo .NS
+[2026-06-22T02:13:27.815545] CIPLA -> usó sufijo .NS
+[2026-06-22T02:13:31.294694] AUROPHARMA -> usó sufijo .NS
+[2026-06-22T02:13:31.741122] VETO -> usó sufijo .PA
+[2026-06-22T02:13:44.686286] ITCI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:14:01.687920] 9783 -> usó sufijo .L
+[2026-06-22T02:14:34.252530] WKL -> usó sufijo .AS
+[2026-06-22T02:14:40.768452] 0839 -> usó sufijo .HK
+[2026-06-22T02:14:44.011634] ATGE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:14:47.276665] INF -> usó sufijo .L
+[2026-06-22T02:14:57.794919] ABB -> usó sufijo .MC
+[2026-06-22T02:14:59.025292] TWOU -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:15:06.419953] SANOMA -> usó sufijo .HE
+[2026-06-22T02:15:16.565699] PSO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:15:53.547601] 600580 -> usó sufijo .SW
+[2026-06-22T02:16:03.250036] LTG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:16:24.764843] 6594 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:16:27.339760] WEGE3 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:16:38.078701] 6502 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:16:38.972820] NEX -> usó sufijo .PA
+[2026-06-22T02:16:47.292942] 5801 -> usó sufijo .DE
+[2026-06-22T02:17:02.503045] PRY -> usó sufijo .MI
+[2026-06-22T02:17:15.730842] 6503 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:17:19.810187] 6841 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:17:45.279044] 5802 -> usó sufijo .HK
+[2026-06-22T02:17:53.526554] 006260 -> usó sufijo .KS
+[2026-06-22T02:18:10.828841] 066570 -> usó sufijo .KS
+[2026-06-22T02:18:25.371022] 1070 -> usó sufijo .HK
+[2026-06-22T02:18:29.825238] VZIO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:18:45.243558] NACON -> usó sufijo .PA
+[2026-06-22T02:18:52.038892] 600060 -> usó sufijo .SS
+[2026-06-22T02:18:54.008485] 6971 -> usó sufijo .KL
+[2026-06-22T02:19:11.718301] 1810 -> usó sufijo .TW
+[2026-06-22T02:19:44.315954] HEAR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:20:01.154003] 6754 -> usó sufijo .TW
+[2026-06-22T02:20:15.978456] 2317 -> usó sufijo .TW
+[2026-06-22T02:20:19.587331] 6857 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:20:27.903398] PFC -> usó sufijo .TO
+[2026-06-22T02:20:46.724445] WSP -> usó sufijo .L
+[2026-06-22T02:20:54.794280] MAIRE -> usó sufijo .MI
+[2026-06-22T02:20:56.594339] SKA B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:21:18.196008] ARCAD -> usó sufijo .AS
+[2026-06-22T02:21:24.389487] WG. -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:21:27.639542] UMG -> usó sufijo .DE
+[2026-06-22T02:21:57.081150] EDR -> usó sufijo .MC
+[2026-06-22T02:22:13.327983] NVEE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:22:15.105681] 9602 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:22:18.897733] 4661 -> usó sufijo .HK
+[2026-06-22T02:22:21.699835] BVB -> usó sufijo .DE
+[2026-06-22T02:22:28.375418] RWI -> usó sufijo .DE
+[2026-06-22T02:22:30.917781] SGM -> usó sufijo .DE
+[2026-06-22T02:22:35.920944] BFSA -> usó sufijo .DE
+[2026-06-22T02:22:36.537473] 035720 -> usó sufijo .KS
+[2026-06-22T02:22:38.459925] AGRO -> usó sufijo .L
+[2026-06-22T02:22:38.954609] JUVE -> usó sufijo .MI
+[2026-06-22T02:22:46.449638] LND -> usó sufijo .L
+[2026-06-22T02:23:50.601886] 0288 -> usó sufijo .KL
+[2026-06-22T02:23:52.297049] SLCE3 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:24:02.465542] JBSAY -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:24:04.860807] BEEF3 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:24:07.228775] BRFS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:25:11.785116] 6326 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:25:17.962945] 2319 -> usó sufijo .HK
+[2026-06-22T02:25:18.339857] FDGE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:25:19.184320] 2269 -> usó sufijo .HK
+[2026-06-22T02:25:27.466376] K -> usó sufijo .DE
+[2026-06-22T02:25:29.624054] GIS -> usó sufijo .DE
+[2026-06-22T02:25:32.372502] 2264 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:25:33.011742] CAG -> usó sufijo .DE
+[2026-06-22T02:25:38.653778] ABF -> usó sufijo .L
+[2026-06-22T02:26:19.615992] ARYN -> usó sufijo .SW
+[2026-06-22T02:26:25.036739] 600887 -> usó sufijo .SS
+[2026-06-22T02:26:51.343721] 006040 -> usó sufijo .KS
+[2026-06-22T02:26:56.439442] BIMBOA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:26:58.315593] 2212 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:27:11.037025] BNZL -> usó sufijo .L
+[2026-06-22T02:27:31.610016] DFS -> usó sufijo .L
+[2026-06-22T02:27:47.415095] SCS -> usó sufijo .V
+[2026-06-22T02:27:50.103154] BID -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:27:54.396938] B4B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:28:08.271749] DNLM -> usó sufijo .L
+[2026-06-22T02:28:13.405312] MDM -> usó sufijo .PA
+[2026-06-22T02:28:17.776764] TPX -> usó sufijo .L
+[2026-06-22T02:28:19.798031] SPTN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:28:46.256679] NOVA -> usó sufijo .PA
+[2026-06-22T02:28:50.936859] 7984 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:28:55.050365] NDX1 -> usó sufijo .DE
+[2026-06-22T02:29:05.470685] 7994 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:29:07.947064] VWS -> usó sufijo .CO
+[2026-06-22T02:29:18.471136] ORSTED -> usó sufijo .CO
+[2026-06-22T02:29:34.445758] BBED -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:29:58.182963] CWR -> usó sufijo .L
+[2026-06-22T02:30:01.064074] NEL -> usó sufijo .V
+[2026-06-22T02:30:12.631634] 2208 -> usó sufijo .TW
+[2026-06-22T02:30:12.649267] 0916 -> usó sufijo .HK
+[2026-06-22T02:30:14.857605] EDPR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:30:20.596657] PCELL -> usó sufijo .ST
+[2026-06-22T02:30:42.481414] NESTE -> usó sufijo .HE
+[2026-06-22T02:31:19.161435] STMN -> usó sufijo .SW
+[2026-06-22T02:31:21.597400] CLTN -> usó sufijo .SW
+[2026-06-22T02:31:32.520673] RAIZ4 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:31:40.780243] AFX -> usó sufijo .DE
+[2026-06-22T02:31:44.247007] HOLX -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:31:54.752973] OMI -> usó sufijo .L
+[2026-06-22T02:32:06.815308] PDCO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:32:40.848149] SDC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:32:50.483432] 7780 -> usó sufijo .TW
+[2026-06-22T02:33:02.008545] 7741 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:33:15.379168] SHL -> usó sufijo .L
+[2026-06-22T02:33:16.155800] 4543 -> usó sufijo .HK
+[2026-06-22T02:33:27.359877] ERF -> usó sufijo .PA
+[2026-06-22T02:33:30.967760] 8086 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:33:45.413787] RCM -> usó sufijo .WA
+[2026-06-22T02:34:37.812351] SYAB -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:34:48.922636] EXAS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:34:49.544670] SPI -> usó sufijo .L
+[2026-06-22T02:34:59.825404] CPSI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:35:15.340296] AMED -> usó sufijo .DE
+[2026-06-22T02:35:35.599404] LSEA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:35:38.285578] 5225 -> usó sufijo .KL
+[2026-06-22T02:35:44.879714] ENT -> usó sufijo .L
+[2026-06-22T02:36:31.132364] G13 -> usó sufijo .SI
+[2026-06-22T02:36:44.342601] 0027 -> usó sufijo .HK
+[2026-06-22T02:36:45.300302] 0880 -> usó sufijo .HK
+[2026-06-22T02:36:56.783509] BEI -> usó sufijo .DE
+[2026-06-22T02:37:00.964834] BETS B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:37:05.663624] KIND SDB -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:37:56.072110] DNB -> usó sufijo .OL
+[2026-06-22T02:38:03.220345] LSEG -> usó sufijo .L
+[2026-06-22T02:38:16.199565] ESSITY B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:38:16.523823] 1044 -> usó sufijo .HK
+[2026-06-22T02:38:17.920344] 3861 -> usó sufijo .HK
+[2026-06-22T02:38:18.141700] 4911 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:38:34.509573] MMC -> usó sufijo .V
+[2026-06-22T02:38:37.576678] 8630 -> usó sufijo .L
+[2026-06-22T02:38:40.967314] CS -> usó sufijo .PA
+[2026-06-22T02:38:58.309234] LGEN -> usó sufijo .L
+[2026-06-22T02:39:13.384693] ZURN -> usó sufijo .SW
+[2026-06-22T02:39:53.627769] 8766 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:39:55.281665] MUV2 -> usó sufijo .DE
+[2026-06-22T02:39:59.085718] 8725 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:40:03.438170] HNR1 -> usó sufijo .DE
+[2026-06-22T02:40:13.406966] SCR -> usó sufijo .PA
+[2026-06-22T02:40:17.653210] 8750 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:40:25.673168] SDR -> usó sufijo .L
+[2026-06-22T02:40:28.200487] JUP -> usó sufijo .L
+[2026-06-22T02:40:30.866865] ASHM -> usó sufijo .L
+[2026-06-22T02:40:34.358278] SREN -> usó sufijo .SW
+[2026-06-22T02:40:45.638670] RAT -> usó sufijo .L
+[2026-06-22T02:40:50.187490] ABDN -> usó sufijo .L
+[2026-06-22T02:41:20.058608] PGHN -> usó sufijo .SW
+[2026-06-22T02:41:41.383086] AMBC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:41:55.414564] WIRE -> usó sufijo .L
+[2026-06-22T02:42:01.625193] PHLL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:42:49.200134] NKLA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:43:01.665985] TBLT -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:43:16.031793] HOLI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:43:26.355607] HAYN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:43:32.384683] RYI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:44:23.183126] GIFI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:44:25.231030] CMPO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:44:54.927362] AZEK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:45:41.827096] LAAC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:46:01.248391] FI -> usó sufijo .TO
+[2026-06-22T02:46:13.263693] AWCMY -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:46:19.126346] HRT -> usó sufijo .V
+[2026-06-22T02:46:21.158208] CEIX -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:46:45.244529] BP -> usó sufijo .DE
+[2026-06-22T02:47:00.233859] EQNR -> usó sufijo .ST
+[2026-06-22T02:47:01.793195] EC -> usó sufijo .PA
+[2026-06-22T02:47:15.711452] SSL -> usó sufijo .L
+[2026-06-22T02:47:23.609163] HSII -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:47:34.032717] AE -> usó sufijo .V
+[2026-06-22T02:47:56.181955] SHEL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:48:03.017415] PBR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:48:21.772936] HES -> usó sufijo .TO
+[2026-06-22T02:48:24.023753] YPF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:48:47.231517] ZEST -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:49:00.473670] SLNG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:49:36.451410] ICD -> usó sufijo .WA
+[2026-06-22T02:49:38.785425] CHK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:49:57.107586] DO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:50:00.874363] SOC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:50:16.483085] SOI -> usó sufijo .L
+[2026-06-22T02:50:17.697397] CHX -> usó sufijo .V
+[2026-06-22T02:50:23.639144] MRC -> usó sufijo .L
+[2026-06-22T02:51:35.404801] DRQ -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:51:38.138319] NR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:51:51.454289] SDPI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:51:56.739115] PFIE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:51:56.980223] SEE -> usó sufijo .L
+[2026-06-22T02:52:17.650286] CCLP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:52:59.362895] WRK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:53:19.350928] BERY -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:53:22.208410] PTVE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:53:37.383321] TYDE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:53:42.431852] ITP -> usó sufijo .PA
+[2026-06-22T02:53:42.432993] TUP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:53:50.509228] PCH -> usó sufijo .L
+[2026-06-22T02:54:22.247216] FFHL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:54:48.031202] EBR -> usó sufijo .PA
+[2026-06-22T02:54:51.459011] GLT -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:55:03.996464] AMPS -> usó sufijo .L
+[2026-06-22T02:55:05.308888] EVA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:55:11.581264] JCTCF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:55:15.492582] PAM -> usó sufijo .L
+[2026-06-22T02:56:05.031081] NEP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:56:17.174443] AY -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:56:22.043930] MAG -> usó sufijo .V
+[2026-06-22T02:56:24.570849] SILV -> usó sufijo .L
+[2026-06-22T02:56:26.739631] SUUN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:57:40.187200] GATO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:57:48.434143] GCI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:57:51.560082] DALN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:58:01.170399] SGA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:58:16.923052] LPTV -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:59:35.182142] PLYM -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T02:59:47.852211] AIRC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:00:18.982675] MPW -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:00:27.783988] GMRE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:00:30.420504] AHH -> usó sufijo .L
+[2026-06-22T03:01:06.286345] EQC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:01:15.302139] PGRE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:01:21.469099] SOHO -> usó sufijo .L
+[2026-06-22T03:01:24.835415] MDV -> usó sufijo .WA
+[2026-06-22T03:01:33.839227] SGD -> usó sufijo .L
+[2026-06-22T03:01:39.982003] XIN -> usó sufijo .TO
+[2026-06-22T03:02:48.335630] TPHS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:02:50.950972] CHCI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:03:02.023453] HOUS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:03:08.145302] RDFN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:03:41.450685] HFF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:04:17.506144] VCSA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:04:26.701968] COOP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:04:43.202009] GHLD -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:04:47.833783] BOWL -> usó sufijo .L
+[2026-06-22T03:05:05.421770] CNF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:05:24.852156] IGT -> usó sufijo .L
+[2026-06-22T03:05:36.746342] MODG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:05:41.300766] SIX -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:05:42.868697] AGS -> usó sufijo .L
+[2026-06-22T03:05:52.316893] VSTO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:06:27.107287] PLYA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:06:50.161012] SOND -> usó sufijo .SW
+[2026-06-22T03:06:55.363717] EVRI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:07:15.436299] CPHC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:07:15.443521] TCOM -> usó sufijo .TO
+[2026-06-22T03:07:20.761298] SHCO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:07:57.423730] LUXH -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:08:45.143784] DESP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:08:46.786474] MOND -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:08:49.279552] DOOO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:09:18.750167] FRZA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:09:28.972879] BNRE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:10:15.083051] CHUY -> usó sufijo .DE
+[2026-06-22T03:10:20.988032] MHLD -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:10:54.164938] ESGR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:10:57.358833] WDH -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:11:44.956017] DENN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:11:51.948849] RUTH -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:12:02.404300] BFI -> usó sufijo .SI
+[2026-06-22T03:12:25.712398] PBPB -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:12:30.527017] FRGI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:13:19.478036] FATBB -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:13:21.069934] LL -> usó sufijo .V
+[2026-06-22T03:13:34.523865] GRIL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:14:03.138104] DIT -> usó sufijo .V
+[2026-06-22T03:14:05.708106] LAZY -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:14:21.418431] KIRK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:15:13.418609] BIG -> usó sufijo .L
+[2026-06-22T03:15:15.494660] ZYXI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:15:17.743927] EDAP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:15:32.856283] AHG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:15:46.934323] ASAI -> usó sufijo .L
+[2026-06-22T03:15:51.736658] SNPO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:16:40.892084] EXTO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:16:43.172216] JWN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:17:24.266726] DTCK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:17:36.004377] PDD -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:18:06.379286] FTCH -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:18:07.344722] POSH -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:18:15.322480] OSTK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:18:30.870449] GPS -> usó sufijo .DE
+[2026-06-22T03:18:33.544146] FL -> usó sufijo .L
+[2026-06-22T03:18:34.762149] DADA -> usó sufijo .JK
+[2026-06-22T03:19:05.477170] WISH -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:19:28.761209] FORD -> usó sufijo .VI
+[2026-06-22T03:19:49.788973] LAZR -> usó sufijo .L
+[2026-06-22T03:19:54.418220] STR -> usó sufijo .PA
+[2026-06-22T03:20:00.805875] MYTE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:20:04.249422] LANV -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:20:18.716325] CTHR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:20:19.786725] ALLG -> usó sufijo .L
+[2026-06-22T03:20:33.675591] TEN -> usó sufijo .MI
+[2026-06-22T03:21:02.166725] AMV -> usó sufijo .WA
+[2026-06-22T03:21:07.695619] AXL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:21:27.400082] GTXAP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:22:30.553093] FEBO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:22:31.532512] VOXX -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:22:38.623047] PXDT -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:23:09.604230] AXCELIS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:23:29.528426] CCMP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:23:30.624676] GOGL -> usó sufijo .WA
+[2026-06-22T03:23:37.108302] ASC -> usó sufijo .L
+[2026-06-22T03:23:57.321576] BRKS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:24:04.304080] HAFN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:24:55.477014] CPLP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:25:06.626281] TNP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:25:13.019144] PSHG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:25:20.484383] OP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:25:35.047740] BLDE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:26:37.063848] GMGI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:26:37.299443] SCPL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:26:43.004642] RNWK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:27:08.805711] SCHN -> usó sufijo .DE
+[2026-06-22T03:27:17.851772] ZEUS -> usó sufijo .TO
+[2026-06-22T03:27:19.868909] STCN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:27:25.395851] USAP -> usó sufijo .PA
+[2026-06-22T03:27:27.241993] SQ -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:27:53.672636] CNSL -> usó sufijo .L
+[2026-06-22T03:28:17.700288] KLR -> usó sufijo .L
+[2026-06-22T03:28:19.283040] TMST -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:28:52.029394] RADI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:29:05.151039] FYBR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:29:43.277626] FNGR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:29:53.697372] VGR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:29:58.203320] IMBBF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:30:18.673579] JAPNF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:30:22.768862] HA -> usó sufijo .V
+[2026-06-22T03:30:28.893985] LGVN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:30:35.338036] AL -> usó sufijo .L
+[2026-06-22T03:31:10.703931] GLYC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:31:57.371676] HEES -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:32:11.702499] GWR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:32:18.877924] ECHO -> usó sufijo .VI
+[2026-06-22T03:32:28.295097] ALE -> usó sufijo .TO
+[2026-06-22T03:32:28.519008] DSKE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:32:30.959136] USAK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:33:11.830008] AMBI -> usó sufijo .ST
+[2026-06-22T03:33:36.405151] PRMW -> usó sufijo .TO
+[2026-06-22T03:34:08.262031] SRCL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:34:13.762081] LICY -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T03:34:19.494556] SJW -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:05:48.077623] IPG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:05:51.424433] S4C -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:05:53.394991] M&C -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:05:56.655710] TRMR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:06:33.107750] SECG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:07:29.226340] NLSN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:07:46.901579] PUBL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:07:52.928692] MWTR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:08:12.119750] ERJ -> usó sufijo .MX
+[2026-06-22T04:08:18.924488] BBD.B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:09:21.613171] MHI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:09:27.212675] BA. -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:09:41.415613] SAAB B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:09:47.977563] ESLT -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:10:08.890292] TGI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:11:01.542545] MOG.A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:11:32.691756] THYAO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:11:33.569994] ATSG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:11:55.836626] 7011 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:12:31.075543] JAL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:12:48.981110] CEB -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:13:07.071296] AIRASIA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:13:21.180656] ZTO -> usó sufijo .MX
+[2026-06-22T04:13:38.913537] MESA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:14:35.629998] BRK.B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:14:55.042277] SKX -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:15:16.193741] HM B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:15:30.851499] GES -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:16:02.867079] HBI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:16:49.460953] 7269 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:16:49.973674] 7267 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:16:52.301051] HYMTF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:17:01.195496] KIMTF -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:18:05.081283] ZK -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:18:23.326430] VOLV B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:18:24.826448] 7205 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:18:29.515876] TATAMOTORS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:18:47.119428] REVG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:20:09.261068] 7259 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:20:36.368413] 6752 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:20:44.592765] PCRFY -> usó sufijo .BA
+[2026-06-22T04:20:53.726291] CARL B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:21:00.049097] 2502 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:21:54.965555] 291 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:22:01.865275] TWE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:22:32.524452] BF.B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:23:00.258164] AKO.B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:23:26.383943] 2267 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:23:43.046254] PARA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:24:03.187511] TGNA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:24:24.075924] CMLS -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:24:35.356626] AUDA -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:25:19.831618] LGF.A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:25:27.158534] BANJ -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:26:50.135469] RFP -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:27:02.704987] ROCK B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:27:26.502637] 4613 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:27:37.154183] FCN -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:28:22.833199] SECU B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:29:09.031750] N/A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:29:18.987659] STON -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:29:26.291119] CAJ -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:29:38.962275] 7752 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:29:54.940900] ATUS -> usó sufijo .MX
+[2026-06-22T04:30:49.253933] ORAN -> usó sufijo .MX
+[2026-06-22T04:30:52.328387] TC1 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:31:35.802577] PHOR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:31:47.663217] 4091 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:32:18.989955] SNP -> usó sufijo .BA
+[2026-06-22T04:32:24.469700] 4005 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:33:22.153431] 6370 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:33:44.310797] WHC -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:33:52.629550] YAL -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:34:01.102343] 6301 -> usó sufijo .MX
+[2026-06-22T04:34:12.724344] EPI A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:35:23.584246] 9613 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:36:09.740553] 6448 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:36:12.342232] 6724 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:36:22.256155] 285A -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:36:52.434206] 6586 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:37:10.020703] HUSQ B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:37:56.499533] 6501 -> usó sufijo .MX
+[2026-06-22T04:38:02.067180] INVE B -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:38:17.122855] 9984 -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:39:13.819237] AKRO -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:39:24.483689] VERV -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:40:09.365420] ITCI -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T04:40:35.563751] ATGE -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:34:40.967209] IPG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:34:46.388984] S4C -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:34:50.448614] TRMR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:34:50.450272] M&C -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:35:13.847020] SECG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:40:55.352291] IPG -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:40:59.215966] S4C -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:41:02.697762] TRMR -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:41:07.023039] M&C -> 404: no se pudo resolver con ningún sufijo
+[2026-06-22T15:41:39.016695] SECG -> 404: no se pudo resolver con ningún sufijo

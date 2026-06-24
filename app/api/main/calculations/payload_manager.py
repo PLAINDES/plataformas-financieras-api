@@ -64,7 +64,14 @@ def _sanitize_input_for_history(input_payload: object) -> dict:
     return {
         k: v
         for k, v in input_payload.items()
-        if k not in {"created_at", "beta_desapalancado"}
+        if k
+        not in {
+            "created_at",
+            "beta_desapalancado",
+            "subsector_sensibilizacion",
+            "tickers_subsector_sensibilizacion",
+            "beta_desapalancado_custom",
+        }
     }
 
 
