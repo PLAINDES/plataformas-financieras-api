@@ -1,11 +1,9 @@
 # app/api/main/chatbot/services.py
-import asyncio
 import logging
 import re
 
 import httpx
 
-from app.api.main.chatbot.boa import calculate_sector_beta
 from app.api.main.chatbot.constants import (
     DANGEROUS_PATTERNS,
     FALLBACK_MODELS,
@@ -17,7 +15,6 @@ from app.api.main.chatbot.schemas import (
     AnalyzeCompaniesRequest,
     ChatRequest,
     ChatResponse,
-    YahooFinanceResponse,
 )
 from app.api.main.chatbot.utils import (
     build_form_context,
@@ -161,13 +158,4 @@ async def generate_chat_response(request: ChatRequest) -> ChatResponse:
     )
 
 
-async def process_company_analysis(
-    request: AnalyzeCompaniesRequest,
-) -> YahooFinanceResponse:
-    """
-    Ejecuta el script boa.py (Yahoo Finance) de forma asíncrona usando threads
-    para no bloquear el servidor FastAPI mientras hace las descargas.
-    """
-    result = await asyncio.to_thread(calculate_sector_beta, request.tickers)
 
-    return YahooFinanceResponse(**result)

@@ -1,0 +1,48 @@
+Estadísticas de uso de sufijos
+============================================================
+
+Total entradas en log: 620
+Tickers con sufijo:   364
+Tickers no resueltos: 256
+
+Sufijos USADOS:
+----------------------------------------
+      .L  → 78 ticker(s)
+     .DE  → 59 ticker(s)
+     .HK  → 31 ticker(s)
+     .PA  → 26 ticker(s)
+     .KS  → 17 ticker(s)
+     .KL  → 17 ticker(s)
+      .V  → 16 ticker(s)
+     .TW  → 15 ticker(s)
+     .TO  → 14 ticker(s)
+     .SW  → 13 ticker(s)
+     .MI  → 13 ticker(s)
+     .NS  → 11 ticker(s)
+     .SI  → 7 ticker(s)
+     .MC  → 6 ticker(s)
+     .AS  → 6 ticker(s)
+     .ST  → 5 ticker(s)
+     .WA  → 5 ticker(s)
+     .VI  → 4 ticker(s)
+     .SS  → 4 ticker(s)
+     .CO  → 4 ticker(s)
+     .OL  → 4 ticker(s)
+     .HE  → 4 ticker(s)
+     .SZ  → 3 ticker(s)
+     .JK  → 2 ticker(s)
+
+  Total: 364 ocurrencias
+
+Sufijos NO USADOS:
+----------------------------------------
+  .BR
+  .IR
+  .BO
+  .LM
+  .MX
+  .SA
+  .BA
+  .SN
+
+  Total: 8 sufijos sin uso
