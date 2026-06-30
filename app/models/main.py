@@ -189,3 +189,32 @@ class AppConfiguration(Base):
 
     def __repr__(self):
         return f"<AppConfiguration {self.module}>"
+
+
+class BoaCompany(Base):
+    __tablename__ = "main_boa_companies"
+
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+    ticker = Column(String(20), nullable=False, unique=True, index=True)
+    company_name = Column(String(255), nullable=True)
+    sector = Column(String(100), nullable=True)
+    country = Column(String(100), nullable=True)
+    listing_currency = Column(String(10), nullable=True)
+    reporting_currency = Column(String(10), nullable=True)
+    fx_rate = Column(Numeric(20, 10), nullable=True)
+    debt_value = Column(Numeric(20, 4), nullable=True)
+    equity_value = Column(Numeric(20, 4), nullable=True)
+    total_assets = Column(Numeric(20, 4), nullable=True)
+    dc_ratio = Column(Numeric(10, 4), nullable=True)
+    effective_tax_rate = Column(Numeric(10, 4), nullable=True)
+    tax_source = Column(String(255), nullable=True)
+    beta_levered = Column(Numeric(10, 4), nullable=True)
+    beta_unlevered = Column(Numeric(10, 4), nullable=True)
+    pct_debt = Column(Numeric(10, 4), nullable=True)
+    pct_equity = Column(Numeric(10, 4), nullable=True)
+    market_cap = Column(Numeric(20, 4), nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f"<BoaCompany {self.ticker}>"

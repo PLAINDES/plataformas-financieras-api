@@ -1,0 +1,552 @@
+[2026-06-25T22:43:08.377496] S4C | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:08.377985] M&C | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:08.378075] TRMR | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:11.463445] PUBM | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.486777] MGNI | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.529467] ZETA | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.537056] APPS | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.537942] SECG | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:11.598820] CRTO | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.649864] 030000.KS | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.649986] NLSN | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:11.723641] WPP | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.740997] PUB.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.768755] NEXN | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.862896] TTD | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.896335] STGW | sufijo: — | ok (raw)
+[2026-06-25T22:43:11.942219] OMC | sufijo: — | ok (raw)
+[2026-06-25T22:43:12.183743] 4324.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:12.196344] IPG.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:12.274080] 2433.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.166450] IAS | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.207801] DV | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.219089] YOU.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.292223] NFG.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.368153] IPS.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.383185] IT | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.463534] SCOR | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.463678] PUBL | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:13.640177] SMWB | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.668884] FORR | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.668998] MWTR | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:13.713188] EXPN.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.866122] EFX | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.878196] TRU | sufijo: — | ok (raw)
+[2026-06-25T22:43:13.975461] RELX | sufijo: — | ok (raw)
+[2026-06-25T22:43:14.014662] LAMR | sufijo: — | ok (raw)
+[2026-06-25T22:43:14.344835] OUT | sufijo: — | ok (raw)
+[2026-06-25T22:43:14.854529] DEC | sufijo: — | ok (raw)
+[2026-06-25T22:43:14.915280] OML.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:14.915404] ERJ | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:15.047520] CCO | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.047664] BBD.B | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:15.370451] SAX.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.371980] IZEA | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.396150] 002027.SZ | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.558390] ADBE | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.704150] APGN.SW | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.764822] SPT | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.764986] WIX | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.765553] MHI | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:15.791028] META | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.811408] SNAP | sufijo: — | ok (raw)
+[2026-06-25T22:43:15.811506] BA. | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:15.938847] HUBS | sufijo: — | ok (raw)
+[2026-06-25T22:43:16.038169] PINS | sufijo: — | ok (raw)
+[2026-06-25T22:43:16.560210] TXT.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:16.738273] AIR.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:16.783467] 000768.SZ | sufijo: — | ok (raw)
+[2026-06-25T22:43:17.009951] AM.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:17.010078] ESLT | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:17.105325] GD | sufijo: — | ok (raw)
+[2026-06-25T22:43:17.417725] EADSY | sufijo: — | ok (raw)
+[2026-06-25T22:43:17.455305] LMT | sufijo: — | ok (raw)
+[2026-06-25T22:43:17.614512] LHX | sufijo: — | ok (raw)
+[2026-06-25T22:43:17.833659] SAFRY | sufijo: — | ok (raw)
+[2026-06-25T22:43:17.929586] RTX.TO | sufijo: — | ok (raw)
+[2026-06-25T22:43:17.974843] LDO.MI | sufijo: — | ok (raw)
+[2026-06-25T22:43:18.020155] HON.TO | sufijo: — | ok (raw)
+[2026-06-25T22:43:18.033076] HO.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:18.087140] NOC | sufijo: .DE | ok
+[2026-06-25T22:43:18.448111] RHM.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:18.811055] HII | sufijo: — | ok (raw)
+[2026-06-25T22:43:18.842852] HAG.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:18.842961] MOG.A | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:19.091142] KTOS | sufijo: — | ok (raw)
+[2026-06-25T22:43:19.112639] TDG | sufijo: — | ok (raw)
+[2026-06-25T22:43:19.169968] HWM | sufijo: — | ok (raw)
+[2026-06-25T22:43:19.640102] SAF.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:19.917880] MRO.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:19.927965] SNR.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:20.018374] ATI | sufijo: — | ok (raw)
+[2026-06-25T22:43:20.045007] MTX.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:20.054460] HEI | sufijo: — | ok (raw)
+[2026-06-25T22:43:21.306827] KAI | sufijo: — | ok (raw)
+[2026-06-25T22:43:21.326890] IRDM | sufijo: — | ok (raw)
+[2026-06-25T22:43:21.343999] HXL | sufijo: — | ok (raw)
+[2026-06-25T22:43:21.382439] RKLB | sufijo: — | ok (raw)
+[2026-06-25T22:43:21.430660] CW | sufijo: — | ok (raw)
+[2026-06-25T22:43:21.520238] SPR.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:21.782485] BA.L | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:43:22.246020] VSAT | sufijo: — | ok (raw)
+[2026-06-25T22:43:22.413745] SESG.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:22.869906] LUNR | sufijo: — | ok (raw)
+[2026-06-25T22:43:22.888922] RDW | sufijo: — | ok (raw)
+[2026-06-25T22:43:22.908791] ETL.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:22.908899] ATSG | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:23.091560] MDA | sufijo: — | ok (raw)
+[2026-06-25T22:43:23.566472] BKSY | sufijo: — | ok (raw)
+[2026-06-25T22:43:23.589123] SATL | sufijo: — | ok (raw)
+[2026-06-25T22:43:23.621825] PL | sufijo: — | ok (raw)
+[2026-06-25T22:43:23.652721] ASTS | sufijo: — | ok (raw)
+[2026-06-25T22:43:23.676257] GSAT | sufijo: — | ok (raw)
+[2026-06-25T22:43:24.333560] SPIR | sufijo: — | ok (raw)
+[2026-06-25T22:43:24.362032] DRS | sufijo: — | ok (raw)
+[2026-06-25T22:43:24.600168] SAAB B | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:43:24.870147] LHA.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.173382] S63.SI | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.473856] SARO | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.518186] AVAV | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.621687] DPRO | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.659942] EH | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.676886] RCAT | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.868589] 0019.HK | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.868692] UAVS | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.948555] ONDS | sufijo: — | ok (raw)
+[2026-06-25T22:43:25.997051] PARRO.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:26.255670] UMAC | sufijo: — | ok (raw)
+[2026-06-25T22:43:26.312093] FCT.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:26.811469] 042660.KS | sufijo: — | ok (raw)
+[2026-06-25T22:43:26.811692] JAL | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:27.208678] 329180.KS | sufijo: — | ok (raw)
+[2026-06-25T22:43:27.834567] IAG | sufijo: — | ok (raw)
+[2026-06-25T22:43:27.895597] C6L.SI | sufijo: — | ok (raw)
+[2026-06-25T22:43:27.859507] UAL | sufijo: — | ok (raw)
+[2026-06-25T22:43:27.895739] DAL.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:27.908370] AAL | sufijo: — | ok (raw)
+[2026-06-25T22:43:27.908830] CEB | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:28.077755] 7012.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:28.332389] 0293.HK | sufijo: — | ok (raw)
+[2026-06-25T22:43:28.384593] AF.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:28.674706] ANA.MC | sufijo: — | ok (raw)
+[2026-06-25T22:43:28.674818] AIRASIA | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:28.749408] QAN.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:28.906247] 7011.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:29.120750] RYAAY | sufijo: — | ok (raw)
+[2026-06-25T22:43:29.585403] LUV | sufijo: — | ok (raw)
+[2026-06-25T22:43:29.645023] EZJ | sufijo: — | ok (raw)
+[2026-06-25T22:43:30.067007] JBLU | sufijo: — | ok (raw)
+[2026-06-25T22:43:30.089174] WIZZ.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:30.100911] VLRS | sufijo: — | ok (raw)
+[2026-06-25T22:43:30.101113] ZTO | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:30.640360] ULCC | sufijo: — | ok (raw)
+[2026-06-25T22:43:30.642639] JETS | sufijo: — | ok (raw)
+[2026-06-25T22:43:30.669780] SAVE.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:30.669903] MESA | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:30.797714] 5238.KL | sufijo: — | ok (raw)
+[2026-06-25T22:43:31.052584] FDX.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:31.113098] UPS | sufijo: — | ok (raw)
+[2026-06-25T22:43:31.499035] 003490.KS | sufijo: — | ok (raw)
+[2026-06-25T22:43:31.500001] TGI.TA | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:43:31.550941] APO | sufijo: — | ok (raw)
+[2026-06-25T22:43:31.963468] KNIN.SW | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.039550] DHL.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.189123] SF | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.217265] THYAO.IS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:43:32.304090] CHRW | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.527158] DSV.TO | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.553661] EXPD | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.631081] HRBR | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.650188] CHR | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.773362] EIF.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.933051] SKYW | sufijo: — | ok (raw)
+[2026-06-25T22:43:32.991863] REX | sufijo: — | ok (raw)
+[2026-06-25T22:43:33.231548] PAL | sufijo: — | ok (raw)
+[2026-06-25T22:43:33.231647] BRK.B | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:33.543267] AENA.MC | sufijo: — | ok (raw)
+[2026-06-25T22:43:33.625768] AZUL | sufijo: — | ok (raw)
+[2026-06-25T22:43:33.787680] ADP | sufijo: — | ok (raw)
+[2026-06-25T22:43:33.841342] FRA | sufijo: — | ok (raw)
+[2026-06-25T22:43:33.898850] FHZN.SW | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.220931] 600009.SS | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.285182] AOT.BK | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.358059] S58.SI | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.418845] CAAP | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.667362] PAC | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.773711] ASUR | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.795956] OMAB | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.886510] UP | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.904338] FLY | sufijo: — | ok (raw)
+[2026-06-25T22:43:34.904435] SKX | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:35.095828] JOBY | sufijo: — | ok (raw)
+[2026-06-25T22:43:35.621068] ADS.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:35.651463] LULU | sufijo: — | ok (raw)
+[2026-06-25T22:43:35.742228] AIRJ | sufijo: — | ok (raw)
+[2026-06-25T22:43:35.879420] PUM.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:35.967384] 2020.HK | sufijo: — | ok (raw)
+[2026-06-25T22:43:36.009741] NKE.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:36.116110] UAA | sufijo: — | ok (raw)
+[2026-06-25T22:43:36.371699] AS | sufijo: — | ok (raw)
+[2026-06-25T22:43:36.435190] VFC | sufijo: — | ok (raw)
+[2026-06-25T22:43:36.646684] COLM | sufijo: — | ok (raw)
+[2026-06-25T22:43:36.734439] DECK | sufijo: — | ok (raw)
+[2026-06-25T22:43:36.808179] MC | sufijo: — | ok (raw)
+[2026-06-25T22:43:36.957620] ONON | sufijo: — | ok (raw)
+[2026-06-25T22:43:37.101405] KER.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:37.313435] MONC.MI | sufijo: — | ok (raw)
+[2026-06-25T22:43:37.681945] BC | sufijo: — | ok (raw)
+[2026-06-25T22:43:37.717349] RMS.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:37.883247] 1913.HK | sufijo: — | ok (raw)
+[2026-06-25T22:43:37.907424] SFER.MI | sufijo: — | ok (raw)
+[2026-06-25T22:43:37.961397] BRBY.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:38.316023] CFR | sufijo: — | ok (raw)
+[2026-06-25T22:43:38.334427] TOD | sufijo: — | ok (raw)
+[2026-06-25T22:43:38.564886] ITX.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:38.694107] RACE | sufijo: — | ok (raw)
+[2026-06-25T22:43:38.853160] 9983.HK | sufijo: — | ok (raw)
+[2026-06-25T22:43:38.958322] GAP.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:39.391282] AEO.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:39.402661] URBN | sufijo: — | ok (raw)
+[2026-06-25T22:43:39.558712] PVH | sufijo: — | ok (raw)
+[2026-06-25T22:43:39.558811] HBI | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:40.273763] CPRI | sufijo: — | ok (raw)
+[2026-06-25T22:43:40.312783] ANF | sufijo: — | ok (raw)
+[2026-06-25T22:43:40.287003] GES.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:40.314128] BOSS.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:40.361471] KTB | sufijo: — | ok (raw)
+[2026-06-25T22:43:40.364246] LEVI | sufijo: — | ok (raw)
+[2026-06-25T22:43:41.536725] CAL | sufijo: — | ok (raw)
+[2026-06-25T22:43:41.590079] WWW | sufijo: — | ok (raw)
+[2026-06-25T22:43:41.590188] CROX | sufijo: — | ok (raw)
+[2026-06-25T22:43:42.321013] SHOO | sufijo: — | ok (raw)
+[2026-06-25T22:43:42.476033] VSCO | sufijo: — | ok (raw)
+[2026-06-25T22:43:42.493153] BIRK | sufijo: — | ok (raw)
+[2026-06-25T22:43:42.763384] DELG.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:42.835433] GIL | sufijo: — | ok (raw)
+[2026-06-25T22:43:42.888658] TPR | sufijo: — | ok (raw)
+[2026-06-25T22:43:42.900735] CALN.SW | sufijo: — | ok (raw)
+[2026-06-25T22:43:42.880955] BIRD | sufijo: — | ok (raw)
+[2026-06-25T22:43:43.214947] 2331.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:43:43.393470] PNDORA.CO | sufijo: — | ok (raw)
+[2026-06-25T22:43:43.398609] PAGEIND.NS | sufijo: — | ok (raw)
+[2026-06-25T22:43:44.311677] 1910.HK | sufijo: — | ok (raw)
+[2026-06-25T22:43:44.341875] HYMTF | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:44.334176] FOSL | sufijo: — | ok (raw)
+[2026-06-25T22:43:44.364433] KIMTF | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:44.422728] SIG | sufijo: — | ok (raw)
+[2026-06-25T22:43:44.706019] GM | sufijo: — | ok (raw)
+[2026-06-25T22:43:44.793732] VOW3.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:44.888561] BMW.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:45.007678] TM | sufijo: — | ok (raw)
+[2026-06-25T22:43:45.127139] STLA | sufijo: — | ok (raw)
+[2026-06-25T22:43:45.303690] HMC.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:45.330902] F | sufijo: — | ok (raw)
+[2026-06-25T22:43:45.331113] ZK | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:45.351022] MBG.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:45.484231] 7201.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:46.031703] HM B | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:43:46.320603] 7267.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:46.418030] 7269.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:46.869735] 1211.HK | sufijo: — | ok (raw)
+[2026-06-25T22:43:46.869975] 7205 | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:46.870169] TATAMOTORS | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:46.962521] XPEV | sufijo: — | ok (raw)
+[2026-06-25T22:43:46.943862] LI | sufijo: — | ok (raw)
+[2026-06-25T22:43:46.967238] TSLA | sufijo: — | ok (raw)
+[2026-06-25T22:43:46.992636] NIO | sufijo: — | ok (raw)
+[2026-06-25T22:43:47.018112] RIVN | sufijo: — | ok (raw)
+[2026-06-25T22:43:47.018278] REVG | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:47.038731] LCID | sufijo: — | ok (raw)
+[2026-06-25T22:43:47.284024] LOT | sufijo: — | ok (raw)
+[2026-06-25T22:43:47.457253] DTG | sufijo: — | ok (raw)
+[2026-06-25T22:43:47.547477] PSNY | sufijo: — | ok (raw)
+[2026-06-25T22:43:47.603955] BYDDY | sufijo: — | ok (raw)
+[2026-06-25T22:43:47.822614] PCAR | sufijo: — | ok (raw)
+[2026-06-25T22:43:48.319351] 8TRA.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:48.651468] NAV | sufijo: .V | ok
+[2026-06-25T22:43:48.710592] CMI | sufijo: — | ok (raw)
+[2026-06-25T22:43:48.733840] IVG.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:48.775038] WGO | sufijo: — | ok (raw)
+[2026-06-25T22:43:48.820944] 7202.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:49.134924] THO | sufijo: — | ok (raw)
+[2026-06-25T22:43:49.190031] CWH | sufijo: — | ok (raw)
+[2026-06-25T22:43:49.265329] PATK | sufijo: — | ok (raw)
+[2026-06-25T22:43:49.318515] HOG | sufijo: — | ok (raw)
+[2026-06-25T22:43:49.335395] TRI.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:49.439803] LCII | sufijo: — | ok (raw)
+[2026-06-25T22:43:49.648664] KTA.DE | sufijo: — | ok (raw)
+[2026-06-25T22:43:50.340184] BAJAJ-AUTO.NS | sufijo: — | ok (raw)
+[2026-06-25T22:43:50.415743] TVSMOTOR.NS | sufijo: — | ok (raw)
+[2026-06-25T22:43:50.437929] 7272.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:50.848556] M&M.NS | sufijo: — | ok (raw)
+[2026-06-25T22:43:50.877479] PIA.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:51.077661] HEROMOTOCO.NS | sufijo: — | ok (raw)
+[2026-06-25T22:43:51.412112] LEA | sufijo: — | ok (raw)
+[2026-06-25T22:43:51.438789] 7203.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:51.465380] APTV | sufijo: — | ok (raw)
+[2026-06-25T22:43:51.559149] PII | sufijo: — | ok (raw)
+[2026-06-25T22:43:51.583949] DOO | sufijo: — | ok (raw)
+[2026-06-25T22:43:52.012030] MGA | sufijo: — | ok (raw)
+[2026-06-25T22:43:52.277029] BWA | sufijo: — | ok (raw)
+[2026-06-25T22:43:52.815934] VC | sufijo: — | ok (raw)
+[2026-06-25T22:43:52.828590] FR | sufijo: — | ok (raw)
+[2026-06-25T22:43:52.848848] 6902.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:52.891405] 7259.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:52.928920] FRVIA.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:53.041899] MBLY | sufijo: — | ok (raw)
+[2026-06-25T22:43:53.150989] ALV | sufijo: — | ok (raw)
+[2026-06-25T22:43:53.396316] GPC | sufijo: — | ok (raw)
+[2026-06-25T22:43:53.465992] VOLV B | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:43:53.719431] LKQ | sufijo: — | ok (raw)
+[2026-06-25T22:43:53.814981] MPAA | sufijo: — | ok (raw)
+[2026-06-25T22:43:53.894923] SMP | sufijo: — | ok (raw)
+[2026-06-25T22:43:53.914950] MNRO | sufijo: — | ok (raw)
+[2026-06-25T22:43:53.925487] DORM | sufijo: — | ok (raw)
+[2026-06-25T22:43:54.432818] VVV | sufijo: — | ok (raw)
+[2026-06-25T22:43:54.576653] AAP.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:54.587686] ORLY | sufijo: — | ok (raw)
+[2026-06-25T22:43:54.666281] AZO | sufijo: — | ok (raw)
+[2026-06-25T22:43:54.800044] ML.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:54.829622] DRVN | sufijo: — | ok (raw)
+[2026-06-25T22:43:54.969503] GT | sufijo: — | ok (raw)
+[2026-06-25T22:43:55.113303] PIRC.MI | sufijo: — | ok (raw)
+[2026-06-25T22:43:55.152767] CON | sufijo: — | ok (raw)
+[2026-06-25T22:43:55.286814] 5108.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:55.756238] 096770.KS | sufijo: — | ok (raw)
+[2026-06-25T22:43:55.756344] PCRFY | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:55.903845] BAM | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.045692] 5110.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.123380] 161390.KS | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.255515] 5101.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.299731] 300750.SZ | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.433043] 006400.KS | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.481166] ALB | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.699780] THRM | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.845405] QS | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.895156] 373220.KS | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.973824] ENVX | sufijo: — | ok (raw)
+[2026-06-25T22:43:56.973927] 291 | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:57.007691] 6752.T | sufijo: — | ok (raw)
+[2026-06-25T22:43:57.333611] FREY.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:57.356318] SLDP | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.044985] MEKO.ST | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.219680] HEIA.VI | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.282634] BUD | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.525891] TAP.L | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.567964] BAP | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.636751] 2503.HK | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.701144] TWE.AX | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.703471] STZ.PA | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.967715] 0168.HK | sufijo: — | ok (raw)
+[2026-06-25T22:43:58.967816] BF.B | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:43:59.101583] IWB | sufijo: — | ok (raw)
+[2026-06-25T22:43:59.136608] MASI.MI | sufijo: — | ok (raw)
+[2026-06-25T22:43:59.215788] NAPA.OL | sufijo: — | ok (raw)
+[2026-06-25T22:44:00.529626] VWE | sufijo: .V | ok
+[2026-06-25T22:44:00.704018] LAUR | sufijo: — | ok (raw)
+[2026-06-25T22:44:00.706522] VCO | sufijo: — | ok (raw)
+[2026-06-25T22:44:00.836849] ALLAN.PA | sufijo: — | ok (raw)
+[2026-06-25T22:44:00.891529] WVVI | sufijo: — | ok (raw)
+[2026-06-25T22:44:00.928789] DEO | sufijo: — | ok (raw)
+[2026-06-25T22:44:01.280263] CPR.MI | sufijo: — | ok (raw)
+[2026-06-25T22:44:01.302321] MGPI | sufijo: — | ok (raw)
+[2026-06-25T22:44:01.335308] RI.PA | sufijo: — | ok (raw)
+[2026-06-25T22:44:01.906552] RCO.PA | sufijo: — | ok (raw)
+[2026-06-25T22:44:01.906732] AKO.B | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:44:02.421964] Y92.SI | sufijo: — | ok (raw)
+[2026-06-25T22:44:03.027562] KDP | sufijo: — | ok (raw)
+[2026-06-25T22:44:03.045247] PEP.DE | sufijo: — | ok (raw)
+[2026-06-25T22:44:03.140910] KO | sufijo: — | ok (raw)
+[2026-06-25T22:44:03.245156] 0291.HK | sufijo: — | ok (raw)
+[2026-06-25T22:44:03.615571] KOF | sufijo: — | ok (raw)
+[2026-06-25T22:44:03.708950] SAM | sufijo: — | ok (raw)
+[2026-06-25T22:44:03.712493] AC.PA | sufijo: — | ok (raw)
+[2026-06-25T22:44:03.982259] CCEP | sufijo: — | ok (raw)
+[2026-06-25T22:44:04.008187] 2502.HK | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:04.008757] 2501.HK | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:04.008874] CARL B | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:05.445443] DGL.AX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:15.935761] BN | sufijo: .TO | ok (descubierto)
+[2026-06-25T22:44:15.943911] SBUX | sufijo: .DE | ok (descubierto)
+[2026-06-25T22:44:16.744326] 2587.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:19.864928] MNST | sufijo: .VI | ok (descubierto)
+[2026-06-25T22:44:23.215869] JDEP | sufijo: .AS | falló — sufijo cacheado no funciona
+[2026-06-25T22:44:23.215974] PARA | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:44:29.840838] NESN.SW | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:29.851889] OSP.BK | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:30.535445] CELH | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:31.007739] PRMB | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:31.007984] TGNA | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:44:32.585397] BVIC.JK | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:33.170441] 2267.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:33.559918] CBG.L | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:34.729336] OTLY | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:36.747096] FIZZ | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:36.747202] CMLS | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:44:36.747230] AUDA | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:44:36.755773] LWAY | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:41.973948] SALM | sufijo: .OL | falló — sufijo cacheado no funciona
+[2026-06-25T22:44:46.369853] 2593.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:48.193685] 0220.HK | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:44:49.097306] 0322.HK | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:01.367198] CMCSA | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:10.245517] FOXA | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:12.333777] IHRT | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:15.831549] NXST | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:22.984855] PSM.DE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:22.996100] GTN.AX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:23.625730] FOX.L | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:23.625883] LGF.A | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:45:26.461578] SBGI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:26.461744] BANJ | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:45:29.137340] ITV.L | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:30.243961] SIRI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:31.125465] RRTL.DE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:31.576751] NRG | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:32.468859] BBGI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:35.639768] NFLX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:40.299483] DIS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:45:50.646125] WBD | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:03.485943] C | sufijo: — | ok (raw)
+[2026-06-25T22:46:03.768446] ROKU | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:05.731190] SONY | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:06.519572] AMZN | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:09.010221] MS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:09.739999] BAC.DE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:10.017618] GOOGL | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:13.365584] AMCX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:13.376867] RTL.MI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:13.382297] SPOT | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:13.472623] TME | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:15.744367] GS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:17.935662] JPM | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:32.267468] JEF | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:42.150485] LAZ | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:48.271027] EVR.AX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:54.445533] DB | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:54.487673] PJT | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:54.654596] HOOD | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:54.662768] RJF.DE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:54.676625] SCHW | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:55.376355] ETOR | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:55.393184] TIGR | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:55.731957] UBS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:56.802299] IBKR | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:56.811227] LPLA | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:56.846805] HLI.AX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:46:56.951166] FUTU | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:02.366835] PLUS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:03.224641] IGG.L | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:12.200751] AMP | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:12.207953] BEN | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:12.214188] TROW | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:13.542003] BLK | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:15.079644] JHG | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:16.459853] IVZ | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:17.341964] HOLN.SW | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:17.795867] CMCX.L | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:17.800307] BCS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:20.654073] NMR | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:20.685155] AMG | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:21.139162] CRH | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:25.634152] CX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:27.497705] METSB | sufijo: .HE | falló — sufijo cacheado no funciona
+[2026-06-25T22:47:27.497826] RFP | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:47:27.536278] BZU.MI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:29.198613] VMC.AX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:29.204041] EXP.AX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:29.374083] SUM.NZ | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:32.924638] USLM | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:37.898341] 5233.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:37.933013] IFP.TO | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:38.675510] WFG | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:38.727805] MLM | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:43.482470] LPX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:44.205714] STERV.HE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:44.366758] WY | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:44.371660] UFPI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:45.696593] BECN | sufijo: .V | falló — sufijo cacheado no funciona
+[2026-06-25T22:47:45.729653] OC | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:46.409984] SGO.PA | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:46.565490] CFP.TO | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:46.590401] APOG | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:46.606507] SUZ | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:47.210774] 5201.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:47.216498] 5202.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:55.117970] CSL | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:57.911860] RDUS | sufijo: .VI | falló — sufijo cacheado no funciona
+[2026-06-25T22:47:59.294993] ROCK | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:47:59.340687] JHX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:03.073957] KRX.IR | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:06.015700] ROCK B | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:06.016937] BLD | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:07.238762] IBP | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:07.260381] STLD | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:07.391747] MAS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:08.572792] AKZA | sufijo: .AS | falló — sufijo cacheado no funciona
+[2026-06-25T22:48:10.581151] NUE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:10.590448] CMC | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:14.543047] TX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:14.544556] MT | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:14.556779] GGB | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:15.393635] BSL.DE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:15.399009] FCN | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:48:23.207134] PPG | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:23.275657] SHW | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:24.078158] ASIANPAINT.NS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:24.085676] RPM | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:25.850965] X.TO | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:28.185151] CLF | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:28.868486] 4612.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:28.889327] HEN3.DE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:28.920587] 4613.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:28.941424] ACN | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:29.634979] AXTA | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:29.661709] BAH | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:31.914819] CRAI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:32.409817] CAP.DE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:32.409694] RGP | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:32.410571] N/A | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:48:35.404198] WIT | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:35.413534] RAND | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:36.061342] INFY | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:37.351257] RHI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:40.475527] ADEN.TO | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:40.486247] MAN | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:40.487761] 6098.T | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:41.855296] KFY | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:45.989333] PAGE.L | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:51.480165] KELYA | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:52.230149] SECU B | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:53.700918] BCO | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:53.735359] ABM | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:54.679227] PSG.MC | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:54.681051] ADT | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:55.311468] JCI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:56.618568] ALLE | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:48:56.620655] STON | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:49:03.547979] 1448 | sufijo: .HK | falló — sufijo cacheado no funciona
+[2026-06-25T22:49:06.967395] ISS.VI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:07.126352] RRD | sufijo: .TO | falló — sufijo cacheado no funciona
+[2026-06-25T22:49:07.128013] CAJ | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:49:07.734681] SW.PA | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:09.276357] QUAD | sufijo: .MI | falló — sufijo cacheado no funciona
+[2026-06-25T22:49:09.829909] CTAS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:09.830046] ATUS | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:49:09.844129] XRX | sufijo: .DE | falló — sufijo cacheado no funciona
+[2026-06-25T22:49:10.153877] CSV | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:10.153805] SCI | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:10.196809] TC1 | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:49:10.754393] ORAN | sufijo: — | ignorado — no resoluble
+[2026-06-25T22:49:10.756413] MTO.L | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:10.909151] ARMK | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:10.909641] RTO.L | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:10.940856] UNF | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:11.101684] IVC.NS | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:11.350516] ANET | sufijo: .TO | falló — sufijo cacheado no funciona
+[2026-06-25T22:49:11.353378] HLIT | sufijo: .TO | falló — sufijo cacheado no funciona
+[2026-06-25T22:49:11.391636] PLC.AX | sufijo: — | no encontrado — sin sufijo conocido
+[2026-06-25T22:49:11.496282] DOW | sufijo: .DE | falló — sufijo cacheado no funciona
+[2026-06-25T22:49:11.638426] ERIC | sufijo: .DE | falló — sufijo cacheado no funciona
+[2026-06-25T22:49:11.645914] WLK | sufijo: .L | falló — sufijo cacheado no funciona
+[2026-06-25T22:49:11.646362] PHOR | sufijo: — | ignorado — no resoluble
