@@ -1,40 +1,42 @@
-import concurrent.futures
 import datetime
 import json
 import logging
 import os
+import random
 import threading
 import time
 import uuid
 
 import pandas as pd
+import requests
+
+os.environ["YF_USER_AGENT"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
+_YF_SESSION = requests.Session()
+_YF_SESSION.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+})
+
 import yfinance as yf
+yf.set_tz_cache_location("/tmp/yfinance_cache")
+
+from app.db.database import SessionLocal
+from app.models.main import TemplateComplement
 
 logger = logging.getLogger(__name__)
 
-NOT_FOUND_CSV_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "boa_not_found.csv",
-)
-SUFFIX_FOUND_CSV_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "boa_suffix_found.csv",
-)
-SUFFIX_LOG_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "boa_suffix_log.txt",
-)
-
-SUFFIX_STATS_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "boa_suffix_stats.txt",
-)
+def _delay(seconds: float = 1.0):
+    time.sleep(seconds + random.uniform(0, 0.5))
 
 JOBS_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "boa_jobs.json",
 )
 _jobs_lock = threading.Lock()
+_jobs_cache: dict = {}
+_running_jobs: dict[str, threading.Event] = {}
 
 
 def _read_jobs() -> dict:
@@ -42,18 +44,56 @@ def _read_jobs() -> dict:
         return {}
     try:
         with open(JOBS_PATH) as f:
-            return json.load(f)
+            data = json.load(f)
+        _jobs_cache.clear()
+        _jobs_cache.update(data)
+        return data
     except Exception as exc:
         logger.warning(f"Error leyendo {JOBS_PATH}: {exc}")
+        if _jobs_cache:
+            logger.info("Restaurando desde caché en memoria")
+            _write_jobs(_jobs_cache)
+            return dict(_jobs_cache)
         return {}
 
 
 def _write_jobs(jobs: dict):
+    """Escribe jobs de forma atómica: temp file + rename para evitar corrupción."""
+    tmp_path = JOBS_PATH + ".tmp"
     try:
-        with open(JOBS_PATH, "w") as f:
+        with open(tmp_path, "w") as f:
             json.dump(jobs, f, indent=2)
+        os.replace(tmp_path, JOBS_PATH)
+        _jobs_cache.clear()
+        _jobs_cache.update(jobs)
     except Exception as exc:
         logger.warning(f"Error escribiendo {JOBS_PATH}: {exc}")
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
+
+
+def _cleanup_old_jobs(jobs: dict, keep_running: bool = True) -> dict:
+    """Elimina jobs completados/error antiguos para mantener el archivo pequeño."""
+    now = datetime.datetime.now()
+    cleaned = {}
+    # Siempre mantener los running
+    for jid, j in jobs.items():
+        if j.get("status") in ("running",):
+            cleaned[jid] = j
+
+    # Mantener hasta 3 jobs recientes (completados o con error) para depuración
+    completed = [
+        (jid, j) for jid, j in jobs.items()
+        if j.get("status") in ("completed", "error")
+    ]
+    completed.sort(key=lambda x: x[1].get("updated_at", ""), reverse=True)
+    for jid, j in completed[:3]:
+        cleaned[jid] = j
+
+    return cleaned
 
 
 def create_job(total: int) -> str:
@@ -74,6 +114,7 @@ def create_job(total: int) -> str:
     }
     with _jobs_lock:
         jobs = _read_jobs()
+        jobs = _cleanup_old_jobs(jobs)
         jobs[job_id] = job
         _write_jobs(jobs)
     return job_id
@@ -115,9 +156,15 @@ def fail_job(job_id: str, error: str):
 
 def cancel_job(job_id: str):
     _update_job(job_id, cancel_requested=True)
+    event = _running_jobs.get(job_id)
+    if event:
+        event.set()
 
 
 def is_cancelled(job_id: str) -> bool:
+    event = _running_jobs.get(job_id)
+    if event and event.is_set():
+        return True
     job = get_job(job_id)
     if job is None:
         return False
@@ -130,35 +177,6 @@ def delete_job(job_id: str):
         jobs.pop(job_id, None)
         _write_jobs(jobs)
 
-
-_SUFFIX_CACHE: dict[str, str] = {}
-if os.path.exists(SUFFIX_FOUND_CSV_PATH):
-    try:
-        with open(SUFFIX_FOUND_CSV_PATH) as f:
-            for line in f:
-                line = line.strip()
-                if "," in line:
-                    parts = line.split(",", 1)
-                    if len(parts) == 2 and parts[0] and parts[1]:
-                        _SUFFIX_CACHE[parts[0]] = parts[1]
-    except Exception as exc:
-        logger.warning(f"No se pudo cargar cache de {SUFFIX_FOUND_CSV_PATH}: {exc}")
-logger.info(f"Cargados {len(_SUFFIX_CACHE)} sufijos del cache")
-
-_NOT_FOUND_TICKERS: set[str] = set()
-if os.path.exists(NOT_FOUND_CSV_PATH):
-    try:
-        with open(NOT_FOUND_CSV_PATH) as f:
-            for line in f:
-                ticker = line.strip()
-                if ticker:
-                    _NOT_FOUND_TICKERS.add(ticker)
-    except Exception as exc:
-        logger.warning(f"No se pudo cargar {NOT_FOUND_CSV_PATH}: {exc}")
-logger.info(f"Cargados {len(_NOT_FOUND_TICKERS)} tickers no resueltos (skip list)")
-
-_FX_CACHE: dict[str, float] = {"USD": 1.0}
-_fx_cache_lock = threading.Lock()
 
 _DAMODARAN_FALLBACK = 0.2549
 
@@ -197,23 +215,31 @@ TOTAL_ASSETS_LABELS = [
     "Total Assets As Reported",
 ]
 
+_FX_CACHE: dict[str, float] = {"USD": 1.0}
+_fx_cache_lock = threading.Lock()
 
-def get_fx_rate(currency: str) -> float:
+
+def get_fx_rate(currency: str, cancel_event: threading.Event = None) -> float:
     currency = currency.upper().strip()
     if currency in _FX_CACHE:
         return _FX_CACHE[currency]
     pair = f"{currency}USD=X"
-    try:
-        hist = yf.Ticker(pair).history(period="5d")
-        if hist.empty:
-            raise ValueError("Sin datos")
-        rate = float(hist["Close"].dropna().iloc[-1])
-        if 0.000001 <= rate <= 200.0:
-            with _fx_cache_lock:
-                _FX_CACHE[currency] = rate
-            return rate
-    except Exception:
-        pass
+    for attempt in range(3):
+        if cancel_event and cancel_event.is_set():
+            return 1.0
+        _delay(1.5)
+        try:
+            hist = yf.Ticker(pair, session=_YF_SESSION).history(period="5d")
+            if hist.empty:
+                raise ValueError("Sin datos")
+            rate = float(hist["Close"].dropna().iloc[-1])
+            if 0.000001 <= rate <= 200.0:
+                with _fx_cache_lock:
+                    _FX_CACHE[currency] = rate
+                return rate
+        except Exception:
+            if attempt < 2:
+                time.sleep(1)
     with _fx_cache_lock:
         _FX_CACHE[currency] = 1.0
     return 1.0
@@ -272,24 +298,34 @@ def get_clean_tax_rate(inc: pd.DataFrame, country: str) -> tuple[float, str]:
     return statutory, f"statutory {country} (todos los años descartados)"
 
 
-def _process_single_ticker(ticker: str, used_suffix: str = ""):
-    full_ticker = ticker + used_suffix if used_suffix else ticker
-
-    try:
-        stock = yf.Ticker(full_ticker)
-        info = stock.info
-    except Exception:
+def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
+    if cancel_event and cancel_event.is_set():
         return None
 
-    if not info or not info.get("shortName"):
+    _delay(1.5)
+    try:
+        stock = yf.Ticker(ticker, session=_YF_SESSION)
+        info = stock.info
+    except Exception as e:
+        logger.warning(f"yfinance error for {ticker}: {e}")
+        return None
+
+    if not info:
+        logger.warning(f"yfinance returned empty info for {ticker}")
+        return None
+    if not info.get("shortName"):
+        logger.warning(f"yfinance info missing shortName for {ticker}: keys={list(info.keys())[:10]}")
+        return None
+
+    if cancel_event and cancel_event.is_set():
         return None
 
     listing_currency = info.get("currency", "USD")
     reporting_currency = info.get("financialCurrency", listing_currency)
     country = info.get("country", "")
 
-    fx_rate = get_fx_rate(reporting_currency)
-    fx_listing = get_fx_rate(listing_currency)
+    fx_rate = get_fx_rate(reporting_currency, cancel_event)
+    fx_listing = get_fx_rate(listing_currency, cancel_event)
 
     bs = stock.balance_sheet
     debt_value = None
@@ -334,8 +370,6 @@ def _process_single_ticker(ticker: str, used_suffix: str = ""):
     if beta_unlevered is not None and beta_unlevered < 0:
         return None
 
-    suffix_used = used_suffix if used_suffix else None
-
     api_data = {
         "ticker": ticker,
         "company_name": info.get("shortName", ticker),
@@ -355,165 +389,132 @@ def _process_single_ticker(ticker: str, used_suffix: str = ""):
         "pct_debt": round(debt_value / (debt_value + market_cap_usd), 4) if debt_value is not None and market_cap_usd is not None and (debt_value + market_cap_usd) != 0 else None,
         "pct_equity": round(market_cap_usd / (debt_value + market_cap_usd), 4) if debt_value is not None and market_cap_usd is not None and (debt_value + market_cap_usd) != 0 else None,
         "market_cap": market_cap,
-        "suffix_used": suffix_used,
     }
 
     return None, api_data
 
 
-def _load_suffixes_from_stats() -> list[str]:
-    defaults = [".L", ".DE", ".MC", ".TO", ".V", ".PA", ".AS", ".MI",
-                ".HE", ".ST", ".CO", ".OL", ".VI", ".WA", ".HK", ".TW",
-                ".KS", ".SS", ".SZ", ".NS", ".SI", ".SW", ".KL", ".JK"]
-    if not os.path.exists(SUFFIX_STATS_PATH):
-        logger.warning(f"No se encuentra {SUFFIX_STATS_PATH}, usando defaults")
-        return defaults
-    import re
-    try:
-        with open(SUFFIX_STATS_PATH) as f:
-            in_used = False
-            for line in f:
-                stripped = line.strip()
-                if "Sufijos USADOS" in stripped:
-                    in_used = True
-                    continue
-                if in_used:
-                    if "Total" in stripped:
-                        break
-                    m = re.match(r'\s*(\S+)\s*→\s*(\d+)', stripped)
-                    if m:
-                        suffix = m.group(1).strip()
-                        count = int(m.group(2))
-                        suffixes.append((count, suffix))
-        suffixes.sort(key=lambda x: -x[0])
-        return [s for _, s in suffixes]
-    except Exception as exc:
-        logger.warning(f"Error parseando {SUFFIX_STATS_PATH}: {exc}")
-        return defaults
-
-SUFFIXES_TO_TRY = _load_suffixes_from_stats()
-logger.info(f"Cargados {len(SUFFIXES_TO_TRY)} sufijos desde stats: {SUFFIXES_TO_TRY}")
-
-def _try_suffixes(ticker: str) -> tuple:
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
-    fut_map = {executor.submit(_process_single_ticker, ticker, s): s for s in SUFFIXES_TO_TRY}
-    try:
-        for fut in concurrent.futures.as_completed(fut_map):
-            res = fut.result()
-            if res is not None:
-                for f in fut_map:
-                    f.cancel()
-                _, api_data = res
-                suffix = fut_map[fut]
-                _save_suffix(ticker, suffix)
-                _log_suffix_execution(ticker, suffix, "ok (descubierto)")
-                error_info = {
-                    "ticker": ticker,
-                    "suffix_usado": suffix,
-                    "mensaje": f"Resuelto con sufijo {suffix} (descubierto)",
-                }
-                return None, api_data, error_info, False
-    finally:
-        executor.shutdown(wait=False)
-    return None, None, None, None
-
-
-def _save_suffix(ticker: str, suffix: str):
-    if not suffix:
+def _upsert_companies_to_db(companies: list[dict], job_id: str = "", batch_idx: int = 0):
+    """Save batch companies as a TemplateComplement record."""
+    if not companies:
         return
-    _SUFFIX_CACHE[ticker] = suffix
+    db = SessionLocal()
     try:
-        with open(SUFFIX_FOUND_CSV_PATH, "a") as f:
-            f.write(f"{ticker},{suffix}\n")
+        record = TemplateComplement(
+            nombre=f"boa_batch_{job_id}_{batch_idx}",
+            fecha=datetime.datetime.now(),
+            data={"batch": batch_idx, "companies": companies},
+        )
+        db.add(record)
+        db.commit()
+        logger.info(f"Guardado lote {batch_idx} ({len(companies)} empresas) en main_template_complements")
     except Exception as exc:
-        logger.warning(f"No se pudo guardar sufijo en {SUFFIX_FOUND_CSV_PATH}: {exc}")
+        db.rollback()
+        logger.warning(f"Error guardando lote {batch_idx} en DB: {exc}")
+    finally:
+        db.close()
 
 
-def _process_single_ticker_with_fallback(ticker: str):
-    if ticker in _NOT_FOUND_TICKERS:
-        _log_suffix_execution(ticker, None, "ignorado — no resoluble")
-        return None, None, None, True
-
-    cached_suffix = _SUFFIX_CACHE.get(ticker)
-    if cached_suffix:
-        res = _process_single_ticker(ticker, cached_suffix)
-        if res is not None:
-            _, api_data = res
-            _log_suffix_execution(ticker, cached_suffix, "ok")
-            error_info = {
-                "ticker": ticker,
-                "suffix_usado": cached_suffix,
-                "mensaje": f"Usó sufijo {cached_suffix} (cache)",
-            }
-            return None, api_data, error_info, False
-        _log_suffix_execution(ticker, cached_suffix, "falló — sufijo cacheado no funciona")
-        error_info = {
-            "ticker": ticker,
-            "suffix_usado": cached_suffix,
-            "mensaje": "No se pudo resolver ni con sufijo conocido",
-        }
-        return None, None, error_info, False
-
-    res = _process_single_ticker(ticker)
-    if res is not None:
-        _, api_data = res
-        _log_suffix_execution(ticker, None, "ok (raw)")
-        return None, api_data, None, False
-
-    suffix_res = _try_suffixes(ticker)
-    if suffix_res[1] is not None:
-        return suffix_res
-
-    _log_suffix_execution(ticker, None, "no encontrado — sin sufijo conocido")
-    error_info = {
-        "ticker": ticker,
-        "suffix_usado": None,
-        "mensaje": "No se pudo resolver el ticker",
-    }
-    return None, None, error_info, False
-
-
-def _log_suffix_execution(ticker: str, suffix: str | None, status: str):
-    timestamp = datetime.datetime.now().isoformat()
-    suffix_str = suffix or "—"
-    line = f"[{timestamp}] {ticker} | sufijo: {suffix_str} | {status}\n"
-    try:
-        with open(SUFFIX_LOG_PATH, "a") as f:
-            f.write(line)
-    except Exception as exc:
-        logger.warning(f"No se pudo escribir el log de sufijos: {exc}")
+def _rate_limit_delay(attempt: int, base: float = 2.0) -> None:
+    delay = base * (2 ** attempt) + random.uniform(0, 1)
+    logger.info(f"  Rate limiting detectado, esperando {delay:.1f}s (intento {attempt + 1})...")
+    time.sleep(delay)
 
 
 def calculate_subsectores_boa(tickers: list[str], job_id: str | None = None) -> dict:
+    BATCH_SIZE = 50
     companies = []
     errors = []
     processed_ok = 0
     failed_count = 0
+    cancel_event = threading.Event()
+
+    consecutive_empty_batches = 0
+    max_empty_batches_before_abort = 5
+
+    if job_id:
+        _running_jobs[job_id] = cancel_event
 
     t_start = time.perf_counter()
-    logger.info(f"Procesando {len(tickers)} tickers...")
+    logger.info(f"Procesando {len(tickers)} tickers en lotes de {BATCH_SIZE}...")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-        futures_map = {
-            executor.submit(_process_single_ticker_with_fallback, ticker): ticker
-            for ticker in tickers
-        }
+    total_batches = (len(tickers) + BATCH_SIZE - 1) // BATCH_SIZE
+    last_batch = -1
+    if job_id:
+        job = get_job(job_id)
+        if job and "last_batch" in job:
+            last_batch = job["last_batch"]
+            logger.info(f"Reanudando desde lote {last_batch + 1}")
 
-        for future in concurrent.futures.as_completed(futures_map):
-            if job_id and is_cancelled(job_id):
-                logger.info(f"Job {job_id} cancelado por el usuario")
-                for f in futures_map:
-                    f.cancel()
+    for batch_idx in range(total_batches):
+        if cancel_event.is_set() or (job_id and is_cancelled(job_id)):
+            logger.info(f"Job {job_id} cancelado")
+            cancel_event.set()
+            break
+
+        if batch_idx <= last_batch:
+            logger.info(f"Lote {batch_idx + 1} ya procesado, saltando...")
+            continue
+
+        if consecutive_empty_batches > max_empty_batches_before_abort:
+            logger.warning(
+                f"Demasiados lotes vacíos consecutivos ({consecutive_empty_batches}). "
+                "Posible rate limiting definitivo, abortando."
+            )
+            break
+
+        batch_start = batch_idx * BATCH_SIZE
+        batch_end = min(batch_start + BATCH_SIZE, len(tickers))
+        batch_tickers = tickers[batch_start:batch_end]
+        batch_companies = []
+
+        logger.info(f"Lote {batch_idx + 1}/{total_batches} (tickers {batch_start + 1}-{batch_end})")
+
+        for i, ticker in enumerate(batch_tickers):
+            if cancel_event.is_set() or (job_id and is_cancelled(job_id)):
+                cancel_event.set()
                 break
 
-            _, api_data, error_info, skip_silently = future.result()
+            logger.info(f"  Ticker {i + 1}/{len(batch_tickers)}: {ticker}")
+            api_data = None
+            last_error = None
+
+            for attempt in range(3):
+                if cancel_event.is_set() or (job_id and is_cancelled(job_id)):
+                    cancel_event.set()
+                    break
+
+                try:
+                    res = _process_single_ticker(ticker, cancel_event)
+                    if res is not None:
+                        _, api_data = res
+                        break
+                except Exception as exc:
+                    err_msg = str(exc).lower()
+                    last_error = {
+                        "ticker": ticker,
+                        "mensaje": f"Intento {attempt + 1}/3: Error - {str(exc)}",
+                    }
+                    if "rate" in err_msg or "limit" in err_msg or "429" in err_msg or "too many" in err_msg:
+                        _rate_limit_delay(attempt)
+                    elif attempt < 2:
+                        _delay(1.0)
+                    continue
+
+                last_error = {
+                    "ticker": ticker,
+                    "mensaje": f"Intento {attempt + 1}/3: No se pudo resolver",
+                }
+                if attempt < 2:
+                    _delay(1.0)
+
             if api_data:
                 companies.append(api_data)
+                batch_companies.append(api_data)
                 processed_ok += 1
-            elif not skip_silently:
+            elif last_error:
                 failed_count += 1
-            if error_info:
-                errors.append(error_info)
+                errors.append(last_error)
 
             if job_id:
                 update_job_progress(
@@ -523,8 +524,28 @@ def calculate_subsectores_boa(tickers: list[str], job_id: str | None = None) -> 
                     errors=errors,
                 )
 
+        if batch_companies:
+            _upsert_companies_to_db(batch_companies, job_id=job_id or "", batch_idx=batch_idx)
+            consecutive_empty_batches = 0
+        else:
+            consecutive_empty_batches += 1
+
+        if job_id:
+            _update_job(job_id, result={
+                "valid_companies": companies,
+                "errors": errors,
+            }, last_batch=batch_idx)
+
+        if batch_idx < total_batches - 1 and not cancel_event.is_set():
+            batch_delay = 5
+            if consecutive_empty_batches > 0:
+                batch_delay = 15 * (2 ** (consecutive_empty_batches - 1))
+                batch_delay = min(batch_delay, 180)
+            logger.info(f"Esperando {batch_delay}s antes del siguiente lote...")
+            time.sleep(batch_delay)
+
     t_end = time.perf_counter()
-    logger.info(f"BOA completado en {t_end - t_start:.2f}s (job={job_id})")
+    logger.info(f"BOA completado en {t_end - t_start:.2f}s (job={job_id}) - {processed_ok} ok, {failed_count} failed")
 
     result = {
         "success": True,
@@ -532,13 +553,39 @@ def calculate_subsectores_boa(tickers: list[str], job_id: str | None = None) -> 
         "errors": errors,
         "total": len(tickers),
         "processed": processed_ok,
-        "failed": len(tickers) - processed_ok,
+        "failed": failed_count,
     }
 
     if job_id:
-        if is_cancelled(job_id):
+        if cancel_event.is_set() or is_cancelled(job_id):
             fail_job(job_id, "Cancelado por el usuario")
         else:
             complete_job(job_id, result)
+        _running_jobs.pop(job_id, None)
 
     return result
+
+
+def import_boa_jobs_to_db() -> dict:
+    """Read all completed jobs from boa_jobs.json and upsert companies into DB."""
+    jobs = _read_jobs()
+    imported = 0
+    errors = []
+
+    for job_id, job in jobs.items():
+        if job.get("status") != "completed":
+            continue
+        result = job.get("result")
+        if not result:
+            continue
+        companies = result.get("valid_companies", [])
+        if not companies:
+            continue
+
+        try:
+            _upsert_companies_to_db(companies, job_id=job_id, batch_idx=-1)
+            imported += len(companies)
+        except Exception as exc:
+            errors.append({"job_id": job_id, "error": str(exc)})
+
+    return {"imported": imported, "errors": errors}

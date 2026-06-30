@@ -86,11 +86,7 @@ async def get_boa_progress(job_id: str):
 
 @router.post("/boa-cancel/{job_id}")
 async def cancel_boa_job(job_id: str):
-    job = get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job no encontrado")
-    if job["status"] == "running":
-        cancel_job(job_id)
+    cancel_job(job_id)
     return {"success": True, "message": "Cancelación solicitada"}
 
 @router.post("/boa-job/{job_id}/delete")
