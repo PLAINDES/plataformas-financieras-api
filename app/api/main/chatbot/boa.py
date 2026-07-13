@@ -394,20 +394,91 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
     return None, api_data
 
 
+def get_existing_tickers_with_values() -> set[str]:
+    """
+    Consulta la base de datos para obtener un conjunto de tickers que ya existen
+    y tienen valores considerados como válidos (ej. beta_unlevered no es 0).
+    """
+    db = SessionLocal()
+    existing_tickers = set()
+    try:
+        existing_records_query = db.query(TemplateComplement).filter(
+            TemplateComplement.nombre.like('boa_batch_%')
+        )
+        for record in existing_records_query:
+            for company_data in record.data.get("companies", []):
+                ticker = company_data.get("ticker")
+                if ticker:
+                    if company_data.get("beta_unlevered") != 0.0 and company_data.get("total_assets") is not None:
+                        existing_tickers.add(ticker)
+    finally:
+        db.close()
+    return existing_tickers
 def _upsert_companies_to_db(companies: list[dict], job_id: str = "", batch_idx: int = 0):
     """Save batch companies as a TemplateComplement record."""
     if not companies:
         return
+
     db = SessionLocal()
     try:
-        record = TemplateComplement(
-            nombre=f"boa_batch_{job_id}_{batch_idx}",
-            fecha=datetime.datetime.now(),
-            data={"batch": batch_idx, "companies": companies},
+        # Extraer todos los tickers del lote actual
+        tickers_in_batch = {c['ticker'] for c in companies}
+
+        # Consultar la base de datos para ver cuáles de estos tickers ya existen
+        existing_records_query = db.query(TemplateComplement).filter(
+            TemplateComplement.nombre.like('boa_batch_%')
         )
-        db.add(record)
+        
+        existing_tickers_with_values = set()
+        
+        for record in existing_records_query:
+            for company_data in record.data.get("companies", []):
+                ticker = company_data.get("ticker")
+                if ticker in tickers_in_batch:
+                    # Comprobar si el ticker tiene un valor válido (p. ej., beta_unlevered no es 0)
+                    if company_data.get("beta_unlevered") != 0.0 and company_data.get("total_assets") is not None:
+                        existing_tickers_with_values.add(ticker)
+
+        # Filtrar la lista de `companies` para excluir los que ya existen y tienen valores
+        companies_to_upsert = [
+            c for c in companies if c['ticker'] not in existing_tickers_with_values
+        ]
+
+        if not companies_to_upsert:
+            logger.info(f"Lote {batch_idx}: Todos los tickers ya existen con valores válidos, no se necesita inserción.")
+            return
+
+        # Si aún quedan empresas por insertar/actualizar, proceder
+        record_name = f"boa_batch_{job_id}_{batch_idx}"
+        
+        # Intentar encontrar un registro existente para actualizarlo
+        record = db.query(TemplateComplement).filter(TemplateComplement.nombre == record_name).first()
+        
+        if record:
+            # Si existe, actualiza los datos
+            existing_data = record.data.get("companies", [])
+            
+            # Crear un diccionario para facilitar la búsqueda de empresas existentes
+            existing_dict = {c['ticker']: c for c in existing_data}
+            
+            # Actualizar o agregar las nuevas empresas
+            for company in companies_to_upsert:
+                existing_dict[company['ticker']] = company
+            
+            record.data = {"batch": batch_idx, "companies": list(existing_dict.values())}
+            
+        else:
+            # Si no existe, crea un nuevo registro
+            record = TemplateComplement(
+                nombre=record_name,
+                fecha=datetime.datetime.now(),
+                data={"batch": batch_idx, "companies": companies_to_upsert},
+            )
+            db.add(record)
+
         db.commit()
-        logger.info(f"Guardado lote {batch_idx} ({len(companies)} empresas) en main_template_complements")
+        logger.info(f"Guardado/actualizado lote {batch_idx} ({len(companies_to_upsert)} empresas) en main_template_complements")
+
     except Exception as exc:
         db.rollback()
         logger.warning(f"Error guardando lote {batch_idx} en DB: {exc}")

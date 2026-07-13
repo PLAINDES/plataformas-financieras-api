@@ -17,15 +17,19 @@ TEMPLATE_SHEET_TO_TYPE = {
 KAPITAL_INPUT_SHEET = "Plantilla Usuario"
 KAPITAL_RESULTS_SHEET = "WACC"
 KAPITAL_RESULTS_BOA_CELL = "F24"
+KAPITAL_RESULTS_BOA_SECTOR_CELL = "F22"
+KAPITAL_RESULTS_BOA_SUBSECTOR_CELL = "F23"
 
 KAPITAL_EXPECTED_DEVALUATION = "C16"
 
-KAPITAL_SENSITIVITY_INPUT_CELL_MAP = {
-    "beta_desapalancado": "C12",
-}
+# KAPITAL_SENSITIVITY_INPUT_CELL_MAP = {
+#     "beta_desapalancado": "C12",
+# }
+KAPITAL_SENSITIVITY_INPUT_CELL_MAP = {}
 
 KAPITAL_CUSTOM_INPUT_CELL_MAP = {
-    "beta_desapalancado_custom": "F28",
+    "beta_subsector": "F36",
+    "beta_subsector_alt": "F40",
 }
 
 # Hoja PLANTILLA USUARIO
@@ -37,7 +41,9 @@ KAPITAL_INPUT_CELL_MAP = {
     "tasa_libre_riesgo": "C6",
     "anio_bono": "C7",
     "costo_deuda": "C8",
-    "porcentaje_deuda": "C9"
+    "porcentaje_deuda": "C9",
+    "subsector": "C10",
+    "tickers_subsector": "C11",
 }
 
 # Hoja WACC
@@ -45,6 +51,7 @@ KAPITAL_INPUT_WACC = {
     "tasa_impositiva": "F13",
     "devaluacion": "F14",
     "industria": "B18",
+    "subsector": "B19",
     "porcentaje_deuda": "F12"
 }
 

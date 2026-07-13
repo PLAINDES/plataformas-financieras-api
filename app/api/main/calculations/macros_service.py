@@ -96,17 +96,23 @@ def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
 
     # Trabajamos directamente sobre la referencia del último input para mutarlo
     latest_input = payload_data["inputs"][-1]
+    _enrich_input_with_macros(db, latest_input)
 
-    date = str(latest_input.get("fecha", "")).strip()
+
+def _enrich_input_with_macros(db: Session, input_dict: dict) -> None:
+    """
+    Enriquece un diccionario de input individual con datos de complementos de la BD.
+    """
+    date = str(input_dict.get("fecha", "")).strip()
 
     year = ""
     match = re.search(r"\d{4}", date)
     if match:
         year = match.group(0)
 
-    country = latest_input.get("pais")
-    industry = latest_input.get("industria")
-    anio_bono = latest_input.get("anio_bono")
+    country = input_dict.get("pais")
+    industry = input_dict.get("industria")
+    anio_bono = input_dict.get("anio_bono")
 
     # Helper interno para buscar en la BD
     def _fetch_complement_data(name: str) -> list:
@@ -137,11 +143,11 @@ def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
 
             valor_rf = rf_match.get(formatted_anio)
             if valor_rf is not None:
-                latest_input["rf"] = {"fecha": rf_match.get("fecha"), "year": valor_rf}
+                input_dict["rf"] = {"fecha": rf_match.get("fecha"), "year": valor_rf}
             else:
-                latest_input["rf"] = {}
+                input_dict["rf"] = {}
         else:
-            latest_input["rf"] = {}
+            input_dict["rf"] = {}
 
         # EMBI: Extraemos solo la fecha y el país seleccionado
         embi_data = _fetch_complement_data("embi")
@@ -155,9 +161,9 @@ def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
             )
             if country_key:
                 filtered_embi["country"] = embi_match.get(country_key)
-            latest_input["embi"] = filtered_embi
+            input_dict["embi"] = filtered_embi
         else:
-            latest_input["embi"] = {}
+            input_dict["embi"] = {}
 
     if year:
         riesgo_data = _fetch_complement_data("riesgo")
@@ -169,13 +175,13 @@ def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
         prima_match = next(
             (item for item in prima_data if str(item.get("fecha")) == year), None
         )
-        latest_input["prima"] = prima_match if prima_match else {}
+        input_dict["prima"] = prima_match if prima_match else {}
 
         tax_data = _fetch_complement_data("tax")
         tax_match = next(
             (item for item in tax_data if str(item.get("fecha")) == year), None
         )
-        latest_input["tax"] = tax_match if tax_match else {}
+        input_dict["tax"] = tax_match if tax_match else {}
 
         if industry:
             damo_data = _fetch_complement_data("damodaran")
@@ -191,11 +197,11 @@ def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
             if damo_match:
                 # Retenemos solo las llaves activas en el mapa
                 allowed_keys = KAPITAL_DAMODARAN_CELL_MAP.keys()
-                latest_input["damodaran"] = {
+                input_dict["damodaran"] = {
                     k: v for k, v in damo_match.items() if k in allowed_keys
                 }
             else:
-                latest_input["damodaran"] = {}
+                input_dict["damodaran"] = {}
 
         if country:
             ir_data = _fetch_complement_data("ir")
@@ -208,7 +214,7 @@ def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
                 ):
                     ir_payload["year"] = item.get("valor")
                     break
-            latest_input["ir"] = ir_payload
+            input_dict["ir"] = ir_payload
 
         flattened_riesgo = {}
         if riesgo_matches:
@@ -222,4 +228,5 @@ def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
                     "min_deviation"
                 )
 
-        latest_input["riesgo"] = flattened_riesgo
+        input_dict["riesgo"] = flattened_riesgo
+
