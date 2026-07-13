@@ -1,4 +1,5940 @@
 {
+  "3b03f73d-1a04-4302-9877-23804db5f39c": {
+    "id": "3b03f73d-1a04-4302-9877-23804db5f39c",
+    "status": "completed",
+    "total": 472,
+    "processed": 178,
+    "failed": 294,
+    "errors": [
+      {
+        "ticker": "S4C",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "M&C",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TRMR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SECG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "NLSN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PUBL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MWTR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BA.L",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ERJ",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BBD.B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MHI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "NOC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BA.",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SAAB-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ESLT",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TGI.TA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MOG.A",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "THYAO.IS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ATSG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "JAL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CEB",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AIRASIA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ZTO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MESA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BRK.B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "2331.T",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SKX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HM-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HBI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HYMTF",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "KIMTF",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ZK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "VOLV-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "7205",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TATAMOTORS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "NAV",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "REVG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PCRFY",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CARL-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "2502.HK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "2501.HK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "291",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DGL.AX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "VWE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BF.B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "2587.T",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AKO.B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "2593.T",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "JDEP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PARA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TGNA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CMLS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AUDA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SALM",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LGF.A",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BANJ",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "METSB",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "RFP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BECN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ROCK-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "RDUS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AKZA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FCN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SECU-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "N/A",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "1448",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "STON",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "RRD",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CAJ",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ATUS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TC1",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ORAN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CASA.JK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PHOR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "WHC.AX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "YAL.AX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EPI-A",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "9613",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "WNS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "2353.T",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PSTG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HUSQ-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "INVE-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AKRO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "VERV",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ENDP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ITCI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ATGE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TWOU",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "9783",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PSO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LTG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "WEGE3.SA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "6502",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "VZIO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HEAR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "2317.HK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SKA-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "WG.",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ARCAD",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "NVEE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "9602.T",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AGRO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LND",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "JBSAY",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BRFS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FDGE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GIS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CAG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "2212.T",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BID",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "B4B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SPTN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SCS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BBED",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EDPR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DAR.L",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HOLX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PDCO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SDC.BK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "8086.T",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SYAB",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EXAS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CPSI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LSEA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "5225.TW",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SNDA.L",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BETS-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "KIND-SDB",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "UL.PA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ESSITY-B",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MMC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "8766.T",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AMBC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PHLL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "NKLA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TBLT",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HOLI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HAYN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "RYI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CMPO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GIFI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AZEK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LAAC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AWCMY",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CEIX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HRT",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HSII",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SHEL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EQNR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PBR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "YPF",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SSL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AE.BK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ZEST.MI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SLNG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HES",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "WDS.AX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CHK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SOC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ICD",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CHX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DRQ",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "NR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SDPI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PFIE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CCLP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BERY",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PTVE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TYDE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TUP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FFHL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GLT",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EVA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "JCTCF",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AY",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SUUN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "VZLA.L",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GATO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DALN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SGA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LPTV",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EXR.L",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PLYM",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AIRC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GMRE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EQC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PGRE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "WPC.SI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BNL.AX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AHH",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MDV",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LPA.L",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TPHS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CHCI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HOUS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "RDFN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HFF",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "VCSA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "COOP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CNF",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MODG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "VSTO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PLYA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "IGT",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EVRI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CPHC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SHCO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LUXH",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TCOM",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DESP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MOND",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DOOO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FRZA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BNRE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MHLD",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ESGR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "WDH",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CHUY",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DENN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "RUTH",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PBPB",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FRGI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FATBB",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GRIL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LAZY",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "KIRK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DIT",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ZYXI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EDAP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AHG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SNPO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "JWN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "EXTO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DTCK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PDD",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FTCH",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "POSH",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "OSTK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "WISH",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GPS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "MYTE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LANV",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CTHR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LAZR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AXL.L",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TEN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GTXAP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AMV",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FEBO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "VOXX",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PXDT",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AXCELIS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CCMP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BRKS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HAFN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ASC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "CPLP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PSHG",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "OP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "BLDE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SCPL.NS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GMGI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "RNWK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "STCN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SQ.BK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "TMST",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ZEUS",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "USAP",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "RADI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FYBR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "FNGR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "VGR",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "IMBBF",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "JAPNF",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LGVN",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "GLYC",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HA",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "HEES",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "ARII.JK",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "DSKE",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SCWO",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SRCL",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "AMBI",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "LICY",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "SJW",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      },
+      {
+        "ticker": "PRMW",
+        "mensaje": "Intento 3/3: No se pudo resolver"
+      }
+    ],
+    "result": {
+      "success": true,
+      "valid_companies": [
+        {
+          "ticker": "APGN.SW",
+          "company_name": "APG SGA N",
+          "sector": "Communication Services",
+          "country": "Switzerland",
+          "listing_currency": "CHF",
+          "reporting_currency": "CHF",
+          "fx_rate": 1.236567735671997,
+          "debt_value": null,
+          "equity_value": 696902747.2511444,
+          "total_assets": 696902747.2511444,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.1863,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.4%)",
+          "beta_levered": 0.416,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 563578304
+        },
+        {
+          "ticker": "TXT.DE",
+          "company_name": "TEXTRON INC.                  R",
+          "sector": "",
+          "country": "United States",
+          "listing_currency": "EUR",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": 0.907,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "HON.TO",
+          "company_name": "HONEYWELL CDR (CAD HEDGED)",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 35563000000.0,
+          "equity_value": 70749669701.61328,
+          "total_assets": 106312669701.61328,
+          "dc_ratio": 0.5027,
+          "effective_tax_rate": 0.1841,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=26.2%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.3345,
+          "pct_equity": 0.6655,
+          "market_cap": 100528914432
+        },
+        {
+          "ticker": "RTX.TO",
+          "company_name": "RTX CDR (CAD HEDGED)",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 39506000000.0,
+          "equity_value": 248169001021.41406,
+          "total_assets": 287675001021.41406,
+          "dc_ratio": 0.1592,
+          "effective_tax_rate": 0.1905,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.1373,
+          "pct_equity": 0.8627,
+          "market_cap": 352625819648
+        },
+        {
+          "ticker": "MDA",
+          "company_name": "MDA Space Ltd.",
+          "sector": "Industrials",
+          "country": "Canada",
+          "listing_currency": "USD",
+          "reporting_currency": "CAD",
+          "fx_rate": 0.7037743330001831,
+          "debt_value": 289321628.2963753,
+          "equity_value": 5706134016.0,
+          "total_assets": 5995455644.296375,
+          "dc_ratio": 0.0507,
+          "effective_tax_rate": 0.2881,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=1.8%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0483,
+          "pct_equity": 0.9517,
+          "market_cap": 5706134016
+        },
+        {
+          "ticker": "SARO",
+          "company_name": "StandardAero, Inc.",
+          "sector": "Industrials",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 2449278000.0,
+          "equity_value": 10047635456.0,
+          "total_assets": 12496913456.0,
+          "dc_ratio": 0.2438,
+          "effective_tax_rate": 0.2639,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.196,
+          "pct_equity": 0.804,
+          "market_cap": 10047635456
+        },
+        {
+          "ticker": "7012.T",
+          "company_name": "KAWASAKI HEAVY INDUSTRIES",
+          "sector": "Industrials",
+          "country": "Japan",
+          "listing_currency": "JPY",
+          "reporting_currency": "JPY",
+          "fx_rate": 0.006155967712402344,
+          "debt_value": null,
+          "equity_value": 13885006771.25,
+          "total_assets": 13885006771.25,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2103,
+          "tax_source": "a\u00f1o 2026-03-31 (unusual=0.0%)",
+          "beta_levered": 0.919,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 2255535996928
+        },
+        {
+          "ticker": "DAL.AX",
+          "company_name": "DALAROO FPO [DAL]",
+          "sector": "Basic Materials",
+          "country": "Australia",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": 17122173.401671648,
+          "total_assets": 17122173.401671648,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Australia (todos los a\u00f1os descartados)",
+          "beta_levered": 1.156,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 24798044
+        },
+        {
+          "ticker": "EZJ",
+          "company_name": "ProShares Ultra MSCI Japan",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "JETS",
+          "company_name": "U.S. Global Jets ETF",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "EIF.DE",
+          "company_name": "MedNation AG                  I",
+          "sector": "",
+          "country": "Germany",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Germany (IS vac\u00edo)",
+          "beta_levered": 0.385,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "AZUL",
+          "company_name": "Azul S.A.",
+          "sector": "Industrials",
+          "country": "Brazil",
+          "listing_currency": "USD",
+          "reporting_currency": "BRL",
+          "fx_rate": 0.19253353774547577,
+          "debt_value": 6963559346.785113,
+          "equity_value": 1638240000.0,
+          "total_assets": 8601799346.785114,
+          "dc_ratio": 4.2506,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Brazil (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.8095,
+          "pct_equity": 0.1905,
+          "market_cap": 1638240000
+        },
+        {
+          "ticker": "FLY",
+          "company_name": "Firefly Aerospace Inc.",
+          "sector": "Industrials",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 308593000.0,
+          "equity_value": 4920486912.0,
+          "total_assets": 5229079912.0,
+          "dc_ratio": 0.0627,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.059,
+          "pct_equity": 0.941,
+          "market_cap": 4920486912
+        },
+        {
+          "ticker": "TOD",
+          "company_name": "3004",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "9983.HK",
+          "company_name": "CC NEW LIFE",
+          "sector": "Real Estate",
+          "country": "China",
+          "listing_currency": "HKD",
+          "reporting_currency": "CNY",
+          "fx_rate": 0.14752526581287384,
+          "debt_value": null,
+          "equity_value": 56698929.9206543,
+          "total_assets": 56698929.9206543,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.3364,
+          "tax_source": "a\u00f1o 2024-12-31 (unusual=22.0%)",
+          "beta_levered": 0.525,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 444718080
+        },
+        {
+          "ticker": "DELG.DE",
+          "company_name": "L&G ETF-US ESG Par.Alig.ETF   R",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "DTG",
+          "company_name": "DTE Energy Company 2021 Series ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "IVG.AX",
+          "company_name": "INGRAPHITE FPO [IVG]",
+          "sector": "Basic Materials",
+          "country": "Australia",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": 11869283.862549067,
+          "total_assets": 11869283.862549067,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Australia (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 17190284
+        },
+        {
+          "ticker": "WGO",
+          "company_name": "Winnebago Industries, Inc.",
+          "sector": "Consumer Cyclical",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 579800000.0,
+          "equity_value": 876974528.0,
+          "total_assets": 1456774528.0,
+          "dc_ratio": 0.6611,
+          "effective_tax_rate": 0.1462,
+          "tax_source": "a\u00f1o 2025-08-31 (unusual=6.6%)",
+          "beta_levered": 1.131,
+          "beta_unlevered": 0.7229,
+          "pct_debt": 0.398,
+          "pct_equity": 0.602,
+          "market_cap": 876974528
+        },
+        {
+          "ticker": "PIA.AX",
+          "company_name": "PENGANA IN FPO [PIA]",
+          "sector": "Financial Services",
+          "country": "United States",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": 229778932.87243843,
+          "total_assets": 229778932.87243843,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2372,
+          "tax_source": "a\u00f1o 2025-06-30 (unusual=0.0%)",
+          "beta_levered": 0.447,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 332788832
+        },
+        {
+          "ticker": "MBLY",
+          "company_name": "Mobileye Global Inc.",
+          "sector": "Consumer Cyclical",
+          "country": "Israel",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 8207103488.0,
+          "total_assets": 8207103488.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Israel (todos los a\u00f1os descartados)",
+          "beta_levered": 1.146,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 8207103488
+        },
+        {
+          "ticker": "ML.PA",
+          "company_name": "MICHELIN",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": 7523625335.693359,
+          "equity_value": 0.0,
+          "total_assets": 7523625335.693359,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2631,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=9.4%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 1.0,
+          "pct_equity": 0.0,
+          "market_cap": 0
+        },
+        {
+          "ticker": "CON",
+          "company_name": "Concentra Group Holdings Parent",
+          "sector": "Healthcare",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 2102620000.0,
+          "equity_value": 3937383936.0,
+          "total_assets": 6040003936.0,
+          "dc_ratio": 0.534,
+          "effective_tax_rate": 0.2278,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.4%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.3481,
+          "pct_equity": 0.6519,
+          "market_cap": 3937383936
+        },
+        {
+          "ticker": "2503.HK",
+          "company_name": "ZHONGSHENJIANYE",
+          "sector": "Industrials",
+          "country": "China",
+          "listing_currency": "HKD",
+          "reporting_currency": "CNY",
+          "fx_rate": 0.14752526581287384,
+          "debt_value": null,
+          "equity_value": 37997345.12324524,
+          "total_assets": 37997345.12324524,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.3164,
+          "tax_source": "a\u00f1o 2023-12-31 (unusual=0.3%)",
+          "beta_levered": 0.696,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 298032192
+        },
+        {
+          "ticker": "STZ.PA",
+          "company_name": "State Street SPDR MSCI Europe F",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "IWB",
+          "company_name": "iShares Russell 1000 ETF",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "VCO",
+          "company_name": "3877",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "MNST",
+          "company_name": "Monster Beverage Corporation",
+          "sector": "Consumer Defensive",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 95658975232.0,
+          "total_assets": 95658975232.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2325,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 0.542,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 95658975232
+        },
+        {
+          "ticker": "FOX.L",
+          "company_name": "FOCUS XPLORE PLC ORD GBP0.0001",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBp",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": 1052121.8425371647,
+          "total_assets": 1052121.8425371647,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 791869
+        },
+        {
+          "ticker": "RTL.MI",
+          "company_name": "RT&L",
+          "sector": "Industrials",
+          "country": "Italy",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": 4699.988708496094,
+          "equity_value": 43359855.1322937,
+          "total_assets": 43364555.1210022,
+          "dc_ratio": 0.0001,
+          "effective_tax_rate": 0.421,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=4.1%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0001,
+          "pct_equity": 0.9999,
+          "market_cap": 38082960
+        },
+        {
+          "ticker": "JEF",
+          "company_name": "Jefferies Financial Group Inc.",
+          "sector": "Financial Services",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 23757615000.0,
+          "equity_value": 10542824448.0,
+          "total_assets": 34300439448.0,
+          "dc_ratio": 2.2534,
+          "effective_tax_rate": 0.2119,
+          "tax_source": "a\u00f1o 2025-11-30 (unusual=0.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.6926,
+          "pct_equity": 0.3074,
+          "market_cap": 10542824448
+        },
+        {
+          "ticker": "RJF.DE",
+          "company_name": "RAYMOND JAMES FINANCIAL INC.  R",
+          "sector": "",
+          "country": "United States",
+          "listing_currency": "EUR",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": 0.951,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "ETOR",
+          "company_name": "eToro Group Ltd.",
+          "sector": "Financial Services",
+          "country": "Israel",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 54463000.0,
+          "equity_value": 3241126656.0,
+          "total_assets": 3295589656.0,
+          "dc_ratio": 0.0168,
+          "effective_tax_rate": 0.1488,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=2.2%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0165,
+          "pct_equity": 0.9835,
+          "market_cap": 3241126656
+        },
+        {
+          "ticker": "5201.T",
+          "company_name": "AGC INC",
+          "sector": "Industrials",
+          "country": "Japan",
+          "listing_currency": "JPY",
+          "reporting_currency": "JPY",
+          "fx_rate": 0.006155967712402344,
+          "debt_value": 3979605355.2627563,
+          "equity_value": 9096202839.375,
+          "total_assets": 13075808194.637756,
+          "dc_ratio": 0.4375,
+          "effective_tax_rate": 0.363,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.3043,
+          "pct_equity": 0.6957,
+          "market_cap": 1477623545856
+        },
+        {
+          "ticker": "CAP.DE",
+          "company_name": "SCP Standard Cap.Partners AG  I",
+          "sector": "",
+          "country": "Germany",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Germany (IS vac\u00edo)",
+          "beta_levered": 0.523,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "RAND",
+          "company_name": "Rand Capital Corporation",
+          "sector": "Financial Services",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 30292102.0,
+          "total_assets": 30292102.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.0435,
+          "tax_source": "a\u00f1o 2023-12-31 (unusual=0.0%)",
+          "beta_levered": 0.169,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 30292102
+        },
+        {
+          "ticker": "IVC.NS",
+          "company_name": "IL&FS INVESTMENT MANAGERS",
+          "sector": "Financial Services",
+          "country": "India",
+          "listing_currency": "INR",
+          "reporting_currency": "INR",
+          "fx_rate": 0.010500011034309864,
+          "debt_value": null,
+          "equity_value": 26873378.128844738,
+          "total_assets": 26873378.128844738,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2137,
+          "tax_source": "a\u00f1o 2023-03-31 (unusual=0.4%)",
+          "beta_levered": -0.052,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 2559366656
+        },
+        {
+          "ticker": "DTY",
+          "company_name": "DTE Energy Company 2016 Series ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "LBRDK",
+          "company_name": "Liberty Broadband Corporation",
+          "sector": "Communication Services",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 1746000000.0,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.1902,
+          "tax_source": "a\u00f1o 2024-12-31 (unusual=16.0%)",
+          "beta_levered": 0.653,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "ILD",
+          "company_name": "28185",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "COMM.L",
+          "company_name": "ISHARES VI PLC ISHARES DIVERSIF",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBp",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "ANET",
+          "company_name": "Arista Networks, Inc.",
+          "sector": "Technology",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 211622313984.0,
+          "total_assets": 211622313984.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.1737,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 1.611,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 211622313984
+        },
+        {
+          "ticker": "LIN.DE",
+          "company_name": "Linde plc                     R",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 28069000000.0,
+          "equity_value": 246360633457.1875,
+          "total_assets": 274429633457.1875,
+          "dc_ratio": 0.1139,
+          "effective_tax_rate": 0.2236,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=4.8%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.1023,
+          "pct_equity": 0.8977,
+          "market_cap": 216378540032
+        },
+        {
+          "ticker": "1326.T",
+          "company_name": "SPDR GOLD TRUST GOLD SHARES NPV",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "JPY",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "NEU.AX",
+          "company_name": "NEUREN FPO NZ [NEU]",
+          "sector": "Healthcare",
+          "country": "Australia",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": 1544956536.8549347,
+          "total_assets": 1544956536.8549347,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2182,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 1.591,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 2237560576
+        },
+        {
+          "ticker": "ECL.PA",
+          "company_name": "Euronext Circle",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "SIKA.DE",
+          "company_name": "Sika AG                       N",
+          "sector": "",
+          "country": "Switzerland",
+          "listing_currency": "EUR",
+          "reporting_currency": "CHF",
+          "fx_rate": 1.236567735671997,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Switzerland (IS vac\u00edo)",
+          "beta_levered": 1.182,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "600500.SS",
+          "company_name": "SINOCHEM INTERNATIONAL CO",
+          "sector": "Industrials",
+          "country": "China",
+          "listing_currency": "CNY",
+          "reporting_currency": "CNY",
+          "fx_rate": 0.14752526581287384,
+          "debt_value": 3598975585.675948,
+          "equity_value": 4213751978.285553,
+          "total_assets": 7812727563.961501,
+          "dc_ratio": 0.8541,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory China (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.4607,
+          "pct_equity": 0.5393,
+          "market_cap": 28562917376
+        },
+        {
+          "ticker": "UPL.L",
+          "company_name": "UPLAND RESOURCES LIMITED ORD NP",
+          "sector": "Energy",
+          "country": "United Kingdom",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBP",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": 68934570.21062946,
+          "total_assets": 68934570.21062946,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United Kingdom (todos los a\u00f1os descartados)",
+          "beta_levered": 1.891,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 51882916
+        },
+        {
+          "ticker": "BIS",
+          "company_name": "ProShares UltraShort Nasdaq Bio",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "TCS.DE",
+          "company_name": "Axon Enterprise Inc.          R",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "CYBR.L",
+          "company_name": "ARK INVEST UCITS ICAV RIZE CYBE",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "RPD.DE",
+          "company_name": "ROYALTY PHARMA PLC            R",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "MU.TO",
+          "company_name": "MICRON CDR (CAD HEDGED)",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 15278000000.0,
+          "equity_value": 238774136428.17578,
+          "total_assets": 254052136428.17578,
+          "dc_ratio": 0.064,
+          "effective_tax_rate": 0.1164,
+          "tax_source": "a\u00f1o 2025-08-31 (unusual=1.8%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0601,
+          "pct_equity": 0.9399,
+          "market_cap": 339276562432
+        },
+        {
+          "ticker": "285A.T",
+          "company_name": "KIOXIA HOLDINGS CORPORATION",
+          "sector": "Technology",
+          "country": "Japan",
+          "listing_currency": "JPY",
+          "reporting_currency": "JPY",
+          "fx_rate": 0.006155967712402344,
+          "debt_value": 7714591021.537781,
+          "equity_value": 296892974120.0,
+          "total_assets": 304607565141.5378,
+          "dc_ratio": 0.026,
+          "effective_tax_rate": 0.2928,
+          "tax_source": "a\u00f1o 2026-03-31 (unusual=0.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0253,
+          "pct_equity": 0.9747,
+          "market_cap": 48228481368064
+        },
+        {
+          "ticker": "2408.T",
+          "company_name": "KG INTELLIGENCE CO LTD",
+          "sector": "Communication Services",
+          "country": "Japan",
+          "listing_currency": "JPY",
+          "reporting_currency": "JPY",
+          "fx_rate": 0.006155967712402344,
+          "debt_value": null,
+          "equity_value": 37043237.268066406,
+          "total_assets": 37043237.268066406,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2704,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.3%)",
+          "beta_levered": -0.094,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 6017451520
+        },
+        {
+          "ticker": "RXL",
+          "company_name": "ProShares Ultra Health Care",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "PRX.AX",
+          "company_name": "PRODGOL FPO [PRX]",
+          "sector": "Basic Materials",
+          "country": "Australia",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": 14896069.717428088,
+          "total_assets": 14896069.717428088,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Australia (todos los a\u00f1os descartados)",
+          "beta_levered": 1.572,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 21573978
+        },
+        {
+          "ticker": "UTHR",
+          "company_name": "United Therapeutics Corporation",
+          "sector": "Healthcare",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 23136440320.0,
+          "total_assets": 23136440320.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2212,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=1.4%)",
+          "beta_levered": 0.573,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 23136440320
+        },
+        {
+          "ticker": "BLUE.PA",
+          "company_name": "BNP PARIBAS EASY ECPI GLOBAL ES",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "NVS.TO",
+          "company_name": "NOVARTIS CDR (CAD HEDGED)",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 35376000000.0,
+          "equity_value": 272189373828.61328,
+          "total_assets": 307565373828.6133,
+          "dc_ratio": 0.13,
+          "effective_tax_rate": 0.1459,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=1.8%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.115,
+          "pct_equity": 0.885,
+          "market_cap": 386756608000
+        },
+        {
+          "ticker": "DPH",
+          "company_name": "5649826",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "COUR",
+          "company_name": "Coursera, Inc.",
+          "sector": "Consumer Defensive",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 1722447104.0,
+          "total_assets": 1722447104.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": 1.249,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 1722447104
+        },
+        {
+          "ticker": "1810.T",
+          "company_name": "MATSUI CONSTRUCTION CO",
+          "sector": "Industrials",
+          "country": "Japan",
+          "listing_currency": "JPY",
+          "reporting_currency": "JPY",
+          "fx_rate": 0.006155967712402344,
+          "debt_value": null,
+          "equity_value": 239306668.8671875,
+          "total_assets": 239306668.8671875,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.3231,
+          "tax_source": "a\u00f1o 2026-03-31 (unusual=4.0%)",
+          "beta_levered": 0.549,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 38873931776
+        },
+        {
+          "ticker": "NTDOY",
+          "company_name": "Nintendo Co., Ltd.",
+          "sector": "Communication Services",
+          "country": "Japan",
+          "listing_currency": "USD",
+          "reporting_currency": "JPY",
+          "fx_rate": 0.006155967712402344,
+          "debt_value": null,
+          "equity_value": 49709969408.0,
+          "total_assets": 49709969408.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2536,
+          "tax_source": "a\u00f1o 2026-03-31 (unusual=4.5%)",
+          "beta_levered": 0.132,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 49709969408
+        },
+        {
+          "ticker": "MEG.AX",
+          "company_name": "MEG FPO [MEG]",
+          "sector": "Basic Materials",
+          "country": "Australia",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": 7961701.911209524,
+          "total_assets": 7961701.911209524,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Australia (todos los a\u00f1os descartados)",
+          "beta_levered": 0.279,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 11530933
+        },
+        {
+          "ticker": "BLV",
+          "company_name": "Vanguard Long-Term Bond ETF",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "MANU.DE",
+          "company_name": "Legal&Gen.ETF-L&G Mkt Neu.Com.R",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "JUVE.MI",
+          "company_name": "JUVENTUS FC",
+          "sector": "Communication Services",
+          "country": "Italy",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": 963883594.3920898,
+          "total_assets": 963883594.3920898,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Italy (todos los a\u00f1os descartados)",
+          "beta_levered": 0.602,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 846578944
+        },
+        {
+          "ticker": "RWI.DE",
+          "company_name": "AUTONATION INC.               R",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "CALM",
+          "company_name": "Cal-Maine Foods, Inc.",
+          "sector": "Consumer Defensive",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 3913306112.0,
+          "total_assets": 3913306112.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2401,
+          "tax_source": "a\u00f1o 2025-05-31 (unusual=0.7%)",
+          "beta_levered": 0.24,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 3913306112
+        },
+        {
+          "ticker": "FSF.TO",
+          "company_name": "CI GLOBAL FINANCIAL SECTOR ETF",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "CAD",
+          "fx_rate": 0.7037743330001831,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "MCK.DE",
+          "company_name": "MCKESSON CORP.                R",
+          "sector": "",
+          "country": "United States",
+          "listing_currency": "EUR",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": 0.315,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "NXT",
+          "company_name": "Nextpower Inc.",
+          "sector": "Technology",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 18551144448.0,
+          "total_assets": 18551144448.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.1792,
+          "tax_source": "a\u00f1o 2026-03-31 (unusual=0.0%)",
+          "beta_levered": 1.735,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 18551144448
+        },
+        {
+          "ticker": "NOVA.MI",
+          "company_name": "NOVAMARINE",
+          "sector": "Consumer Cyclical",
+          "country": "Italy",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": 13539793.05267334,
+          "equity_value": 130929525.56419373,
+          "total_assets": 144469318.61686707,
+          "dc_ratio": 0.1034,
+          "effective_tax_rate": 0.2421,
+          "tax_source": "a\u00f1o 2023-12-31 (unusual=10.2%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0937,
+          "pct_equity": 0.9063,
+          "market_cap": 114995400
+        },
+        {
+          "ticker": "TPIC",
+          "company_name": "TPI Composites, Inc.",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "CWR.L",
+          "company_name": "CERES POWER HOLDINGS PLC ORD 10",
+          "sector": "Industrials",
+          "country": "United Kingdom",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBP",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": 3200733.351945877,
+          "equity_value": 1502696057.2514954,
+          "total_assets": 1505896790.6034412,
+          "dc_ratio": 0.0021,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United Kingdom (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0021,
+          "pct_equity": 0.9979,
+          "market_cap": 1130989184
+        },
+        {
+          "ticker": "VBK.DE",
+          "company_name": "Verbio SE                     I",
+          "sector": "Basic Materials",
+          "country": "Germany",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": 327435962.3813629,
+          "equity_value": 2157461393.543701,
+          "total_assets": 2484897355.925064,
+          "dc_ratio": 0.1518,
+          "effective_tax_rate": 0.3367,
+          "tax_source": "a\u00f1o 2023-06-30 (unusual=2.7%)",
+          "beta_levered": 0.0,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.1318,
+          "pct_equity": 0.8682,
+          "market_cap": 1894898304
+        },
+        {
+          "ticker": "ISRG",
+          "company_name": "Intuitive Surgical, Inc.",
+          "sector": "Healthcare",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 142819721216.0,
+          "total_assets": 142819721216.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.1313,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 1.453,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 142819721216
+        },
+        {
+          "ticker": "OMI.L",
+          "company_name": "OROSUR MINING INC COM SHS NPV",
+          "sector": "Basic Materials",
+          "country": "Canada",
+          "listing_currency": "GBp",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 90309266.83338928,
+          "total_assets": 90309266.83338928,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Canada (sin labels IS)",
+          "beta_levered": 2.131,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 67970368
+        },
+        {
+          "ticker": "PAYX",
+          "company_name": "Paychex, Inc.",
+          "sector": "Technology",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 5022300000.0,
+          "equity_value": 36703252480.0,
+          "total_assets": 41725552480.0,
+          "dc_ratio": 0.1368,
+          "effective_tax_rate": 0.2383,
+          "tax_source": "a\u00f1o 2025-05-31 (unusual=0.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.1204,
+          "pct_equity": 0.8796,
+          "market_cap": 36703252480
+        },
+        {
+          "ticker": "TDOC.TO",
+          "company_name": "TD GLOBAL HEALTHCARE LEADERS IN",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "CAD",
+          "fx_rate": 0.7037743330001831,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "TALK",
+          "company_name": "Talkspace, Inc.",
+          "sector": "Healthcare",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 869390208.0,
+          "total_assets": 869390208.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.0686,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 1.07,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 869390208
+        },
+        {
+          "ticker": "UHS.DE",
+          "company_name": "UNIVERSAL HEALTH SERVICES INC.R",
+          "sector": "",
+          "country": "United States",
+          "listing_currency": "EUR",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": 1.081,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "BKD.DE",
+          "company_name": "Bruker Corp.                  R",
+          "sector": "",
+          "country": "United States",
+          "listing_currency": "EUR",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": 1.302,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "AMED.DE",
+          "company_name": "AIS-Am.MSCI EMU ESG Selection A",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "MEL.AX",
+          "company_name": "METGASCO FPO [MEL]",
+          "sector": "Energy",
+          "country": "Australia",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": 279061.65554374456,
+          "total_assets": 279061.65554374456,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Australia (todos los a\u00f1os descartados)",
+          "beta_levered": -0.14,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 404165
+        },
+        {
+          "ticker": "PG.TO",
+          "company_name": "PROCTER AND GAMBLE CDR (CAD HED",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 35463000000.0,
+          "equity_value": 316559894092.47656,
+          "total_assets": 352022894092.47656,
+          "dc_ratio": 0.112,
+          "effective_tax_rate": 0.2034,
+          "tax_source": "a\u00f1o 2025-06-30 (unusual=0.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.1007,
+          "pct_equity": 0.8993,
+          "market_cap": 449803124736
+        },
+        {
+          "ticker": "CAS",
+          "company_name": "Simplify China A Shares PLUS In",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "ERIE",
+          "company_name": "Erie Indemnity Company",
+          "sector": "Financial Services",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 13070244864.0,
+          "total_assets": 13070244864.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2129,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 0.307,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 13070244864
+        },
+        {
+          "ticker": "HIG.TO",
+          "company_name": "BROMPTON GLOBAL HEALTH INCOME G",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "CAD",
+          "fx_rate": 0.7037743330001831,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "AMUN",
+          "company_name": "abrdn Ultra Short Municipal Inc",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "FBRT.L",
+          "company_name": "FBRT.L,0P0000VNYZ,0",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "SYM",
+          "company_name": "Symbotic Inc.",
+          "sector": "Industrials",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 28065951744.0,
+          "total_assets": 28065951744.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": 1.927,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 28065951744
+        },
+        {
+          "ticker": "EML.L",
+          "company_name": "EMMERSON PLC ORD NPV",
+          "sector": "Basic Materials",
+          "country": "Isle of Man",
+          "listing_currency": "GBp",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 39062573.59413719,
+          "total_assets": 39062573.59413719,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Isle of Man (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 29400056
+        },
+        {
+          "ticker": "VRT.TO",
+          "company_name": "VERTIV CDR (CAD HEDGED)",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 3227900000.0,
+          "equity_value": 6768961259.900757,
+          "total_assets": 9996861259.900757,
+          "dc_ratio": 0.4769,
+          "effective_tax_rate": 0.2349,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=3.9%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.3229,
+          "pct_equity": 0.6771,
+          "market_cap": 9618084864
+        },
+        {
+          "ticker": "NVT.L",
+          "company_name": "NORTHERN VENTURE TRUST PLC ORD ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBP",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": 191270000.28247452,
+          "total_assets": 191270000.28247452,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.0,
+          "tax_source": "a\u00f1o 2025-03-31 (unusual=0.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 143957456
+        },
+        {
+          "ticker": "AYI",
+          "company_name": "Acuity Inc.",
+          "sector": "Industrials",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 1004400000.0,
+          "equity_value": 11098455040.0,
+          "total_assets": 12102855040.0,
+          "dc_ratio": 0.0905,
+          "effective_tax_rate": 0.2071,
+          "tax_source": "a\u00f1o 2025-08-31 (unusual=6.2%)",
+          "beta_levered": 1.318,
+          "beta_unlevered": 1.2298,
+          "pct_debt": 0.083,
+          "pct_equity": 0.917,
+          "market_cap": 11098455040
+        },
+        {
+          "ticker": "WIRE.DE",
+          "company_name": "Xtr.Electrifi.Tech.Sm.Grid ETFR",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "ENS.PA",
+          "company_name": "Euronext NXP Semiconductors",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "ESAB.DE",
+          "company_name": "BNPP-MSCI ACWI MIN TE U.ETF   R",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "CRS.L",
+          "company_name": "CRYSTAL AMBER FUND LIMITED ORD ",
+          "sector": "Financial Services",
+          "country": "United Kingdom",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBP",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": 76332874.69145393,
+          "total_assets": 76332874.69145393,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United Kingdom (sin labels IS)",
+          "beta_levered": 0.216,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 57451176
+        },
+        {
+          "ticker": "BMI",
+          "company_name": "Badger Meter, Inc.",
+          "sector": "Technology",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 4386736640.0,
+          "total_assets": 4386736640.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2493,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 0.675,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 4386736640
+        },
+        {
+          "ticker": "ESE.PA",
+          "company_name": "BNP Paribas Easy S&P 500 UCITS ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "TMC",
+          "company_name": "TMC the metals company Inc.",
+          "sector": "Basic Materials",
+          "country": "Canada",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 2474386432.0,
+          "total_assets": 2474386432.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Canada (todos los a\u00f1os descartados)",
+          "beta_levered": 1.991,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 2474386432
+        },
+        {
+          "ticker": "MTAL",
+          "company_name": "Metals Acquisition Corp. II",
+          "sector": "Financial Services",
+          "country": "Cayman Islands",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 43168.0,
+          "equity_value": 389083360.0,
+          "total_assets": 389126528.0,
+          "dc_ratio": 0.0001,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Cayman Islands (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0001,
+          "pct_equity": 0.9999,
+          "market_cap": 389083360
+        },
+        {
+          "ticker": "CCJ.DE",
+          "company_name": "CINCINNATI FINANCIAL CORP.    R",
+          "sector": "",
+          "country": "United States",
+          "listing_currency": "EUR",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": 0.584,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "UEC.SW",
+          "company_name": "URANIUM ENERGY",
+          "sector": "Energy",
+          "country": "United States",
+          "listing_currency": "CHF",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 7557498701.279663,
+          "total_assets": 7557498701.279663,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": 1.145,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 6111673856
+        },
+        {
+          "ticker": "ACCO",
+          "company_name": "Acco Brands Corporation",
+          "sector": "Industrials",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 920800000.0,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": 1.207,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "HRB.DE",
+          "company_name": "BLOCK H. & R. INC.            R",
+          "sector": "",
+          "country": "United States",
+          "listing_currency": "EUR",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": 0.372,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "JKHY",
+          "company_name": "Jack Henry & Associates, Inc.",
+          "sector": "Technology",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 10222787584.0,
+          "total_assets": 10222787584.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2223,
+          "tax_source": "a\u00f1o 2025-06-30 (unusual=0.0%)",
+          "beta_levered": 0.575,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 10222787584
+        },
+        {
+          "ticker": "HQI",
+          "company_name": "HireQuest, Inc.",
+          "sector": "Industrials",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 184569376.0,
+          "total_assets": 184569376.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.0149,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=10.0%)",
+          "beta_levered": 1.112,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 184569376
+        },
+        {
+          "ticker": "GEO.L",
+          "company_name": "GEO EXPLORATION LIMITED ORD NPV",
+          "sector": "Energy",
+          "country": "Australia",
+          "listing_currency": "GBp",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 9731486.298902988,
+          "total_assets": 9731486.298902988,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Australia (todos los a\u00f1os descartados)",
+          "beta_levered": 0.026,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 7324306
+        },
+        {
+          "ticker": "CIX",
+          "company_name": "CompX International Inc.",
+          "sector": "Industrials",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 314237952.0,
+          "total_assets": 314237952.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.246,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 0.918,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 314237952
+        },
+        {
+          "ticker": "ROMA",
+          "company_name": "Roma Green Finance Limited",
+          "sector": "Industrials",
+          "country": "Hong Kong",
+          "listing_currency": "USD",
+          "reporting_currency": "HKD",
+          "fx_rate": 0.12749409675598145,
+          "debt_value": null,
+          "equity_value": 466986240.0,
+          "total_assets": 466986240.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Hong Kong (todos los a\u00f1os descartados)",
+          "beta_levered": 1.866,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 466986240
+        },
+        {
+          "ticker": "COP.L",
+          "company_name": "814802",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": 4158032646.179199,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "FANG.AX",
+          "company_name": "GBLX FANG ETF UNITS [FANG]",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "LNG",
+          "company_name": "Cheniere Energy, Inc.",
+          "sector": "Energy",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 25515000000.0,
+          "equity_value": 50462187520.0,
+          "total_assets": 75977187520.0,
+          "dc_ratio": 0.5056,
+          "effective_tax_rate": 0.1797,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.1%)",
+          "beta_levered": -0.0,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.3358,
+          "pct_equity": 0.6642,
+          "market_cap": 50462187520
+        },
+        {
+          "ticker": "NINE",
+          "company_name": "Nine Energy Service, Inc.",
+          "sector": "Energy",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 382649000.0,
+          "equity_value": 178141376.0,
+          "total_assets": 560790376.0,
+          "dc_ratio": 2.148,
+          "effective_tax_rate": 0.0365,
+          "tax_source": "a\u00f1o 2022-12-31 (unusual=13.5%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.6823,
+          "pct_equity": 0.3177,
+          "market_cap": 178141376
+        },
+        {
+          "ticker": "MTRX.TO",
+          "company_name": "GLOBAL X ARTIFICIAL INTEL INFRA",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "CAD",
+          "fx_rate": 0.7037743330001831,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "SLVM.L",
+          "company_name": "HANETF ICAV SPROTT SILVER MINER",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "PCH.L",
+          "company_name": "PACIFIC GLOBAL HOLDINGS PLC ORD",
+          "sector": "Financial Services",
+          "country": "United Kingdom",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBP",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": 1262982.2760865688,
+          "total_assets": 1262982.2760865688,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United Kingdom (todos los a\u00f1os descartados)",
+          "beta_levered": -0.31,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 950571
+        },
+        {
+          "ticker": "AMPS.L",
+          "company_name": "WISDOMTREE MULTI ASSET ISSUER P",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBp",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "FNV",
+          "company_name": "Franco-Nevada Corporation",
+          "sector": "Basic Materials",
+          "country": "Canada",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 40531963904.0,
+          "total_assets": 40531963904.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2146,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=6.4%)",
+          "beta_levered": 0.889,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 40531963904
+        },
+        {
+          "ticker": "USAS.PA",
+          "company_name": "AMUNDI MSCI USA SCREENED UCITS ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "SILV.L",
+          "company_name": "GLOBAL X ETFS ICAV GLOBAL X SIL",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "NEWP",
+          "company_name": "New Pacific Metals Corp.",
+          "sector": "Basic Materials",
+          "country": "Canada",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 761562432.0,
+          "total_assets": 761562432.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Canada (sin labels IS)",
+          "beta_levered": 2.516,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 761562432
+        },
+        {
+          "ticker": "MTA.PA",
+          "company_name": "Amundi Euro Government Bond 1-3",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "GCI.AX",
+          "company_name": "GRYPHON ORD UNITS [GCI]",
+          "sector": "Financial Services",
+          "country": "Australia",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": 913330941.106987,
+          "total_assets": 913330941.106987,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.0,
+          "tax_source": "a\u00f1o 2025-06-30 (unusual=0.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 1322777216
+        },
+        {
+          "ticker": "PSA.DE",
+          "company_name": "PSI Software SE               z",
+          "sector": "",
+          "country": "Germany",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Germany (IS vac\u00edo)",
+          "beta_levered": 0.693,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "VRE.TO",
+          "company_name": "VANGUARD FTSE CDN CAPPED REIT I",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "CAD",
+          "fx_rate": 0.7037743330001831,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "SITC",
+          "company_name": "SITE Centers Corp.",
+          "sector": "Real Estate",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 229052800.0,
+          "total_assets": 229052800.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": 1.057,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 229052800
+        },
+        {
+          "ticker": "WELL.L",
+          "company_name": "HANETF ICAV HARBOR HEALTH CARE ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "MPW.AX",
+          "company_name": "METALPWLTD FPO [MPW]",
+          "sector": "Basic Materials",
+          "country": "United States",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": 2460731.1760649085,
+          "equity_value": 190657204.3627739,
+          "total_assets": 193117935.5388388,
+          "dc_ratio": 0.0129,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0127,
+          "pct_equity": 0.9873,
+          "market_cap": 276128832
+        },
+        {
+          "ticker": "GOOD.AX",
+          "company_name": "GOOD.AX,0P0001QJJ1,0",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "SOHO.L",
+          "company_name": "SOCIAL HOUSING REIT PLC ORD 1P",
+          "sector": "Real Estate",
+          "country": "United Kingdom",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBP",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": 349689087.1310234,
+          "equity_value": 401496420.2395935,
+          "total_assets": 751185507.3706169,
+          "dc_ratio": 0.871,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United Kingdom (todos los a\u00f1os descartados)",
+          "beta_levered": 0.464,
+          "beta_unlevered": 0.2814,
+          "pct_debt": 0.4655,
+          "pct_equity": 0.5345,
+          "market_cap": 302182272
+        },
+        {
+          "ticker": "XIN.TO",
+          "company_name": "iSHARES MSCI EAFE INDEX ETF",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "CAD",
+          "fx_rate": 0.7037743330001831,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "EXPI",
+          "company_name": "eXp World Holdings, Inc.",
+          "sector": "Real Estate",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 1073469056.0,
+          "total_assets": 1073469056.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": 2.204,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 1073469056
+        },
+        {
+          "ticker": "GHLD.AX",
+          "company_name": "GBLXGHLD ETF UNITS [GHLD]",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "VEL.L",
+          "company_name": "VELOCITY COMPOSITES PLC ORD 0.2",
+          "sector": "Industrials",
+          "country": "United Kingdom",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBP",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": 3178146.192550659,
+          "equity_value": 9442785.199451923,
+          "total_assets": 12620931.392002583,
+          "dc_ratio": 0.3366,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United Kingdom (todos los a\u00f1os descartados)",
+          "beta_levered": 1.138,
+          "beta_unlevered": 0.9098,
+          "pct_debt": 0.2518,
+          "pct_equity": 0.7482,
+          "market_cap": 7107018
+        },
+        {
+          "ticker": "IOR",
+          "company_name": "Income Opportunity Realty Inves",
+          "sector": "Financial Services",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 74980328.0,
+          "total_assets": 74980328.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2101,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": -0.014,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 74980328
+        },
+        {
+          "ticker": "SOND.SW",
+          "company_name": "SNB SONDERSATZ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CHF",
+          "reporting_currency": "CHF",
+          "fx_rate": 1.236567735671997,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "MPX",
+          "company_name": "Marine Products Corporation",
+          "sector": "Consumer Cyclical",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 280037408.0,
+          "total_assets": 280037408.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.278,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 1.079,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 280037408
+        },
+        {
+          "ticker": "MCFT",
+          "company_name": "MasterCraft Boat Holdings, Inc.",
+          "sector": "Consumer Cyclical",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 612217856.0,
+          "total_assets": 612217856.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2083,
+          "tax_source": "a\u00f1o 2025-06-30 (unusual=0.0%)",
+          "beta_levered": 1.076,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 612217856
+        },
+        {
+          "ticker": "GLRE.L",
+          "company_name": "SSGA SPDR ETFS EUROPE I PLC SS ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "AXS.L",
+          "company_name": "ACCSYS TECHNOLOGIES PLC ORD EUR",
+          "sector": "Basic Materials",
+          "country": "United Kingdom",
+          "listing_currency": "GBp",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": 68294433.7940216,
+          "equity_value": 241668383.5903511,
+          "total_assets": 309962817.3843727,
+          "dc_ratio": 0.2826,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United Kingdom (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.2203,
+          "pct_equity": 0.7797,
+          "market_cap": 181889296
+        },
+        {
+          "ticker": "AMSF",
+          "company_name": "AMERISAFE, Inc.",
+          "sector": "Financial Services",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 640978304.0,
+          "total_assets": 640978304.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.1989,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=0.0%)",
+          "beta_levered": 0.28,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 640978304
+        },
+        {
+          "ticker": "IGIC",
+          "company_name": "International General Insurance",
+          "sector": "Financial Services",
+          "country": "Jordan",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 1143345792.0,
+          "total_assets": 1143345792.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.0623,
+          "tax_source": "a\u00f1o 2023-12-31 (unusual=0.0%)",
+          "beta_levered": 0.153,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 1143345792
+        },
+        {
+          "ticker": "FGF",
+          "company_name": "Fundamental Global Inc.",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "WING.L",
+          "company_name": "ISHARES IV PLC ISHS FLLN ANGELS",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "DINE",
+          "company_name": "Simplify Tax Aware Diversified ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "PLAY.L",
+          "company_name": "ISHARES IV PLC ISHARES DIG ENT ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "GBP",
+          "reporting_currency": "GBP",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "VRM",
+          "company_name": "Vroom, Inc.",
+          "sector": "Financial Services",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 779494000.0,
+          "equity_value": 40020612.0,
+          "total_assets": 819514612.0,
+          "dc_ratio": 19.4773,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.9512,
+          "pct_equity": 0.0488,
+          "market_cap": 40020612
+        },
+        {
+          "ticker": "SMID.L",
+          "company_name": "FIRST TRUST GLOBAL FUNDS ICAV F",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "GBp",
+          "reporting_currency": "GBp",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "SNX",
+          "company_name": "TD SYNNEX Corporation",
+          "sector": "Technology",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 4610451000.0,
+          "equity_value": 21126389760.0,
+          "total_assets": 25736840760.0,
+          "dc_ratio": 0.2182,
+          "effective_tax_rate": 0.2172,
+          "tax_source": "a\u00f1o 2025-11-30 (unusual=0.7%)",
+          "beta_levered": 1.436,
+          "beta_unlevered": 1.2265,
+          "pct_debt": 0.1791,
+          "pct_equity": 0.8209,
+          "market_cap": 21126389760
+        },
+        {
+          "ticker": "TAIT",
+          "company_name": "Taitron Components, Inc.",
+          "sector": "Technology",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 9332829.0,
+          "total_assets": 9332829.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.3625,
+          "tax_source": "a\u00f1o 2024-12-31 (unusual=0.0%)",
+          "beta_levered": 0.488,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 9332829
+        },
+        {
+          "ticker": "CHSCL",
+          "company_name": "CHS Inc",
+          "sector": "Consumer Defensive",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "MKC",
+          "company_name": "McCormick & Company, Incorporat",
+          "sector": "Consumer Defensive",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 4164000000.0,
+          "equity_value": 14152345600.0,
+          "total_assets": 18316345600.0,
+          "dc_ratio": 0.2942,
+          "effective_tax_rate": 0.2145,
+          "tax_source": "a\u00f1o 2025-11-30 (unusual=2.3%)",
+          "beta_levered": 0.641,
+          "beta_unlevered": 0.5207,
+          "pct_debt": 0.2273,
+          "pct_equity": 0.7727,
+          "market_cap": 14152345600
+        },
+        {
+          "ticker": "DADA.JK",
+          "company_name": "Diamond Citra Propertindo Tbk.",
+          "sector": "Real Estate",
+          "country": "Indonesia",
+          "listing_currency": "IDR",
+          "reporting_currency": "IDR",
+          "fx_rate": 5.5691689340164885e-05,
+          "debt_value": null,
+          "equity_value": 20693725.06959915,
+          "total_assets": 20693725.06959915,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Indonesia (IS vac\u00edo)",
+          "beta_levered": 0.821,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 371576537088
+        },
+        {
+          "ticker": "MOV.DE",
+          "company_name": "Moncler S.p.A.                A",
+          "sector": "",
+          "country": "Italy",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory Italy (IS vac\u00edo)",
+          "beta_levered": 1.069,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "GOOS.L",
+          "company_name": "LEVERAGE SHARES PUBLIC LIMITED ",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "STR.PA",
+          "company_name": "State Street SPDR MSCI Europe C",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "EUR",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "ALLG.L",
+          "company_name": "XTRACKERS (IE) PUBLIC LIMITED C",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "GBP",
+          "reporting_currency": "GBP",
+          "fx_rate": 1.3286564350128174,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "AVGO.TO",
+          "company_name": "BROADCOM CDR (CAD HEDGED)",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 65136000000.0,
+          "equity_value": 273676710910.89844,
+          "total_assets": 338812710910.89844,
+          "dc_ratio": 0.238,
+          "effective_tax_rate": 0.378,
+          "tax_source": "a\u00f1o 2024-10-31 (unusual=15.6%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.1922,
+          "pct_equity": 0.8078,
+          "market_cap": 388869980160
+        },
+        {
+          "ticker": "QCOM.TO",
+          "company_name": "QUALCOMM CDR (CAD HEDGED)",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 14811000000.0,
+          "equity_value": 178150823506.50586,
+          "total_assets": 192961823506.50586,
+          "dc_ratio": 0.0831,
+          "effective_tax_rate": 0.5624,
+          "tax_source": "a\u00f1o 2025-09-30 (unusual=1.3%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0768,
+          "pct_equity": 0.9232,
+          "market_cap": 253136289792
+        },
+        {
+          "ticker": "INTC.TO",
+          "company_name": "INTEL CDR (CAD HEDGED)",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 46585000000.0,
+          "equity_value": 649702691497.2969,
+          "total_assets": 696287691497.2969,
+          "dc_ratio": 0.0717,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (todos los a\u00f1os descartados)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0669,
+          "pct_equity": 0.9331,
+          "market_cap": 923169062912
+        },
+        {
+          "ticker": "TXN.TO",
+          "company_name": "TEXAS INSTRUMENTS CDR (CAD HEDG",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 14048000000.0,
+          "equity_value": 249860476530.7461,
+          "total_assets": 263908476530.7461,
+          "dc_ratio": 0.0562,
+          "effective_tax_rate": 0.1242,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=2.0%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.0532,
+          "pct_equity": 0.9468,
+          "market_cap": 355029254144
+        },
+        {
+          "ticker": "WOLF",
+          "company_name": "Wolfspeed, Inc.",
+          "sector": "Technology",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 2418781696.0,
+          "total_assets": 2418781696.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 2418781696
+        },
+        {
+          "ticker": "EGLE",
+          "company_name": "Global X S&P 500 U.S. Revenue L",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "GRVY",
+          "company_name": "GRAVITY Co., Ltd.",
+          "sector": "Communication Services",
+          "country": "South Korea",
+          "listing_currency": "USD",
+          "reporting_currency": "KRW",
+          "fx_rate": 0.0006451779627241194,
+          "debt_value": null,
+          "equity_value": 462727232.0,
+          "total_assets": 462727232.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2598,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=5.1%)",
+          "beta_levered": 1.015,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 462727232
+        },
+        {
+          "ticker": "ROP.DE",
+          "company_name": "Roper Technologies Inc.       R",
+          "sector": "",
+          "country": "United States",
+          "listing_currency": "EUR",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": 0.762,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        },
+        {
+          "ticker": "SCHN.TO",
+          "company_name": "SCHNEIDER ELECTRIC CDR (CAD HED",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "CAD",
+          "reporting_currency": "EUR",
+          "fx_rate": 1.1385631561279297,
+          "debt_value": 20357509231.567383,
+          "equity_value": 11137417228.562134,
+          "total_assets": 31494926460.129517,
+          "dc_ratio": 1.8278,
+          "effective_tax_rate": 0.2354,
+          "tax_source": "a\u00f1o 2025-12-31 (unusual=5.5%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.6464,
+          "pct_equity": 0.3536,
+          "market_cap": 15825267712
+        },
+        {
+          "ticker": "MSB",
+          "company_name": "Mesabi Trust",
+          "sector": "Basic Materials",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 333379456.0,
+          "total_assets": 333379456.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (sin labels IS)",
+          "beta_levered": 0.298,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 333379456
+        },
+        {
+          "ticker": "GWR.AX",
+          "company_name": "GWR GROUP FPO [GWR]",
+          "sector": "Basic Materials",
+          "country": "Australia",
+          "listing_currency": "AUD",
+          "reporting_currency": "AUD",
+          "fx_rate": 0.6904646754264832,
+          "debt_value": null,
+          "equity_value": 22473531.48908615,
+          "total_assets": 22473531.48908615,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.0,
+          "tax_source": "a\u00f1o 2023-06-30 (unusual=0.0%)",
+          "beta_levered": 0.812,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 32548416
+        },
+        {
+          "ticker": "RRTS",
+          "company_name": "Roadrunner Transportation Syste",
+          "sector": "Industrials",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": 193120512.0,
+          "total_assets": 193120512.0,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (IS vac\u00edo)",
+          "beta_levered": 4.283,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": 193120512
+        },
+        {
+          "ticker": "USAK.IS",
+          "company_name": "USAK SERAMIK",
+          "sector": "Industrials",
+          "country": "Turkey",
+          "listing_currency": "TRY",
+          "reporting_currency": "TRY",
+          "fx_rate": 0.021430667489767075,
+          "debt_value": 50962348.3908626,
+          "equity_value": 77640659.82781506,
+          "total_assets": 128603008.21867765,
+          "dc_ratio": 0.6564,
+          "effective_tax_rate": 0.3468,
+          "tax_source": "a\u00f1o 2022-12-31 (unusual=5.7%)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": 0.3963,
+          "pct_equity": 0.6037,
+          "market_cap": 3622876416
+        },
+        {
+          "ticker": "ECHO",
+          "company_name": "EchoStar Corporation",
+          "sector": "Communication Services",
+          "country": "United States",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": 30117140000.0,
+          "equity_value": 29317535744.0,
+          "total_assets": 59434675744.0,
+          "dc_ratio": 1.0273,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory United States (todos los a\u00f1os descartados)",
+          "beta_levered": 0.963,
+          "beta_unlevered": 0.5455,
+          "pct_debt": 0.5067,
+          "pct_equity": 0.4933,
+          "market_cap": 29317535744
+        },
+        {
+          "ticker": "FTEK.L",
+          "company_name": "INVESCO MARKETS PLC INVESCO KBW",
+          "sector": "Unknown",
+          "country": "",
+          "listing_currency": "USD",
+          "reporting_currency": "USD",
+          "fx_rate": 1.0,
+          "debt_value": null,
+          "equity_value": null,
+          "total_assets": null,
+          "dc_ratio": null,
+          "effective_tax_rate": 0.2549,
+          "tax_source": "statutory  (IS vac\u00edo)",
+          "beta_levered": null,
+          "beta_unlevered": 0.0,
+          "pct_debt": null,
+          "pct_equity": null,
+          "market_cap": null
+        }
+      ],
+      "errors": [
+        {
+          "ticker": "S4C",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "M&C",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TRMR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SECG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "NLSN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PUBL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MWTR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BA.L",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ERJ",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BBD.B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MHI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "NOC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BA.",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SAAB-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ESLT",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TGI.TA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MOG.A",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "THYAO.IS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ATSG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "JAL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CEB",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AIRASIA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ZTO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MESA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BRK.B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "2331.T",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SKX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HM-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HBI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HYMTF",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "KIMTF",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ZK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "VOLV-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "7205",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TATAMOTORS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "NAV",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "REVG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PCRFY",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CARL-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "2502.HK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "2501.HK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "291",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DGL.AX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "VWE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BF.B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "2587.T",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AKO.B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "2593.T",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "JDEP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PARA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TGNA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CMLS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AUDA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SALM",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LGF.A",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BANJ",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "METSB",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "RFP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BECN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ROCK-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "RDUS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AKZA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FCN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SECU-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "N/A",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "1448",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "STON",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "RRD",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CAJ",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ATUS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TC1",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ORAN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CASA.JK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PHOR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "WHC.AX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "YAL.AX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EPI-A",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "9613",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "WNS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "2353.T",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PSTG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HUSQ-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "INVE-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AKRO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "VERV",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ENDP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ITCI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ATGE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TWOU",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "9783",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PSO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LTG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "WEGE3.SA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "6502",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "VZIO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HEAR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "2317.HK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SKA-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "WG.",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ARCAD",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "NVEE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "9602.T",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AGRO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LND",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "JBSAY",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BRFS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FDGE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GIS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CAG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "2212.T",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BID",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "B4B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SPTN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SCS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BBED",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EDPR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DAR.L",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HOLX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PDCO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SDC.BK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "8086.T",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SYAB",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EXAS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CPSI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LSEA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "5225.TW",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SNDA.L",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BETS-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "KIND-SDB",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "UL.PA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ESSITY-B",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MMC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "8766.T",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AMBC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PHLL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "NKLA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TBLT",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HOLI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HAYN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "RYI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CMPO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GIFI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AZEK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LAAC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AWCMY",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CEIX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HRT",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HSII",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SHEL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EQNR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PBR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "YPF",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SSL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AE.BK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ZEST.MI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SLNG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HES",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "WDS.AX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CHK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SOC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ICD",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CHX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DRQ",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "NR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SDPI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PFIE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CCLP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BERY",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PTVE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TYDE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TUP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FFHL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GLT",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EVA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "JCTCF",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AY",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SUUN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "VZLA.L",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GATO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DALN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SGA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LPTV",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EXR.L",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PLYM",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AIRC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GMRE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EQC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PGRE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "WPC.SI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BNL.AX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AHH",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MDV",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LPA.L",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TPHS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CHCI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HOUS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "RDFN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HFF",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "VCSA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "COOP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CNF",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MODG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "VSTO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PLYA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "IGT",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EVRI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CPHC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SHCO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LUXH",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TCOM",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DESP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MOND",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DOOO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FRZA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BNRE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MHLD",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ESGR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "WDH",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CHUY",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DENN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "RUTH",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PBPB",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FRGI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FATBB",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GRIL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LAZY",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "KIRK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DIT",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ZYXI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EDAP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AHG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SNPO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "JWN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "EXTO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DTCK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PDD",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FTCH",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "POSH",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "OSTK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "WISH",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GPS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "MYTE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LANV",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CTHR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LAZR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AXL.L",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TEN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GTXAP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AMV",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FEBO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "VOXX",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PXDT",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AXCELIS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CCMP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BRKS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HAFN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ASC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "CPLP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PSHG",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "OP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "BLDE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SCPL.NS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GMGI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "RNWK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "STCN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SQ.BK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "TMST",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ZEUS",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "USAP",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "RADI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FYBR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "FNGR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "VGR",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "IMBBF",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "JAPNF",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LGVN",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "GLYC",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HA",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "HEES",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "ARII.JK",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "DSKE",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SCWO",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SRCL",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "AMBI",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "LICY",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "SJW",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        },
+        {
+          "ticker": "PRMW",
+          "mensaje": "Intento 3/3: No se pudo resolver"
+        }
+      ],
+      "total": 472,
+      "processed": 178,
+      "failed": 294
+    },
+    "error_message": null,
+    "created_at": "2026-07-01T16:39:37.835094",
+    "updated_at": "2026-07-01T17:40:32.650793",
+    "cancel_requested": false,
+    "last_batch": 9
+  },
   "97b8fc56-d237-42b6-8bbd-0b131bdc40ff": {
     "id": "97b8fc56-d237-42b6-8bbd-0b131bdc40ff",
     "status": "completed",

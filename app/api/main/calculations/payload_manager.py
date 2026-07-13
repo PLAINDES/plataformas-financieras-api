@@ -61,6 +61,7 @@ def _sanitize_input_for_history(input_payload: object) -> dict:
     if not isinstance(input_payload, dict):
         return {}
     # beta_desapalancado solo se usa para sensibilizacion (BOA), no para historial base de inputs
+    # industria y subsector se excluyen para que cambios en ellos se traten como sensibilización en lugar de cambio de base
     return {
         k: v
         for k, v in input_payload.items()
@@ -71,6 +72,13 @@ def _sanitize_input_for_history(input_payload: object) -> dict:
             "subsector_sensibilizacion",
             "tickers_subsector_sensibilizacion",
             "beta_desapalancado_custom",
+            "beta_subsector",
+            "beta_subsector_alt",
+            "beta_subsector_custom",
+            "beta_subsector_custom_alt",
+            "industria",
+            "subsector",
+            "industria_sensibilizacion",
         }
     }
 
@@ -89,14 +97,20 @@ def _merge_unique_entries(
     existing_entries: list[dict], incoming_entries: object
 ) -> list[dict]:
     """
-    Mezcla las entradas históricas garantizando la unicidad basada en el valor del BOA.
-    Si un escenario con el mismo BOA ya existe, lo actualiza con los parámetros más recientes.
+    Mezcla las entradas históricas garantizando la unicidad basada en el valor del BOA
+    y la industria/subsector para diferenciar sensibilizaciones.
     """
 
-    merged = {e.get("boa"): e for e in existing_entries if e.get("boa") is not None}
+    def _get_entry_key(e):
+        boa = e.get("boa")
+        ind = e.get("industria", "")
+        sub = e.get("subsector", "")
+        return f"{boa}-{ind}-{sub}"
+
+    merged = {_get_entry_key(e): e for e in existing_entries if e.get("boa") is not None}
     incoming = _stamp_entries(incoming_entries)
 
-    # Fallback de compatibilidad si la estructura no pertenece a bloques de sensibilización con BOA
+    # Fallback de compatibilidad
     if not merged and existing_entries:
         existing_keys = {
             json.dumps(
@@ -117,12 +131,11 @@ def _merge_unique_entries(
                 res.append(entry)
         return _stamp_entries(res)
 
-    # Fusionar entradas entrantes usando el 'boa' como clave única de comparación
+    # Fusionar entradas entrantes usando el 'boa' + industria + subsector como clave única
     for entry in incoming:
-        boa_val = entry.get("boa")
-        if boa_val is not None:
-            # Reemplaza o añade el bloque del escenario específico
-            merged[boa_val] = entry
+        key = _get_entry_key(entry)
+        # Reemplaza o añade el bloque del escenario específico
+        merged[key] = entry
 
     # Convertir los valores del diccionario a una lista
     return _stamp_entries(list(merged.values()))
@@ -139,10 +152,10 @@ def _normalize_calculation_data(
 ) -> dict:
     existing = existing_data if isinstance(existing_data, dict) else {}
 
-    # 1. INPUTS: Solo 1 registro (sobrescribir siempre con el más nuevo)
+    # 1. INPUTS: Solo 1 registro (sobrescribir si se permite)
     incoming_input = _extract_input_payload(payload_data)
     inputs = []
-    if incoming_input:
+    if incoming_input and include_input_history:
         inputs = _stamp_entries([{**incoming_input, "created_at": _now_iso()}])
     else:
         old_inputs = _stamp_entries(existing.get("inputs") or [])
@@ -158,9 +171,11 @@ def _normalize_calculation_data(
             resultados = _stamp_entries([incoming_results[0]])
 
     if not resultados:
-        # Si no extrajimos resultados nuevos (ej. update de solo BOA), mantenemos el que ya existía
+        # Si no extrajimos resultados nuevos, mantenemos el que ya existía
         old_resultados = _stamp_entries(existing.get("resultados") or [])
         if old_resultados:
+            # IMPORTANTE: Aseguramos que el resultado guardado mantenga sus inputs originales 
+            # si el cálculo principal no cambió.
             resultados = [old_resultados[0]]
 
     # 3. SENSIBILIZACIÓN: Múltiples registros (acumular)

@@ -40,6 +40,7 @@ class SubsectorBoaResponse(BaseModel):
     processed: int = 0
     failed: int = 0
     job_id: Optional[str] = None
+    message: Optional[str] = None
 
 
 class SubsectorBoaProgressResponse(BaseModel):
@@ -72,6 +73,16 @@ class ChatResponse(BaseModel):
 
 class AnalyzeCompaniesRequest(BaseModel):
     tickers: List[str]
+
+
+class DefaultResponse(BaseModel):
+    message: str
+
+
+class GenerateSubsectorsRequest(BaseModel):
+    sector: str
+    num_subsectors: int = 10
+
 
 
 

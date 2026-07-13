@@ -198,6 +198,7 @@ def create_template_complement(
             select(TemplateComplement)
             .where(TemplateComplement.nombre == payload.nombre)
             .where(TemplateComplement.deleted_at.is_(None))
+            .order_by(TemplateComplement.created_at.desc())
         )
         .scalars()
         .all()
@@ -206,24 +207,42 @@ def create_template_complement(
     merged_data = payload.data
 
     # Lógica de Merge si ya existe historial
-    if old_records and payload.nombre in ["damodaran", "riesgo", "tax"]:
+    if old_records and payload.nombre in ["damodaran", "riesgo", "tax", "subsectores"]:
         old_record = old_records[0]  # El activo más reciente
         old_data = old_record.data if isinstance(old_record.data, list) else []
         new_data = payload.data if isinstance(payload.data, list) else []
 
-        # Extraer los años que vienen en el nuevo Excel para no duplicarlos
-        incoming_years = {
-            str(item.get("fecha")) for item in new_data if item.get("fecha")
-        }
+        if payload.nombre == "subsectores":
+            # Para subsectores, fusionar por sector y subsector, sin duplicados
+            # La estructura de cada elemento es {"sector": "...", "subsector": "...", "empresas": [...], "empresas_boa": {...}}
+            merged_dict = {}
+            for item in old_data:
+                # Normalizar claves
+                sector = item.get("sector", "").strip() if item.get("sector") else ""
+                subsector = item.get("subsector", "").strip() if item.get("subsector") else ""
+                if sector and subsector:
+                    merged_dict[(sector.lower(), subsector.lower())] = item
+            for item in new_data:
+                sector = item.get("sector", "").strip() if item.get("sector") else ""
+                subsector = item.get("subsector", "").strip() if item.get("subsector") else ""
+                if sector and subsector:
+                    # Sobrescribir con nuevos datos si coincide sector y subsector
+                    merged_dict[(sector.lower(), subsector.lower())] = item
+            merged_data = list(merged_dict.values())
+        else:
+            # Extraer los años que vienen en el nuevo Excel para no duplicarlos
+            incoming_years = {
+                str(item.get("fecha")) for item in new_data if item.get("fecha")
+            }
 
-        # Retener solo los datos del JSON antiguo que NO correspondan a los años subidos
-        # (Esto permite actualizar un año si se vuelve a subir)
-        retained_data = [
-            item for item in old_data if str(item.get("fecha")) not in incoming_years
-        ]
+            # Retener solo los datos del JSON antiguo que NO correspondan a los años subidos
+            # (Esto permite actualizar un año si se vuelve a subir)
+            retained_data = [
+                item for item in old_data if str(item.get("fecha")) not in incoming_years
+            ]
 
-        # Combinar el historial retenido con la nueva carga
-        merged_data = retained_data + new_data
+            # Combinar el historial retenido con la nueva carga
+            merged_data = retained_data + new_data
 
     # Marcar como eliminados lógicamente los registros anteriores
     for old in old_records:
@@ -266,6 +285,27 @@ def delete_template_complement(complement_id: int, db: Session = Depends(get_db)
     if not complement or complement.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Template complement not found")
     complement.deleted_at = datetime.utcnow()
+    db.commit()
+    return None
+
+
+@router.delete(
+    "/template-complements/by-name/{complement_name}", status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_template_complement_by_name(complement_name: str, db: Session = Depends(get_db)):
+    complements = (
+        db.execute(
+            select(TemplateComplement)
+            .where(TemplateComplement.nombre == complement_name)
+            .where(TemplateComplement.deleted_at.is_(None))
+        )
+        .scalars()
+        .all()
+    )
+    if not complements:
+        raise HTTPException(status_code=404, detail="Template complement not found")
+    for comp in complements:
+        comp.deleted_at = datetime.utcnow()
     db.commit()
     return None
 
