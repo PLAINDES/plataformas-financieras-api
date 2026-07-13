@@ -16,6 +16,8 @@ from app.core.constants import (
     KAPITAL_INPUT_WACC,
     KAPITAL_PRIMA_CELL_MAP,
     KAPITAL_RESULTS_BOA_CELL,
+    KAPITAL_RESULTS_BOA_SECTOR_CELL,
+    KAPITAL_RESULTS_BOA_SUBSECTOR_CELL,
     KAPITAL_RESULTS_CELL_MAP,
     KAPITAL_RESULTS_SHEET,
     KAPITAL_RF_CELL_MAP,
@@ -116,6 +118,13 @@ async def _write_inputs_to_excel(
 
     add_write_req(input_payload, KAPITAL_INPUT_CELL_MAP)
     add_write_req(input_payload, KAPITAL_SENSITIVITY_INPUT_CELL_MAP)
+    
+    # Si viene beta_subsector, lo duplicamos para F40
+    beta_subsector = input_payload.get("beta_subsector") or input_payload.get("beta_subsector_custom")
+    if beta_subsector is not None:
+        input_payload["beta_subsector"] = beta_subsector
+        input_payload["beta_subsector_alt"] = beta_subsector
+
     add_write_req(input_payload, KAPITAL_CUSTOM_INPUT_CELL_MAP, KAPITAL_RESULTS_SHEET)
 
     # tasa impositiva y devaluacion para WACC
@@ -167,7 +176,7 @@ async def _read_market_block(
 
 
 async def _build_excel_output_entries(
-    item_id: str, session_id: str | None = None
+    item_id: str, session_id: str | None = None, include_sensibilidad: bool = True
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     service = get_onedrive_service()
     email = service.config.user_email
@@ -207,17 +216,28 @@ async def _build_excel_output_entries(
     for market, block in KAPITAL_RESULTS_CELL_MAP.items():
         add_read_req("resultados", KAPITAL_RESULTS_SHEET, block, market)
 
-    # 2. Peticiones de Sensibilización
-    for market, block in KAPITAL_SENSITIVITY_CELL_MAP.items():
-        add_read_req("sensibilidad", KAPITAL_RESULTS_SHEET, block, market)
+    # 2. Peticiones de Sensibilización (Opcional)
+    if include_sensibilidad:
+        for market, block in KAPITAL_SENSITIVITY_CELL_MAP.items():
+            add_read_req("sensibilidad", KAPITAL_RESULTS_SHEET, block, market)
 
     # 3. Peticiones de los BOAs (Resultados y Sensibilidad)
-    add_read_req("boa_res", KAPITAL_RESULTS_SHEET, {"boa": KAPITAL_RESULTS_BOA_CELL})
-    add_read_req(
-        "boa_sens",
-        KAPITAL_INPUT_SHEET,
-        {"boa": KAPITAL_SENSITIVITY_INPUT_CELL_MAP["beta_desapalancado"]},
-    )
+    add_read_req("boa_res", KAPITAL_RESULTS_SHEET, {
+        "boa": KAPITAL_RESULTS_BOA_CELL,
+        "boa_sector": KAPITAL_RESULTS_BOA_SECTOR_CELL,
+        "boa_subsector": KAPITAL_RESULTS_BOA_SUBSECTOR_CELL
+    })
+
+    if include_sensibilidad:
+        add_read_req(
+            "boa_sens",
+            KAPITAL_RESULTS_SHEET,
+            {
+                "boa": KAPITAL_RESULTS_BOA_CELL,
+                "boa_sector": KAPITAL_RESULTS_BOA_SECTOR_CELL,
+                "boa_subsector": KAPITAL_RESULTS_BOA_SUBSECTOR_CELL
+            },
+        )
 
     # Dividir las celdas en lotes de 20 y ejecutar simultáneamente
     chunks = [read_requests[i : i + 20] for i in range(0, len(read_requests), 20)]
@@ -245,9 +265,9 @@ async def _build_excel_output_entries(
             elif cat == "sensibilidad":
                 sensibilidad_entry[market][field] = val
             elif cat == "boa_res":
-                resultados_entry["boa"] = _extract_number(val)
+                resultados_entry[field] = _extract_number(val)
             elif cat == "boa_sens":
-                sensibilidad_entry["boa"] = _extract_number(val)
+                sensibilidad_entry[field] = _extract_number(val)
 
     return resultados_entry, sensibilidad_entry
 
@@ -259,6 +279,7 @@ async def _enrich_payload_with_excel_outputs(
     include_resultados: bool,
     include_sensibilizacion: bool,
     existing_session_id: str | None = None,
+    sensitivity_input: dict | None = None,
     retry_count: int = 0,
 ) -> object:
 
@@ -294,17 +315,17 @@ async def _enrich_payload_with_excel_outputs(
     if not session_id:
         t0 = time.perf_counter()
         session_id = await service._create_workbook_session(
-            item_id, persist_changes=False
+            item_id, persist_changes=True
         )
         print(
             f"[RAM] Nueva sesión creada: {time.perf_counter() - t0:.2f} seg", flush=True
         )
 
-    async def _execute_excel_logic(sid: str):
-        if latest_input:
+    async def _execute_excel_logic(sid: str, current_input: dict, read_sens: bool = False):
+        if current_input:
             t1 = time.perf_counter()
             await _write_inputs_to_excel(
-                item_id=item_id, input_payload=latest_input, session_id=sid
+                item_id=item_id, input_payload=current_input, session_id=sid
             )
             print(f"[BATCH] Escritura: {time.perf_counter() - t1:.2f} seg", flush=True)
 
@@ -317,12 +338,43 @@ async def _enrich_payload_with_excel_outputs(
         await asyncio.sleep(0.5)
 
         t3 = time.perf_counter()
-        res, sens = await _build_excel_output_entries(item_id, session_id=sid)
+        res, sens = await _build_excel_output_entries(item_id, session_id=sid, include_sensibilidad=read_sens)
         print(f"[BATCH] Lectura: {time.perf_counter() - t3:.2f} seg", flush=True)
         return res, sens
 
     try:
-        resultados_entry, sensibilidad_entry = await _execute_excel_logic(session_id)
+        # 1. CÁLCULO PRINCIPAL
+        resultados_entry, sensibilidad_entry = await _execute_excel_logic(
+            session_id, latest_input, read_sens=include_sensibilizacion and not sensitivity_input
+        )
+
+        # 2. CÁLCULO DE SENSIBILIZACIÓN (Si se proporciona un input específico)
+        if include_sensibilizacion and sensitivity_input:
+            print("Ejecutando cálculo de sensibilización como copia del principal...", flush=True)
+            sens_res, _ = await _execute_excel_logic(session_id, sensitivity_input, read_sens=False)
+            # El resultado del cálculo normal ahora es nuestra sensibilidad_entry
+            sensibilidad_entry = sens_res
+            # Inyectar los inputs usados para esta sensibilización específica
+            sensibilidad_entry["inputs"] = sensitivity_input
+            
+            # Inyectar el BOA y subsector desde el input de sensibilidad
+            if sensitivity_input.get("beta_desapalancado") is not None:
+                sensibilidad_entry["boa"] = _extract_number(sensitivity_input["beta_desapalancado"])
+
+            # Si el cálculo del excel no trajo boa_sector/subsector, intentamos mantener coherencia
+            if not sensibilidad_entry.get("boa_sector") and sensitivity_input.get("beta_desapalancado"):
+                sensibilidad_entry["boa_sector"] = _extract_number(sensitivity_input["beta_desapalancado"])
+
+            # BOA del subsector de sensibilidad
+            beta_subsector_sens = sensitivity_input.get("beta_subsector") or sensitivity_input.get("beta_subsector_custom")
+            if beta_subsector_sens is not None:
+                sensibilidad_entry["boa_subsector"] = _extract_number(beta_subsector_sens)
+
+            if sensitivity_input.get("subsector") is not None:
+                sensibilidad_entry["subsector"] = sensitivity_input["subsector"]
+            if sensitivity_input.get("industria") is not None:
+                sensibilidad_entry["industria"] = sensitivity_input["industria"]
+
     except (httpx.HTTPError, httpx.TimeoutException) as e:
         if retry_count >= 2:
             print(
@@ -343,6 +395,7 @@ async def _enrich_payload_with_excel_outputs(
             include_resultados=include_resultados,
             include_sensibilizacion=include_sensibilizacion,
             existing_session_id=None,
+            sensitivity_input=sensitivity_input,
             retry_count=retry_count + 1,
         )
 
@@ -350,15 +403,30 @@ async def _enrich_payload_with_excel_outputs(
 
     # Inyección explícita del BOA desde el input del usuario para asegurar su persistencia
     if include_resultados:
-        if latest_input.get("beta_desapalancado_custom") is not None:
-            resultados_entry["boa"] = _extract_number(latest_input["beta_desapalancado_custom"])
-        elif latest_input.get("beta_desapalancado") is not None:
-            resultados_entry["boa"] = _extract_number(latest_input["beta_desapalancado"])
+        # Inyectar también los inputs en el bloque de resultados principal
+        resultados_entry["inputs"] = latest_input
+        
+        # Mapear industria y subsector
+        resultados_entry["industria"] = latest_input.get("industria")
+        resultados_entry["subsector"] = latest_input.get("subsector")
 
-    if include_sensibilizacion and latest_input.get("beta_desapalancado") is not None:
-        sensibilidad_entry["boa"] = _extract_number(latest_input["beta_desapalancado"])
-        if isinstance(latest_input.get("subsector_sensibilizacion"), str):
-            sensibilidad_entry["subsector"] = latest_input.get("subsector_sensibilizacion", "").strip()
+        # EL BOA principal (Sector)
+        resultados_entry["boa"] = resultados_entry.get("boa_sector") or resultados_entry.get("boa")
+
+        # EL BOA del subsector (para visualización)
+        beta_subsector_principal = latest_input.get("beta_subsector") or latest_input.get("beta_subsector_custom")
+        if beta_subsector_principal is not None:
+            resultados_entry["boa_subsector"] = _extract_number(beta_subsector_principal)
+
+    # Si NO usamos un sensitivity_input externo, usamos la lógica anterior para compatibilidad
+    if include_sensibilizacion and not sensitivity_input:
+        if latest_input.get("beta_desapalancado") is not None:
+            sensibilidad_entry["boa"] = _extract_number(latest_input["beta_desapalancado"])
+            if isinstance(latest_input.get("subsector_sensibilizacion"), str):
+                sensibilidad_entry["subsector"] = latest_input.get("subsector_sensibilizacion", "").strip()
+        beta_subsector_legacy = latest_input.get("beta_subsector") or latest_input.get("beta_subsector_custom")
+        if beta_subsector_legacy is not None:
+            sensibilidad_entry["boa_subsector"] = _extract_number(beta_subsector_legacy)
 
     enriched["resultados"] = [resultados_entry] if include_resultados else []
     enriched["sensibilizacion"] = (
@@ -369,3 +437,4 @@ async def _enrich_payload_with_excel_outputs(
     enriched["active_session_id"] = session_id
 
     return enriched
+

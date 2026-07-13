@@ -49,6 +49,37 @@ def extract_tickers(text: str) -> list[str]:
             result.append(t)
     return result[:20]
 
+def extract_subsectors(text: str) -> list[dict]:
+    """
+    Extrae subsectores de un texto que sigue un formato específico:
+    - Cada subsector está en una línea.
+    - La línea empieza con "SUBSECTOR: [Nombre del subsector]".
+    - Le sigue una línea con "EMPRESAS: [Lista de tickers separados por comas]".
+    """
+    subsectors = []
+    # Divide el texto en bloques separados por una o más líneas en blanco
+    blocks = re.split(r'\n\s*\n', text.strip())
+
+    for block in blocks:
+        subsector_match = re.search(r'SUBSECTOR:\s*(.*)', block, re.IGNORECASE)
+        empresas_match = re.search(r'EMPRESAS:\s*(.*)', block, re.IGNORECASE)
+
+        if subsector_match and empresas_match:
+            subsector_name = subsector_match.group(1).strip()
+            
+            # Limpia la lista de tickers
+            tickers_raw = empresas_match.group(1).strip()
+            tickers = [ticker.strip() for ticker in tickers_raw.split(',') if ticker.strip()]
+            
+            if subsector_name and tickers:
+                subsectors.append({
+                    "sector": subsector_name,  # Mapea a 'sector' para consistencia
+                    "empresas": tickers
+                })
+
+    return subsectors
+
+
 def extract_beta_update(text: str) -> float | None:
     """Extrae la actualización de Beta si la IA lo provee en el formato BETA_UPDATE: x.x"""
     match = re.search(r'BETA_UPDATE:\s*([\d.]+)', text, re.IGNORECASE)

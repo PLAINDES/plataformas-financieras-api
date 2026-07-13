@@ -32,6 +32,7 @@ from app.services.onedrive.service import get_onedrive_service
 from .excel_engine import _enrich_payload_with_excel_outputs, _extract_input_payload
 from .graphs import _generate_calculation_images
 from .macros_service import (
+    _enrich_input_with_macros,
     _inject_macro_data_into_payload,
     get_default_or_latest_master_template,
 )
@@ -201,7 +202,28 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
     # 2. CALCULAR EN RAM
     if calc_type == CalculationType.KAPITAL:
         latest_input = _extract_input_payload(payload_data)
-        include_sensibilizacion = latest_input.get("beta_desapalancado") is not None
+        
+        # Preparar input de sensibilización
+        sensitivity_input = None
+        has_beta = latest_input.get("beta_desapalancado") is not None
+        has_sens_subsector = bool(latest_input.get("subsector_sensibilizacion"))
+        has_sens_industry = bool(latest_input.get("industria_sensibilizacion"))
+
+        if has_beta or has_sens_subsector or has_sens_industry:
+            sensitivity_input = dict(latest_input)
+            if has_sens_industry:
+                sensitivity_input["industria"] = latest_input.get("industria_sensibilizacion")
+            if has_sens_subsector:
+                sensitivity_input["subsector"] = latest_input.get("subsector_sensibilizacion")
+            
+            _enrich_input_with_macros(db, sensitivity_input)
+            
+            if has_beta:
+                if "damodaran" not in sensitivity_input or not isinstance(sensitivity_input["damodaran"], dict):
+                    sensitivity_input["damodaran"] = {}
+                sensitivity_input["damodaran"]["beta"] = latest_input.get("beta_desapalancado")
+
+        include_sensibilizacion = sensitivity_input is not None
         try:
             payload_data = await _enrich_payload_with_excel_outputs(
                 payload_data,
@@ -209,6 +231,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
                 include_resultados=True,
                 include_sensibilizacion=include_sensibilizacion,
                 existing_session_id=prewarmed_session_id,
+                sensitivity_input=sensitivity_input
             )
         except Exception as exc:
             logger.warning(f"Error procesando en RAM: {exc}")
@@ -263,19 +286,64 @@ async def update_calculation(
             master_item_id = source_template.onedrive_item_id
 
             incoming_input_raw = _extract_input_payload(update_data["data"])
+            current_input_raw = _extract_latest_input_from_history(calculation.data)
+            
             incoming_input_base = _sanitize_input_for_history(incoming_input_raw)
-            current_input_base = _sanitize_input_for_history(
-                _extract_latest_input_from_history(calculation.data)
+            current_input_base = _sanitize_input_for_history(current_input_raw)
+
+            # Detectar si cambió el sector/subsector principal
+            main_sector_changed = (
+                incoming_input_raw.get("industria") != current_input_raw.get("industria") or
+                incoming_input_raw.get("subsector") != current_input_raw.get("subsector")
             )
-            has_beta_for_sensitivity = (
-                incoming_input_raw.get("beta_desapalancado") is not None
-            )
+
+            # Preparar input de sensibilidad si existen los campos o si el sector principal cambió
+            sensitivity_input = None
+            has_beta = incoming_input_raw.get("beta_desapalancado") is not None
+            has_sens_subsector = bool(incoming_input_raw.get("subsector_sensibilizacion"))
+            has_sens_industry = bool(incoming_input_raw.get("industria_sensibilizacion"))
+
+            if has_beta or has_sens_subsector or has_sens_industry or main_sector_changed:
+                sensitivity_input = dict(incoming_input_raw)
+                
+                # Si el cambio viene por industria/subsector principal, lo usamos para la sensibilidad
+                if main_sector_changed and not has_sens_industry:
+                    sensitivity_input["industria"] = incoming_input_raw.get("industria")
+                elif has_sens_industry:
+                    sensitivity_input["industria"] = incoming_input_raw.get("industria_sensibilizacion")
+
+                if main_sector_changed and not has_sens_subsector:
+                    sensitivity_input["subsector"] = incoming_input_raw.get("subsector")
+                elif has_sens_subsector:
+                    sensitivity_input["subsector"] = incoming_input_raw.get("subsector_sensibilizacion")
+                
+                # Enriquecer con macros
+                _enrich_input_with_macros(db, sensitivity_input)
+                
+                # Override beta
+                if has_beta:
+                    if "damodaran" not in sensitivity_input or not isinstance(sensitivity_input["damodaran"], dict):
+                        sensitivity_input["damodaran"] = {}
+                    sensitivity_input["damodaran"]["beta"] = incoming_input_raw.get("beta_desapalancado")
+                elif main_sector_changed and not has_beta:
+                    # Si cambió el sector principal, el BOA de esa sensibilidad debe ser el BOA calculado por Damodaran
+                    # El valor de 'beta' ya fue inyectado por _enrich_input_with_macros arriba
+                    pass
+
+            has_beta_for_sensitivity = sensitivity_input is not None
+
+            # Un cambio base solo ocurre si los parámetros financieros cambian Y el sector sigue siendo el mismo.
+            # Si el sector cambió, forzamos que se trate como una sensibilización y no como un cambio en el cálculo principal.
             base_changed = (
-                bool(incoming_input_base) and incoming_input_base != current_input_base
+                bool(incoming_input_base) and 
+                incoming_input_base != current_input_base and 
+                not main_sector_changed
             )
-            include_input_history = True
+            
+            include_input_history = base_changed
             include_resultados_history = base_changed
             include_sensibilizacion_history = has_beta_for_sensitivity
+
             existing_session = None
 
             #  Prioridad: La sesión que acaba de mandar el frontend
@@ -297,6 +365,7 @@ async def update_calculation(
                     include_resultados=base_changed,
                     include_sensibilizacion=has_beta_for_sensitivity,
                     existing_session_id=existing_session,
+                    sensitivity_input=sensitivity_input
                 )
                 if isinstance(update_data["data"], dict):
                     enriched_sensibilizacion = update_data["data"].get(
@@ -382,14 +451,37 @@ async def refresh_calculation(
     if not source_template or not source_template.onedrive_item_id:
         raise HTTPException(status_code=400, detail="Plantilla maestra no configurada")
 
+    # Preparar input de sensibilidad si existen los campos
+    sensitivity_input = None
+    has_beta = latest_input.get("beta_desapalancado") is not None
+    has_sens_subsector = bool(latest_input.get("subsector_sensibilizacion"))
+    has_sens_industry = bool(latest_input.get("industria_sensibilizacion"))
+
+    if has_beta or has_sens_subsector or has_sens_industry:
+        sensitivity_input = dict(latest_input)
+        if has_sens_industry:
+            sensitivity_input["industria"] = latest_input.get("industria_sensibilizacion")
+        if has_sens_subsector:
+            sensitivity_input["subsector"] = latest_input.get("subsector_sensibilizacion")
+        
+        # Enriquecer con macros
+        _enrich_input_with_macros(db, sensitivity_input)
+        
+        # Override beta
+        if has_beta:
+            if "damodaran" not in sensitivity_input or not isinstance(sensitivity_input["damodaran"], dict):
+                sensitivity_input["damodaran"] = {}
+            sensitivity_input["damodaran"]["beta"] = latest_input.get("beta_desapalancado")
+
     try:
         # Enriquecer y forzar recálculo usando la sesión existente o creando una nueva
         enriched_data = await _enrich_payload_with_excel_outputs(
             payload_data=refresh_payload,
             item_id=source_template.onedrive_item_id,
             include_resultados=True,
-            include_sensibilizacion=latest_input.get("beta_desapalancado") is not None,
+            include_sensibilizacion=sensitivity_input is not None,
             existing_session_id=prewarmed_session_id,
+            sensitivity_input=sensitivity_input
         )
     except Exception as exc:
         logger.error(f"Fallo durante la ejecución de actualización del Excel: {exc}")
