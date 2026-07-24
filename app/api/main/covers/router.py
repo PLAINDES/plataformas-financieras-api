@@ -97,7 +97,7 @@ def _create_media_from_upload(db: Session, file: UploadFile) -> Optional[int]:
         return None
 
     try:
-        s3_result = s3_service.upload_file(file, folder="covers")
+        s3_result = s3_service.upload_image(file, folder="covers")
     except Exception as e:
         # Si falla AWS S3, lanzamos un 400 para que el frontend lo pueda mostrar
         # y no cause un 500 que rompe los headers CORS.
@@ -108,7 +108,7 @@ def _create_media_from_upload(db: Session, file: UploadFile) -> Optional[int]:
     media = Media(
         filename=s3_result["object_key"].split("/")[-1],
         original_name=file.filename,
-        mime_type=file.content_type or "application/octet-stream",
+        mime_type="image/webp",
         url=s3_result["file_url"],
         storage_path=s3_result["object_key"],
         folder="/covers",

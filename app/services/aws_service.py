@@ -1,6 +1,8 @@
 import os
 import uuid
 import logging
+from io import BytesIO
+
 try:
     import boto3 # pylint: disable=import-error
     from botocore.exceptions import ClientError # pylint: disable=import-error
@@ -10,6 +12,7 @@ except Exception:  # pragma: no cover - optional dependency in local/dev
     class ClientError(Exception):
         pass
 from fastapi import UploadFile
+from PIL import Image
 
 from app.core.constants import AWS_BASE_PREFIX
 from app.core.config import settings
@@ -53,29 +56,24 @@ class AWSS3Service:
 
     def upload_file(self, file: UploadFile, folder: str = "uploads") -> dict:
         """
-        Sube un archivo a S3 y retorna un diccionario con la URL pública y el object key.
+        Sube un archivo genérico a S3 y retorna un diccionario con la URL pública y el object key.
         """
         try:
             self._ensure_client()
-            # Generamos un nombre único para evitar colisiones
             extension = file.filename.split(".")[-1] if "." in file.filename else "bin"
             unique_filename = f"{uuid.uuid4().hex}.{extension}"
-
-            # Incorporamos el base_prefix en la llave del objeto (ej: plataformas_financieras/uploads/archivo.jpg)
             object_key = f"{self.base_prefix}/{folder}/{unique_filename}"
 
-            # Subimos a S3
             self.s3_client.upload_fileobj(
                 file.file,
                 self.bucket_name,
                 object_key,
                 ExtraArgs={
                     "ContentType": file.content_type,
+                    "ACL": "public-read",
                 }
             )
 
-            # Construimos la URL pública (asumiendo que el bucket es público para lectura)
-            # O usando la estructura clásica: https://{bucket_name}.s3.{region}.amazonaws.com/{object_key}
             region = settings.AWS_REGION_NAME
             file_url = f"https://{self.bucket_name}.s3.{region}.amazonaws.com/{object_key}"
 
@@ -86,10 +84,88 @@ class AWSS3Service:
 
         except ClientError as e:
             logger.error(f"Error subiendo archivo a S3 (ClientError): {e}")
+            error_code = e.response.get("Error", {}).get("Code", "") if hasattr(e, "response") else ""
+            if error_code in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
+                raise Exception("Credenciales de AWS incorrectas o sin permisos para escribir en el bucket.")
             raise Exception("No se pudo subir el archivo a S3 por permisos o configuración.")
         except Exception as e:
             logger.error(f"Error general S3: {e}")
             raise Exception(f"Revisa credenciales de S3 (boto3.client): {e}")
+        finally:
+            file.file.close()
+
+    def upload_image(self, file: UploadFile, folder: str = "uploads") -> dict:
+        """
+        Sube una imagen a S3 convertida a WebP.
+        Lee el archivo en memoria para poder reintentar sin problemas si el bucket bloquea ACLs.
+        """
+        try:
+            self._ensure_client()
+            unique_filename = f"{uuid.uuid4().hex}.webp"
+            object_key = f"{self.base_prefix}/{folder}/{unique_filename}"
+
+            # Leer el archivo original en memoria y convertir a WebP
+            original_bytes = file.file.read()
+            try:
+                with Image.open(BytesIO(original_bytes)) as img:
+                    # Convertir a RGB si es necesario (ej. PNG con transparencia)
+                    if img.mode in ("RGBA", "P"):
+                        img = img.convert("RGBA")
+                    elif img.mode != "RGB":
+                        img = img.convert("RGB")
+                    webp_buffer = BytesIO()
+                    img.save(webp_buffer, format="WEBP", quality=85)
+                    webp_buffer.seek(0)
+                    webp_bytes = webp_buffer.getvalue()
+            except Exception as e:
+                raise Exception(f"Error convirtiendo la imagen a WebP: {str(e)}")
+
+            try:
+                self.s3_client.upload_fileobj(
+                    BytesIO(webp_bytes),
+                    self.bucket_name,
+                    object_key,
+                    ExtraArgs={
+                        "ContentType": "image/webp",
+                        "ACL": "public-read",
+                    }
+                )
+            except ClientError as acl_error:
+                acl_error_code = (
+                    acl_error.response.get("Error", {}).get("Code", "")
+                    if hasattr(acl_error, "response")
+                    else ""
+                )
+                if acl_error_code == "AccessControlListNotSupported":
+                    logger.warning("Bucket bloquea ACLs públicas; subiendo sin ACL. Asegúrate de que el bucket tenga una política pública.")
+                    self.s3_client.upload_fileobj(
+                        BytesIO(webp_bytes),
+                        self.bucket_name,
+                        object_key,
+                        ExtraArgs={
+                            "ContentType": "image/webp",
+                        }
+                    )
+                else:
+                    raise
+
+            region = settings.AWS_REGION_NAME
+            file_url = f"https://{self.bucket_name}.s3.{region}.amazonaws.com/{object_key}"
+
+            return {
+                "file_url": file_url,
+                "object_key": object_key
+            }
+
+        except ClientError as e:
+            logger.error(f"Error subiendo imagen a S3 (ClientError): {e}")
+            error_code = e.response.get("Error", {}).get("Code", "") if hasattr(e, "response") else ""
+            if error_code in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
+                raise Exception("Credenciales de AWS incorrectas o sin permisos para escribir en el bucket.")
+            raise Exception("No se pudo subir la imagen a S3 por permisos o configuración.")
+        except Exception as e:
+            logger.error(f"Error general S3: {e}")
+            raise Exception(f"{e}")
         finally:
             file.file.close()
 

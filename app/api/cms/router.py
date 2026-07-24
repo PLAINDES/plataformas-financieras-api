@@ -49,7 +49,7 @@ def _create_cms_media_from_upload(
         raise HTTPException(status_code=400, detail="Invalid file template")
 
     try:
-        s3_result = s3_service.upload_file(file, folder=folder_path)
+        s3_result = s3_service.upload_image(file, folder=folder_path)
     except Exception as e:
         raise HTTPException(
             status_code=400, detail=f"Error subiendo archivo a AWS S3: {str(e)}"
@@ -58,7 +58,7 @@ def _create_cms_media_from_upload(
     media = Media(
         filename=s3_result["object_key"].split("/")[-1],
         original_name=file.filename,
-        mime_type=file.content_type or "application/octet-stream",
+        mime_type="image/webp",
         url=s3_result["file_url"],
         storage_path=s3_result["object_key"],
         folder=f"/{folder_path}",
