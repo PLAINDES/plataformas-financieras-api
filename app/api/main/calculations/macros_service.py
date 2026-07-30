@@ -1,6 +1,7 @@
 # app/api/main/calculations_router.py
 import os
 import re
+import time
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -17,6 +18,7 @@ from .excel_engine import _build_template_copy_name
 
 
 def get_default_or_latest_master_template(db: Session) -> MasterTemplate | None:
+    t0 = time.perf_counter()
     template = (
         db.execute(
             select(MasterTemplate)
@@ -30,9 +32,10 @@ def get_default_or_latest_master_template(db: Session) -> MasterTemplate | None:
         .first()
     )
     if template:
+        print(f"[DB] get_default_or_latest_master_template (default): {time.perf_counter() - t0:.3f} seg", flush=True)
         return template
 
-    return (
+    template = (
         db.execute(
             select(MasterTemplate)
             .where(MasterTemplate.deleted_at.is_(None))
@@ -41,6 +44,8 @@ def get_default_or_latest_master_template(db: Session) -> MasterTemplate | None:
         .scalars()
         .first()
     )
+    print(f"[DB] get_default_or_latest_master_template (fallback): {time.perf_counter() - t0:.3f} seg", flush=True)
+    return template
 
 
 async def _clone_default_template_for_calculation(
@@ -94,15 +99,18 @@ def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
     if "inputs" not in payload_data or not payload_data["inputs"]:
         return
 
+    t0 = time.perf_counter()
     # Trabajamos directamente sobre la referencia del último input para mutarlo
     latest_input = payload_data["inputs"][-1]
     _enrich_input_with_macros(db, latest_input)
+    print(f"[DB] _inject_macro_data_into_payload total: {time.perf_counter() - t0:.3f} seg", flush=True)
 
 
 def _enrich_input_with_macros(db: Session, input_dict: dict) -> None:
     """
     Enriquece un diccionario de input individual con datos de complementos de la BD.
     """
+    t0 = time.perf_counter()
     date = str(input_dict.get("fecha", "")).strip()
 
     year = ""
@@ -116,6 +124,7 @@ def _enrich_input_with_macros(db: Session, input_dict: dict) -> None:
 
     # Helper interno para buscar en la BD
     def _fetch_complement_data(name: str) -> list:
+        t_comp = time.perf_counter()
         comp = (
             db.execute(
                 select(TemplateComplement)
@@ -128,6 +137,7 @@ def _enrich_input_with_macros(db: Session, input_dict: dict) -> None:
             .scalars()
             .first()
         )
+        print(f"[DB] _fetch_complement_data '{name}': {time.perf_counter() - t_comp:.3f} seg", flush=True)
         return comp.data if comp and isinstance(comp.data, list) else []
 
     if date:
@@ -229,4 +239,5 @@ def _enrich_input_with_macros(db: Session, input_dict: dict) -> None:
                 )
 
         input_dict["riesgo"] = flattened_riesgo
+    print(f"[DB] _enrich_input_with_macros total: {time.perf_counter() - t0:.3f} seg", flush=True)
 

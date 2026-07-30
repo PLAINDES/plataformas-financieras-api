@@ -315,7 +315,7 @@ async def _enrich_payload_with_excel_outputs(
     if not session_id:
         t0 = time.perf_counter()
         session_id = await service._create_workbook_session(
-            item_id, persist_changes=True
+            item_id, persist_changes=False
         )
         print(
             f"[RAM] Nueva sesión creada: {time.perf_counter() - t0:.2f} seg", flush=True
@@ -437,4 +437,181 @@ async def _enrich_payload_with_excel_outputs(
     enriched["active_session_id"] = session_id
 
     return enriched
+
+
+async def _write_valora_inputs_to_excel(
+    item_id: str, input_payload: dict, session_id: str | None = None
+) -> None:
+    service = get_onedrive_service()
+    email = service.config.user_email
+
+    balance_table = input_payload.get("balance_table") or {}
+    results_table = input_payload.get("results_table") or {}
+
+    bg_rows = balance_table.get("rows", [])
+    er_rows = results_table.get("rows", [])
+    years = balance_table.get("years", []) or results_table.get("years", [])
+
+    normalized_years = []
+    for y in years:
+        y_str = str(y).strip()
+        if y_str.isdigit():
+            normalized_years.append(int(y_str))
+        else:
+            normalized_years.append(y_str)
+
+    # Reordenar de menor a mayor si vienen en orden descendente
+    if len(normalized_years) >= 2:
+        y0 = normalized_years[0]
+        y1 = normalized_years[-1]
+        if isinstance(y0, int) and isinstance(y1, int) and y0 > y1:
+            normalized_years = list(reversed(normalized_years))
+            bg_rows = [
+                {**r, "values": list(reversed(r.get("values", [])))}
+                if isinstance(r, dict)
+                else r
+                for r in bg_rows
+            ]
+            er_rows = [
+                {**r, "values": list(reversed(r.get("values", [])))}
+                if isinstance(r, dict)
+                else r
+                for r in er_rows
+            ]
+
+    N = len(normalized_years)
+    if N == 0:
+        return
+
+    N = min(N, 10)
+
+    # 1. Matriz de años para Fila 3: C3:L3 (1 x 10)
+    years_matrix = [[None for _ in range(10)]]
+    for i in range(N):
+        col_offset = 9 - (N - 1 - i)
+        if 0 <= col_offset < 10:
+            years_matrix[0][col_offset] = normalized_years[i]
+
+    # 2. Balance General: C4:L35 (32 filas x 10 columnas)
+    bg_matrix = [[None for _ in range(10)] for _ in range(32)]
+    for r in range(min(32, len(bg_rows))):
+        row_dict = bg_rows[r] if isinstance(bg_rows[r], dict) else {}
+        row_vals = row_dict.get("values", [])
+        for i in range(min(N, len(row_vals))):
+            col_offset = 9 - (N - 1 - i)
+            if 0 <= col_offset < 10:
+                val = row_vals[i]
+                if val is not None and val != "":
+                    try:
+                        bg_matrix[r][col_offset] = float(val)
+                    except (ValueError, TypeError):
+                        bg_matrix[r][col_offset] = val
+
+    # 3. Estado de Resultados: C38:L51 (14 filas x 10 columnas)
+    er_matrix = [[None for _ in range(10)] for _ in range(14)]
+    for r in range(min(14, len(er_rows))):
+        row_dict = er_rows[r] if isinstance(er_rows[r], dict) else {}
+        row_vals = row_dict.get("values", [])
+        for i in range(min(N, len(row_vals))):
+            col_offset = 9 - (N - 1 - i)
+            if 0 <= col_offset < 10:
+                val = row_vals[i]
+                if val is not None and val != "":
+                    try:
+                        er_matrix[r][col_offset] = float(val)
+                    except (ValueError, TypeError):
+                        er_matrix[r][col_offset] = val
+
+    headers = {"Content-Type": "application/json"}
+    if session_id:
+        headers["workbook-session-id"] = session_id
+
+    sheet_name = "Proyección"
+
+    write_requests = [
+        {
+            "id": "1",
+            "method": "PATCH",
+            "url": _build_excel_range_url(email, item_id, sheet_name, "C3:L3"),
+            "body": {"values": years_matrix},
+            "headers": headers,
+        },
+        {
+            "id": "2",
+            "method": "PATCH",
+            "url": _build_excel_range_url(email, item_id, sheet_name, "C4:L35"),
+            "body": {"values": bg_matrix},
+            "headers": headers,
+        },
+        {
+            "id": "3",
+            "method": "PATCH",
+            "url": _build_excel_range_url(email, item_id, sheet_name, "C38:L51"),
+            "body": {"values": er_matrix},
+            "headers": headers,
+        },
+    ]
+
+    try:
+        await service.execute_batch(write_requests)
+    except Exception as exc:
+        print(
+            f"Advertencia escribiendo en hoja 'Proyección' ({exc}). Reintentando en 'Proyeccion'...",
+            flush=True,
+        )
+        sheet_name_fallback = "Proyeccion"
+        write_requests_fallback = [
+            {
+                "id": req["id"],
+                "method": req["method"],
+                "url": _build_excel_range_url(
+                    email,
+                    item_id,
+                    sheet_name_fallback,
+                    req["url"].split("/range(address='")[1].split("')")[0],
+                ),
+                "body": req["body"],
+                "headers": req["headers"],
+            }
+            for req in write_requests
+        ]
+        await service.execute_batch(write_requests_fallback)
+
+
+async def _enrich_payload_with_valora_excel(
+    payload_data: dict[str, Any],
+    item_id: str,
+    existing_session_id: str | None = None,
+) -> dict[str, Any]:
+    service = get_onedrive_service()
+    latest_input = _extract_input_payload(payload_data)
+
+    session_id = existing_session_id
+    if session_id:
+        try:
+            await service.force_calculate_excel(item_id, session_id=session_id)
+        except Exception:
+            session_id = None
+
+    if not session_id:
+        session_id = await service._create_workbook_session(
+            item_id, persist_changes=False
+        )
+
+    if latest_input:
+        await _write_valora_inputs_to_excel(
+            item_id=item_id, input_payload=latest_input, session_id=session_id
+        )
+
+    await service.force_calculate_excel(item_id, session_id=session_id)
+
+    payload_data["active_session_id"] = session_id
+    if "resultados" not in payload_data or not isinstance(
+        payload_data["resultados"], dict
+    ):
+        payload_data["resultados"] = {}
+    payload_data["resultados"]["inputs"] = latest_input
+    payload_data["resultados"]["created_at"] = _now_iso()
+
+    return payload_data
 
