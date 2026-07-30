@@ -33,25 +33,81 @@ def now_lima() -> datetime:
     return datetime.now(LIMA_TZ)
 
 
+def is_private_ip(ip: Optional[str]) -> bool:
+    if not ip:
+        return True
+    ip = ip.strip()
+    return ip.startswith(("127.", "192.168.", "10.", "172.", "localhost", "::1", "fe80:"))
+
+
+def extract_client_ip(request: Request, payload_ip: Optional[str] = None) -> Optional[str]:
+    """
+    Extrae la IP real del cliente considerando reverse proxies (Nginx, Cloudflare, etc.).
+    """
+    if payload_ip and not is_private_ip(payload_ip):
+        return payload_ip.strip()
+
+    # Header CF-Connecting-IP (Cloudflare tiene la IP real del cliente)
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip and not is_private_ip(cf_ip):
+        return cf_ip.strip()
+
+    # Header X-Real-IP (Nginx)
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip and not is_private_ip(real_ip):
+        return real_ip.strip()
+
+    # Header X-Forwarded-For (Nginx / proxies encadenados: toma la primera IP pública)
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        ips = [ip.strip() for ip in forwarded_for.split(",")]
+        for ip in ips:
+            if ip and not is_private_ip(ip):
+                return ip
+
+    # Fallback si solo hay IP privada (desarrollo local / Docker bridge)
+    if request.client and request.client.host:
+        return request.client.host
+
+    return None
+
+
 async def get_ip_location(ip: str) -> tuple[Optional[str], Optional[str]]:
     """
-    Consulta ip.guide para obtener ciudad y país a partir de la IP.
+    Consulta ip.guide (y ip-api.com como fallback) para obtener ciudad y país a partir de la IP.
     Retorna (city, country) o (None, None) en caso de error.
     """
-    if not ip or ip.startswith(("127.", "192.168.", "10.", "172.")):
+    if not ip or is_private_ip(ip):
         return None, None
+
+    # Intentar ip.guide primero
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            response = await client.get(f"https://ip.guide/{ip}")
+            response = await client.get(f"https://ip.guide/{ip}", headers={"User-Agent": "Mozilla/5.0"})
             if response.status_code == 200:
                 data = response.json()
                 location = data.get("location", {})
                 city = location.get("city")
                 country = location.get("country")
-                return city, country
-    except Exception:
-        # Silenciar errores de geolocalización para no bloquear el tracking
-        pass
+                if city or country:
+                    return city, country
+    except Exception as e:
+        logger.warning(f"Error consulting ip.guide for {ip}: {e}")
+
+    # Fallback a ip-api.com
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            response = await client.get(f"http://ip-api.com/json/{ip}")
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("status") == "success":
+                    city = data.get("city")
+                    country = data.get("country")
+                    if city or country:
+                        return city, country
+    except Exception as e:
+        logger.warning(f"Error consulting ip-api.com for {ip}: {e}")
+
     return None, None
 
 
@@ -63,15 +119,13 @@ async def track_event(request: Request, payload: TrackPayload, db: Session = Dep
     Endpoint unificado para trackear sesiones, pageviews y eventos.
     Crea la sesión si no existe, y registra el pageview/evento.
     """
-    # Extraer IP del request si no viene en payload
-    client_ip = payload.ip_address
-    if not client_ip and request.client:
-        client_ip = request.client.host
+    # Extraer IP real del cliente considerando reverse proxies (Nginx, Cloudflare)
+    client_ip = extract_client_ip(request, payload.ip_address)
 
     city = payload.city
     country = payload.country
 
-    # Si no viene ciudad/país en payload y tenemos IP, consultar ip.guide
+    # Si no viene ciudad/país en payload y tenemos IP, consultar geolocalización
     if client_ip and (not city or not country):
         geo_city, geo_country = await get_ip_location(client_ip)
         if not city:
@@ -101,6 +155,20 @@ async def track_event(request: Request, payload: TrackPayload, db: Session = Dep
         session.start_time = now_lima()
         db.add(session)
         db.flush()
+    else:
+        # Si la sesión ya existía pero no tenía IP o geolocalización, actualizarla ahora
+        updated = False
+        if client_ip and not session.ip_address:
+            session.ip_address = client_ip
+            updated = True
+        if city and not session.city:
+            session.city = city
+            updated = True
+        if country and not session.country:
+            session.country = country
+            updated = True
+        if updated:
+            db.add(session)
 
     # Registrar page view
     page_view = AnalyticsPageView(
