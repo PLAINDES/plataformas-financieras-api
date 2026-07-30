@@ -29,7 +29,11 @@ from app.schemas.main import (
 )
 from app.services.onedrive.service import get_onedrive_service
 
-from .excel_engine import _enrich_payload_with_excel_outputs, _extract_input_payload
+from .excel_engine import (
+    _enrich_payload_with_excel_outputs,
+    _enrich_payload_with_valora_excel,
+    _extract_input_payload,
+)
 from .graphs import _generate_calculation_images
 from .macros_service import (
     _enrich_input_with_macros,
@@ -190,10 +194,14 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
     payload_data = dict(payload.data) if isinstance(payload.data, dict) else {}
     prewarmed_session_id = payload_data.pop("prewarmed_session_id", None)
 
+    t_macro = time.perf_counter()
     _inject_macro_data_into_payload(db, payload_data)
+    print(f"[TIMER] POST macro injection: {time.perf_counter() - t_macro:.3f} seg", flush=True)
 
     # 1. OBTENER LA PLANTILLA MAESTRA DIRECTAMENTE (SIN CLONAR)
+    t_template = time.perf_counter()
     source_template = get_default_or_latest_master_template(db)
+    print(f"[TIMER] POST get template: {time.perf_counter() - t_template:.3f} seg", flush=True)
     if not source_template or not source_template.onedrive_item_id:
         raise HTTPException(status_code=400, detail="Master template no configurada.")
 
@@ -216,7 +224,9 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
             if has_sens_subsector:
                 sensitivity_input["subsector"] = latest_input.get("subsector_sensibilizacion")
             
+            t_sens_macro = time.perf_counter()
             _enrich_input_with_macros(db, sensitivity_input)
+            print(f"[TIMER] POST sensitivity macro enrichment: {time.perf_counter() - t_sens_macro:.3f} seg", flush=True)
             
             if has_beta:
                 if "damodaran" not in sensitivity_input or not isinstance(sensitivity_input["damodaran"], dict):
@@ -224,6 +234,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
                 sensitivity_input["damodaran"]["beta"] = latest_input.get("beta_desapalancado")
 
         include_sensibilizacion = sensitivity_input is not None
+        t_excel = time.perf_counter()
         try:
             payload_data = await _enrich_payload_with_excel_outputs(
                 payload_data,
@@ -235,8 +246,22 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
             )
         except Exception as exc:
             logger.warning(f"Error procesando en RAM: {exc}")
+        print(f"[TIMER] POST Excel enrichment total: {time.perf_counter() - t_excel:.3f} seg", flush=True)
+
+    elif calc_type == CalculationType.VALORA:
+        t_excel = time.perf_counter()
+        try:
+            payload_data = await _enrich_payload_with_valora_excel(
+                payload_data,
+                master_item_id,
+                existing_session_id=prewarmed_session_id
+            )
+        except Exception as exc:
+            logger.warning(f"Error procesando Valora en RAM: {exc}")
+        print(f"[TIMER] POST Excel Valora enrichment total: {time.perf_counter() - t_excel:.3f} seg", flush=True)
 
     # GUARDAR EN BD
+    t_db = time.perf_counter()
     calculation = Calculation(
         user_id=payload.user_id,
         code=payload.code,
@@ -248,6 +273,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
     db.add(calculation)
     db.commit()
     db.refresh(calculation)
+    print(f"[TIMER] POST DB save: {time.perf_counter() - t_db:.3f} seg", flush=True)
 
     print(
         f"[TIMER] TIEMPO TOTAL DEL ENDPOINT POST: {time.perf_counter() - t_post:.2f} seg",
@@ -273,11 +299,15 @@ async def update_calculation(
         base_changed = True
         enriched_sensibilizacion = None
 
+        t_macro = time.perf_counter()
         _inject_macro_data_into_payload(db, update_data["data"])
+        print(f"[TIMER] PUT macro injection: {time.perf_counter() - t_macro:.3f} seg", flush=True)
 
         if calculation.type == CalculationType.KAPITAL:
             # 1. Obtenemos el ID de la plantilla maestra
+            t_template = time.perf_counter()
             source_template = get_default_or_latest_master_template(db)
+            print(f"[TIMER] PUT get template: {time.perf_counter() - t_template:.3f} seg", flush=True)
             if not source_template or not source_template.onedrive_item_id:
                 raise HTTPException(
                     status_code=400, detail="Master template no configurada."
@@ -318,7 +348,9 @@ async def update_calculation(
                     sensitivity_input["subsector"] = incoming_input_raw.get("subsector_sensibilizacion")
                 
                 # Enriquecer con macros
+                t_sens_macro = time.perf_counter()
                 _enrich_input_with_macros(db, sensitivity_input)
+                print(f"[TIMER] PUT sensitivity macro enrichment: {time.perf_counter() - t_sens_macro:.3f} seg", flush=True)
                 
                 # Override beta
                 if has_beta:
@@ -359,6 +391,7 @@ async def update_calculation(
                 existing_session = calculation.data.get("active_session_id")
             try:
                 t_put = time.perf_counter()
+                t_excel = time.perf_counter()
                 update_data["data"] = await _enrich_payload_with_excel_outputs(
                     update_data["data"],
                     master_item_id,
@@ -367,6 +400,7 @@ async def update_calculation(
                     existing_session_id=existing_session,
                     sensitivity_input=sensitivity_input
                 )
+                print(f"[TIMER] PUT Excel enrichment total: {time.perf_counter() - t_excel:.3f} seg", flush=True)
                 if isinstance(update_data["data"], dict):
                     enriched_sensibilizacion = update_data["data"].get(
                         "sensibilizacion"
@@ -390,6 +424,25 @@ async def update_calculation(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail="No se pudo recalcular el cálculo Kapital en Excel",
                 ) from exc
+
+        elif calculation.type == CalculationType.VALORA:
+            source_template = get_default_or_latest_master_template(db)
+            if source_template and source_template.onedrive_item_id:
+                master_item_id = source_template.onedrive_item_id
+                existing_session = None
+                if isinstance(update_data["data"], dict) and update_data["data"].get("active_session_id"):
+                    existing_session = update_data["data"].get("active_session_id")
+                elif isinstance(calculation.data, dict) and calculation.data.get("active_session_id"):
+                    existing_session = calculation.data.get("active_session_id")
+
+                try:
+                    update_data["data"] = await _enrich_payload_with_valora_excel(
+                        update_data["data"],
+                        master_item_id,
+                        existing_session_id=existing_session
+                    )
+                except Exception as exc:
+                    logger.warning("Could not enrich valora update payload from Excel: %s", exc)
 
         update_data["data"] = _normalize_calculation_data(
             payload_data=update_data["data"],
@@ -533,7 +586,7 @@ async def prewarm_excel_session(db: Session = Depends(get_db)):
     service = get_onedrive_service()
     try:
         session_id = await service._create_workbook_session(
-            source_template.onedrive_item_id, persist_changes=True
+            source_template.onedrive_item_id, persist_changes=False
         )
         return {"session_id": session_id}
     except Exception as e:
