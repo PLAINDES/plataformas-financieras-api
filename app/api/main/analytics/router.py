@@ -4,7 +4,7 @@ from typing import Optional, List
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select, func, and_, text
+from sqlalchemy import select, func, and_, case, text
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -17,6 +17,8 @@ from app.schemas.analytics import (
     AnalyticsEventCreate,
     DashboardData,
     DashboardSummary,
+    CalculationFunnel,
+    RetentionMetrics,
     TopItem,
     TimeSeriesItem,
 )
@@ -156,8 +158,11 @@ async def track_event(request: Request, payload: TrackPayload, db: Session = Dep
         db.add(session)
         db.flush()
     else:
-        # Si la sesión ya existía pero no tenía IP o geolocalización, actualizarla ahora
+        # Completar los datos que no estaban disponibles al crear la sesión.
         updated = False
+        if payload.user_id and not session.user_id:
+            session.user_id = payload.user_id
+            updated = True
         if client_ip and not session.ip_address:
             session.ip_address = client_ip
             updated = True
@@ -343,6 +348,90 @@ def get_dashboard(
         .where(AnalyticsEvent.event_name == "cta_whatsapp_click")
     ).scalar() or 0
 
+    funnel_event_names = (
+        "kapital_calculator_started",
+        "kapital_calculation_started",
+        "kapital_calculation_completed",
+    )
+    funnel_result = db.execute(
+        select(
+            AnalyticsEvent.event_name,
+            func.count(AnalyticsEvent.id),
+            func.count(func.distinct(AnalyticsEvent.session_id)),
+        )
+        .where(AnalyticsEvent.timestamp >= since)
+        .where(AnalyticsEvent.event_name.in_(funnel_event_names))
+        .group_by(AnalyticsEvent.event_name)
+    ).all()
+    funnel_counts = {
+        event_name: {"events": count, "sessions": sessions}
+        for event_name, count, sessions in funnel_result
+    }
+    users_started = funnel_counts.get(
+        "kapital_calculator_started", {"sessions": 0}
+    )["sessions"]
+    calculations_started = funnel_counts.get(
+        "kapital_calculation_started", {"events": 0}
+    )["events"]
+    calculations_completed = funnel_counts.get(
+        "kapital_calculation_completed", {"events": 0}
+    )["events"]
+    kapital_visitors = db.execute(
+        select(func.count(func.distinct(AnalyticsPageView.session_id)))
+        .where(AnalyticsPageView.timestamp >= since)
+        .where(AnalyticsPageView.page_path.like("/kapital%"))
+    ).scalar() or 0
+    activation_rate = round(
+        users_started / kapital_visitors * 100, 1
+    ) if kapital_visitors else 0.0
+    completion_rate = round(
+        calculations_completed / calculations_started * 100, 1
+    ) if calculations_started else 0.0
+
+    first_kapital_visits = (
+        select(
+            AnalyticsSession.user_id.label("user_id"),
+            func.min(AnalyticsPageView.timestamp).label("first_visit"),
+        )
+        .join(
+            AnalyticsPageView,
+            AnalyticsPageView.session_id == AnalyticsSession.session_id,
+        )
+        .where(AnalyticsSession.user_id.isnot(None))
+        .where(AnalyticsPageView.page_path.like("/kapital%"))
+        .group_by(AnalyticsSession.user_id)
+        .subquery()
+    )
+    period_kapital_users = (
+        select(AnalyticsSession.user_id.label("user_id"))
+        .join(
+            AnalyticsPageView,
+            AnalyticsPageView.session_id == AnalyticsSession.session_id,
+        )
+        .where(AnalyticsSession.user_id.isnot(None))
+        .where(AnalyticsPageView.timestamp >= since)
+        .where(AnalyticsPageView.page_path.like("/kapital%"))
+        .distinct()
+        .subquery()
+    )
+    new_users, recurring_users = db.execute(
+        select(
+            func.coalesce(
+                func.sum(case((first_kapital_visits.c.first_visit >= since, 1), else_=0)),
+                0,
+            ),
+            func.coalesce(
+                func.sum(case((first_kapital_visits.c.first_visit < since, 1), else_=0)),
+                0,
+            ),
+        ).select_from(
+            period_kapital_users.join(
+                first_kapital_visits,
+                first_kapital_visits.c.user_id == period_kapital_users.c.user_id,
+            )
+        )
+    ).one()
+
     # Devices
     devices_result = db.execute(
         select(AnalyticsSession.device_type, func.count(AnalyticsSession.id))
@@ -438,6 +527,17 @@ def get_dashboard(
         daily_distribution=daily,
         pages=pages,
         sessions_over_time=sessions_over_time,
+        kapital_funnel=CalculationFunnel(
+            users_started=users_started,
+            activation_rate=activation_rate,
+            started=calculations_started,
+            completed=calculations_completed,
+            completion_rate=completion_rate,
+        ),
+        kapital_retention=RetentionMetrics(
+            new_users=int(new_users),
+            recurring_users=int(recurring_users),
+        ),
         cta_clicks=cta_clicks,
         avg_time_on_page=round(avg_time_on_page, 1) if avg_time_on_page else None,
     )

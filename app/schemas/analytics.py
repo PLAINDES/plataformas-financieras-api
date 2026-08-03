@@ -101,6 +101,19 @@ class TimeSeriesItem(BaseModel):
     count: int
 
 
+class CalculationFunnel(BaseModel):
+    users_started: int
+    activation_rate: float
+    started: int
+    completed: int
+    completion_rate: float
+
+
+class RetentionMetrics(BaseModel):
+    new_users: int
+    recurring_users: int
+
+
 class DashboardData(BaseModel):
     summary: DashboardSummary
     devices: List[TopItem]
@@ -110,5 +123,7 @@ class DashboardData(BaseModel):
     daily_distribution: List[TopItem]
     pages: List[TopItem]
     sessions_over_time: List[TimeSeriesItem]
+    kapital_funnel: CalculationFunnel
+    kapital_retention: RetentionMetrics
     cta_clicks: int
     avg_time_on_page: Optional[float]
