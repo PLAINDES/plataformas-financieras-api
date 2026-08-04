@@ -348,67 +348,100 @@ def get_dashboard(
         .where(AnalyticsEvent.event_name == "cta_whatsapp_click")
     ).scalar() or 0
 
-    funnel_event_names = (
-        "kapital_calculator_started",
-        "kapital_calculation_started",
-        "kapital_calculation_completed",
+    kapital_visitor_key = case(
+        (
+            AnalyticsSession.user_id.isnot(None),
+            func.concat("user:", AnalyticsSession.user_id),
+        ),
+        (
+            AnalyticsSession.ip_address.isnot(None),
+            func.concat("ip:", AnalyticsSession.ip_address),
+        ),
+        else_=func.concat("session:", AnalyticsSession.session_id),
     )
-    funnel_result = db.execute(
-        select(
-            AnalyticsEvent.event_name,
-            func.count(AnalyticsEvent.id),
-            func.count(func.distinct(AnalyticsEvent.session_id)),
+    users_started = db.execute(
+        select(func.count(func.distinct(kapital_visitor_key)))
+        .select_from(AnalyticsEvent)
+        .join(
+            AnalyticsSession,
+            AnalyticsSession.session_id == AnalyticsEvent.session_id,
         )
         .where(AnalyticsEvent.timestamp >= since)
-        .where(AnalyticsEvent.event_name.in_(funnel_event_names))
-        .group_by(AnalyticsEvent.event_name)
-    ).all()
-    funnel_counts = {
-        event_name: {"events": count, "sessions": sessions}
-        for event_name, count, sessions in funnel_result
-    }
-    users_started = funnel_counts.get(
-        "kapital_calculator_started", {"sessions": 0}
-    )["sessions"]
-    calculations_started = funnel_counts.get(
-        "kapital_calculation_started", {"events": 0}
-    )["events"]
-    calculations_completed = funnel_counts.get(
-        "kapital_calculation_completed", {"events": 0}
-    )["events"]
+        .where(AnalyticsEvent.event_name == "kapital_calculator_started")
+    ).scalar() or 0
     kapital_visitors = db.execute(
-        select(func.count(func.distinct(AnalyticsPageView.session_id)))
+        select(func.count(func.distinct(kapital_visitor_key)))
+        .select_from(AnalyticsPageView)
+        .join(
+            AnalyticsSession,
+            AnalyticsSession.session_id == AnalyticsPageView.session_id,
+        )
         .where(AnalyticsPageView.timestamp >= since)
         .where(AnalyticsPageView.page_path.like("/kapital%"))
     ).scalar() or 0
     activation_rate = round(
         users_started / kapital_visitors * 100, 1
     ) if kapital_visitors else 0.0
+
+    attempt_id = func.json_unquote(
+        func.json_extract(AnalyticsEvent.event_metadata, "$.attempt_id")
+    )
+    calculation_mode = func.json_unquote(
+        func.json_extract(AnalyticsEvent.event_metadata, "$.calculation_mode")
+    )
+    started_attempts = (
+        select(attempt_id.label("attempt_id"))
+        .where(AnalyticsEvent.timestamp >= since)
+        .where(AnalyticsEvent.event_name == "kapital_calculation_started")
+        .where(calculation_mode == "initial")
+        .where(attempt_id.isnot(None))
+        .distinct()
+        .subquery()
+    )
+    completed_attempts = (
+        select(attempt_id.label("attempt_id"))
+        .where(AnalyticsEvent.timestamp >= since)
+        .where(AnalyticsEvent.event_name == "kapital_calculation_completed")
+        .where(calculation_mode == "sensitivity")
+        .where(attempt_id.isnot(None))
+        .distinct()
+        .subquery()
+    )
+    calculations_started = db.execute(
+        select(func.count(started_attempts.c.attempt_id))
+    ).scalar() or 0
+    calculations_completed = db.execute(
+        select(func.count(completed_attempts.c.attempt_id)).select_from(
+            completed_attempts.join(
+                started_attempts,
+                started_attempts.c.attempt_id == completed_attempts.c.attempt_id,
+            )
+        )
+    ).scalar() or 0
     completion_rate = round(
         calculations_completed / calculations_started * 100, 1
     ) if calculations_started else 0.0
-
     first_kapital_visits = (
         select(
-            AnalyticsSession.user_id.label("user_id"),
+            kapital_visitor_key.label("visitor_key"),
             func.min(AnalyticsPageView.timestamp).label("first_visit"),
         )
         .join(
             AnalyticsPageView,
             AnalyticsPageView.session_id == AnalyticsSession.session_id,
         )
-        .where(AnalyticsSession.user_id.isnot(None))
+        .where(kapital_visitor_key.isnot(None))
         .where(AnalyticsPageView.page_path.like("/kapital%"))
-        .group_by(AnalyticsSession.user_id)
+        .group_by(kapital_visitor_key)
         .subquery()
     )
-    period_kapital_users = (
-        select(AnalyticsSession.user_id.label("user_id"))
+    period_kapital_visitors = (
+        select(kapital_visitor_key.label("visitor_key"))
         .join(
             AnalyticsPageView,
             AnalyticsPageView.session_id == AnalyticsSession.session_id,
         )
-        .where(AnalyticsSession.user_id.isnot(None))
+        .where(kapital_visitor_key.isnot(None))
         .where(AnalyticsPageView.timestamp >= since)
         .where(AnalyticsPageView.page_path.like("/kapital%"))
         .distinct()
@@ -425,9 +458,10 @@ def get_dashboard(
                 0,
             ),
         ).select_from(
-            period_kapital_users.join(
+            period_kapital_visitors.join(
                 first_kapital_visits,
-                first_kapital_visits.c.user_id == period_kapital_users.c.user_id,
+                first_kapital_visits.c.visitor_key
+                == period_kapital_visitors.c.visitor_key,
             )
         )
     ).one()
@@ -491,10 +525,11 @@ def get_dashboard(
     # Agrupar manualmente subrutas
     pages_map: dict[str, int] = {}
     for path, count in pages_result:
-        if path.startswith("/kapital/"):
+        normalized_path = path.split("?", 1)[0] or "/"
+        if normalized_path.startswith("/kapital/"):
             group = "/kapital"
         else:
-            group = path
+            group = normalized_path
         pages_map[group] = pages_map.get(group, 0) + count
 
     sorted_pages = sorted(pages_map.items(), key=lambda x: x[1], reverse=True)[:10]
