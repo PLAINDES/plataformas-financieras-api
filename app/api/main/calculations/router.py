@@ -635,7 +635,7 @@ async def prewarm_excel_session(db: Session = Depends(get_db)):
     service = get_onedrive_service()
     try:
         session_id = await service._create_workbook_session(
-            source_template.onedrive_item_id, persist_changes=False
+            source_template.onedrive_item_id, persist_changes=True
         )
         return {"session_id": session_id}
     except Exception as e:
