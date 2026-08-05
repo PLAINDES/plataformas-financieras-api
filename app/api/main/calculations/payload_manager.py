@@ -169,6 +169,8 @@ def _normalize_calculation_data(
         if isinstance(incoming_results, list) and incoming_results:
             # Tomamos estrictamente el nuevo generado por Excel
             resultados = _stamp_entries([incoming_results[0]])
+        elif isinstance(incoming_results, dict):
+            resultados = _stamp_entries([incoming_results])
 
     if not resultados:
         # Si no extrajimos resultados nuevos, mantenemos el que ya existía

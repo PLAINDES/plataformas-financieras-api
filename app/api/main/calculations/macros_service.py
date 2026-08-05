@@ -12,9 +12,34 @@ from app.core.constants import (
 )
 from app.models.main import CalculationType, TemplateComplement
 from app.models.templates import MasterTemplate
+from app.services.onedrive.config import ROOT_FOLDER
 from app.services.onedrive.service import OneDriveConfig, get_onedrive_service
 
 from .excel_engine import _build_template_copy_name
+
+
+VALORA_INPUT_ALIASES = {
+    "fecha": "date",
+    "pais": "country",
+    "moneda": "currency",
+    "industria": "sector",
+    "tasa_libre_riesgo": "instrument",
+    "anio_bono": "bono",
+    "costo_deuda": "kd",
+    "porcentaje_deuda": "debt",
+    "tasa_impositiva": "tax",
+    "devaluacion": "devaluation",
+}
+
+
+def _apply_valora_input_aliases(input_dict: dict) -> None:
+    for target_key, source_key in VALORA_INPUT_ALIASES.items():
+        if input_dict.get(target_key) not in (None, ""):
+            continue
+
+        source_value = input_dict.get(source_key)
+        if source_value not in (None, ""):
+            input_dict[target_key] = source_value
 
 
 def get_default_or_latest_master_template(db: Session) -> MasterTemplate | None:
@@ -77,15 +102,29 @@ async def _clone_default_template_for_calculation(
     target_folder = calc_type.value
 
     service = get_onedrive_service()
+    folder_result = await service.ensure_folder_structure(
+        {ROOT_FOLDER: {target_env: [target_folder]}}
+    )
+    if not folder_result.get("success"):
+        raise HTTPException(
+            status_code=502,
+            detail="No se pudo preparar la carpeta de trabajo en OneDrive",
+        )
+
     copied_item = await service.copy_file(
         source_item_id=source_template.onedrive_item_id,
         new_filename=copied_filename,
         env=target_env,
         folder=target_folder,
     )
+    copied_item_id = copied_item.get("id")
+    if not copied_item_id:
+        raise HTTPException(
+            status_code=502, detail="OneDrive no devolvió el ID de la copia"
+        )
 
     return {
-        "onedrive_item_id": copied_item.get("id"),
+        "onedrive_item_id": copied_item_id,
         "original_name": source_filename,
         "copied_name": copied_filename,
     }
@@ -111,6 +150,8 @@ def _enrich_input_with_macros(db: Session, input_dict: dict) -> None:
     Enriquece un diccionario de input individual con datos de complementos de la BD.
     """
     t0 = time.perf_counter()
+    _apply_valora_input_aliases(input_dict)
+
     date = str(input_dict.get("fecha", "")).strip()
 
     year = ""
