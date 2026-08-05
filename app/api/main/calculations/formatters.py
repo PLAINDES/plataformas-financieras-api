@@ -86,6 +86,9 @@ def _to_excel_input_value(field: str, value: object) -> object:
         "porcentaje_capital",
         "tasa_efectiva_impuesto",
         "country",
+        "revenue_forecast_rate",
+        "fdc_forecast_rate",
+        "perpetual_growth_rate",
     }
 
     if field not in percentage_like_fields:
@@ -105,7 +108,13 @@ def _to_excel_input_value(field: str, value: object) -> object:
 
     if field == "country":
         final_val = n / 10000 if abs(n) > 1 else n / 100
-    elif field in ("devaluacion", "costo_deuda"):
+    elif field in (
+        "devaluacion",
+        "costo_deuda",
+        "revenue_forecast_rate",
+        "fdc_forecast_rate",
+        "perpetual_growth_rate",
+    ):
         final_val = n / 100
     else:
         # Para todos los demás porcentajes (tasa_impositiva, porcentaje_deuda, etc)

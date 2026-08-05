@@ -196,3 +196,51 @@ COUNTRY_LOCAL_CURRENCIES = {
     "Ecuador": "USD",
     "Peru": "PEN",
 }
+
+VALORA_INPUT_CELL_MAP = {
+    "fecha": "C2",
+    "pais": "C3",
+    "moneda": "C4",
+    "industria": "C5",
+    "tasa_libre_riesgo": "C6",
+    "anio_bono": "C7",
+    "shares": "C8",
+    "costo_deuda": "C9",
+    "porcentaje_deuda": "C10",
+}
+
+VALORA_PROJECTION_INPUT_CELL_MAP = {
+    "revenue_forecast_rate": "M91",
+    "perpetual_growth_rate": "F81",
+}
+
+VALORA_INTEGRATED_INPUT_CELL_MAP = {
+    "fdc_forecast_rate": "M10",
+}
+
+VALORA_RESULTS_CELL_MAP = {
+    "wacc": ("Conceptos", "C23"),
+    "balance": {
+        "activo": ("Proyección", "L18"),
+        "pasivo": ("Proyección", "L29"),
+        "patrimonio": ("Proyección", "L34"),
+    },
+    "conceptos": {
+        "activo": ("Conceptos", "Q24"),
+        "pasivo": ("Conceptos", "Q26"),
+        "empresa": ("Conceptos", "Q25"),
+        "patrimonio": ("Conceptos", "Q27"),
+        "precio_accion": ("Conceptos", "Q28"),
+        "tasa_forecast": ("Conceptos", "T30"),
+        "tasa_perpetua": ("Conceptos", "T31"),
+    },
+    "integrado": {
+        "activo": ("Integrado", "P34"),
+        "pasivo": ("Integrado", "P36"),
+        "empresa": ("Integrado", "P35"),
+        "patrimonio": ("Integrado", "P37"),
+        "precio_accion": ("Integrado", "P38"),
+        "tasa_forecast": ("Integrado", "S40"),
+        "tasa_perpetua": ("Integrado", "S41"),
+    },
+}
