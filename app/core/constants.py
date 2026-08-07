@@ -28,7 +28,7 @@ KAPITAL_EXPECTED_DEVALUATION = "C16"
 KAPITAL_SENSITIVITY_INPUT_CELL_MAP = {}
 
 KAPITAL_CUSTOM_INPUT_CELL_MAP = {
-    "beta_subsector": "F36",
+    "beta_subsector": "F28",
     "beta_subsector_alt": "F40",
 }
 
