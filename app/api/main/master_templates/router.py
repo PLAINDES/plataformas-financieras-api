@@ -91,7 +91,7 @@ async def list_valora_copies(
     if not service.config.is_configured():
         raise HTTPException(status_code=503, detail="OneDrive no está configurado")
 
-    target_env = env or settings.ENV or "development"
+    target_env = env or settings.ENVIRONMENT or "development"
     folders_to_list = ["valora"]
     if include_kapital:
         folders_to_list.append("kapital")
