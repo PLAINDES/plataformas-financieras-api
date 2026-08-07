@@ -12,6 +12,7 @@ from typing import Literal, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -55,6 +56,169 @@ Folder = Literal["plantillas_maestras", "kapital", "valora"]
 # =============================
 # RESTO DE RUTAS GENERALES
 # =============================
+
+
+class ValoraCopyListItem(BaseModel):
+    id: str
+    name: str
+    size: Optional[int] = None
+    created_at: Optional[str] = None
+    modified_at: Optional[str] = None
+    web_url: Optional[str] = None
+    download_url: Optional[str] = None
+    env: str
+    folder: Optional[str] = None
+
+
+class ValoraCopyListResponse(BaseModel):
+    items: list[ValoraCopyListItem]
+    env: str
+
+
+@router.get("/valora-copies", response_model=ValoraCopyListResponse)
+async def list_valora_copies(
+    env: Optional[Environment] = None,
+    include_kapital: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
+):
+    """
+    Lista las copias de trabajo de cálculos Valora (y opcionalmente Kapital)
+    que existen en OneDrive. Permite depurar los cambios persistidos
+    cuando persist_changes=True.
+    """
+    service = get_onedrive_service()
+    if not service.config.is_configured():
+        raise HTTPException(status_code=503, detail="OneDrive no está configurado")
+
+    target_env = env or settings.ENV or "development"
+    folders_to_list = ["valora"]
+    if include_kapital:
+        folders_to_list.append("kapital")
+
+    enriched = []
+    for folder in folders_to_list:
+        path = service.build_path(target_env, folder)
+        logger.info(f"[VALORA COPIES] Listando folder={folder} path={path}")
+        try:
+            files = await service.list_files(path=path)
+        except Exception as exc:
+            logger.exception(f"Error listando copias {folder} en OneDrive")
+            raise HTTPException(
+                status_code=502,
+                detail=f"No se pudo listar copias de {folder}: {exc}",
+            ) from exc
+
+        logger.info(f"[VALORA COPIES] Folder={folder} files={len(files)}")
+        for f in files:
+            download_url = ""
+            try:
+                download_url = await service.get_download_url(f["id"])
+            except Exception:
+                logger.warning(f"No se pudo obtener download_url para {f.get('id')}")
+
+            enriched.append(
+                {
+                    "id": f["id"],
+                    "name": f"[{folder.upper()}] {f['name']}",
+                    "size": f.get("size"),
+                    "created_at": f.get("created_at"),
+                    "modified_at": f.get("modified_at"),
+                    "web_url": f.get("web_url"),
+                    "download_url": download_url,
+                    "env": target_env,
+                    "folder": folder,
+                }
+            )
+
+    # Ordenar: más reciente primero, fallback por nombre si no hay fecha
+    enriched.sort(
+        key=lambda x: (
+            datetime.fromisoformat(x["modified_at"].replace("Z", "+00:00"))
+            if x.get("modified_at")
+            else datetime.min.replace(tzinfo=None)
+        ),
+        reverse=True,
+    )
+
+    return {"items": enriched, "env": target_env}
+
+
+@router.delete("/valora-copies/{item_id}")
+async def delete_valora_copy(
+    item_id: str,
+    env: Optional[Environment] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
+):
+    """Elimina una copia de trabajo Valora de OneDrive."""
+    service = get_onedrive_service()
+    if not service.config.is_configured():
+        raise HTTPException(status_code=503, detail="OneDrive no está configurado")
+
+    try:
+        await service.delete_file(item_id)
+    except Exception as exc:
+        logger.exception(f"Error eliminando copia Valora {item_id}")
+        raise HTTPException(
+            status_code=502, detail=f"No se pudo eliminar la copia: {exc}"
+        ) from exc
+
+    return {"success": True, "deleted_id": item_id}
+
+
+@router.post("/valora-copies/delete-batch")
+async def delete_valora_copies_batch(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
+):
+    """
+    Elimina múltiples copias de trabajo Valora de OneDrive.
+    Body: {"ids": ["item_id_1", "item_id_2", ...]}
+    """
+    ids = payload.get("ids") or []
+    if not ids:
+        raise HTTPException(status_code=400, detail="No se enviaron IDs")
+
+    service = get_onedrive_service()
+    if not service.config.is_configured():
+        raise HTTPException(status_code=503, detail="OneDrive no está configurado")
+
+    deleted = []
+    failed = []
+
+    for item_id in ids:
+        try:
+            await service.delete_file(item_id)
+            deleted.append(item_id)
+        except Exception as exc:
+            logger.warning(f"Error eliminando copia {item_id}: {exc}")
+            failed.append({"id": item_id, "error": str(exc)})
+
+    return {"success": len(failed) == 0, "deleted": deleted, "failed": failed}
+
+
+@router.get("/valora-copies/{item_id}/download-url")
+async def get_valora_copy_download_url(
+    item_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
+):
+    """Devuelve una URL temporal para previsualizar/descargar una copia Valora."""
+    service = get_onedrive_service()
+    if not service.config.is_configured():
+        raise HTTPException(status_code=503, detail="OneDrive no está configurado")
+
+    try:
+        url = await service.get_download_url(item_id)
+    except Exception as exc:
+        logger.exception(f"Error obteniendo URL de copia Valora {item_id}")
+        raise HTTPException(
+            status_code=502, detail=f"No se pudo obtener URL: {exc}"
+        ) from exc
+
+    return {"download_url": url, "item_id": item_id}
 
 
 @router.get("/chart-file/{chart_filename}")

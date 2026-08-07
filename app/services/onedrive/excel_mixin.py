@@ -28,6 +28,9 @@ class OneDriveExcelMixin:
         Returns:
             session_id: ID de la sesión creada
         """
+        import time
+
+        t_start = time.perf_counter()
         token = await self._get_token()
         headers = self._headers(token)
         url = (
@@ -40,10 +43,15 @@ class OneDriveExcelMixin:
             resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
             data = resp.json()
-            return data.get("id")
+        session_id = data.get("id")
+        logger.info(f"[EXCEL TIMER] create_workbook_session: {time.perf_counter()-t_start:.3f}s")
+        return session_id
 
     async def _close_workbook_session(self, item_id: str, session_id: str) -> None:
         """Cierra una sesión de trabajo de Excel Online."""
+        import time
+
+        t_start = time.perf_counter()
         token = await self._get_token()
         headers = self._headers(token)
         headers["workbook-session-id"] = session_id
@@ -57,6 +65,7 @@ class OneDriveExcelMixin:
             logger.debug(f"Workbook session closed: {session_id}")
         except Exception as e:
             logger.warning(f"Could not close workbook session {session_id}: {e}")
+        logger.info(f"[EXCEL TIMER] close_workbook_session: {time.perf_counter()-t_start:.3f}s")
 
     async def _refresh_workbook_session(self, item_id: str, session_id: str) -> None:
         """Reinicia el timeout de 5 minutos de una sesión activa."""
@@ -82,6 +91,9 @@ class OneDriveExcelMixin:
         Si se pasa session_id, el cálculo se hace dentro de esa sesión
         (necesario para que read_excel_cell vea los resultados).
         """
+        import time
+
+        t_start = time.perf_counter()
         token = await self._get_token()
         headers = self._headers(token)
         if session_id:
@@ -103,6 +115,7 @@ class OneDriveExcelMixin:
                     headers["workbook-session-id"] = session_id
                 resp = await client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
+        logger.info(f"[EXCEL TIMER] force_calculate_excel: {time.perf_counter()-t_start:.3f}s")
 
     async def read_excel_cell(
         self,
@@ -116,6 +129,9 @@ class OneDriveExcelMixin:
         Si se pasa session_id, la lectura se hace dentro de esa sesión
         para aprovechar el contexto de cálculo compartido.
         """
+        import time
+
+        t_start = time.perf_counter()
         token = await self._get_token()
         headers = self._headers(token)
         if session_id:
@@ -138,11 +154,15 @@ class OneDriveExcelMixin:
                 resp = await client.get(url, headers=headers)
             resp.raise_for_status()
             data = resp.json()
-            return {
-                "values": data.get("values"),
-                "text": data.get("text"),
-                "formulas": data.get("formulas"),
-            }
+        logger.info(
+            f"[EXCEL TIMER] read_excel_cell({sheet_name}!{cell_address}): "
+            f"{time.perf_counter()-t_start:.3f}s"
+        )
+        return {
+            "values": data.get("values"),
+            "text": data.get("text"),
+            "formulas": data.get("formulas"),
+        }
 
     async def get_excel_chart_image(
         self,
@@ -230,6 +250,9 @@ class OneDriveExcelMixin:
         session_id: str | None = None,
     ):
         """Actualiza un rango/celda de un Excel alojado en OneDrive."""
+        import time
+
+        t_start = time.perf_counter()
         token = await self._get_token()
         headers = self._headers(token)
         if session_id:
@@ -253,4 +276,8 @@ class OneDriveExcelMixin:
                 resp = await client.patch(url, headers=headers, json=payload)
             resp.raise_for_status()
             data = resp.json()
-            return data.get("values")
+        logger.info(
+            f"[EXCEL TIMER] update_excel_cell({sheet_name}!{cell_address}): "
+            f"{time.perf_counter()-t_start:.3f}s"
+        )
+        return data.get("values")

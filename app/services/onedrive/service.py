@@ -80,10 +80,14 @@ class OneDriveService(OneDriveAuthMixin, OneDriveDriveMixin, OneDriveExcelMixin)
         requests_payload debe ser una lista de diccionarios:
         [{"id": "1", "method": "GET", "url": "/users/..."}]
         """
+        import time
+
         if not requests_payload:
             return []
 
+        t_start = time.perf_counter()
         token = await self._get_token()
+        t_token = time.perf_counter() - t_start
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
@@ -92,6 +96,12 @@ class OneDriveService(OneDriveAuthMixin, OneDriveDriveMixin, OneDriveExcelMixin)
         url = f"{GRAPH_BASE}/$batch"
         payload = {"requests": requests_payload}
 
+        logger.info(
+            f"[GRAPH BATCH] token={t_token:.3f}s | "
+            f"requests={len(requests_payload)} | ids={','.join(str(r.get('id')) for r in requests_payload)}"
+        )
+
+        t_req = time.perf_counter()
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(url, headers=headers, json=payload)
             if resp.status_code == 401:
@@ -100,8 +110,28 @@ class OneDriveService(OneDriveAuthMixin, OneDriveDriveMixin, OneDriveExcelMixin)
                 resp = await client.post(url, headers=headers, json=payload)
 
             resp.raise_for_status()
-            data = resp.json()
-            return data.get("responses", [])
+        t_http = time.perf_counter() - t_req
+
+        t_parse = time.perf_counter()
+        data = resp.json()
+        responses = data.get("responses", [])
+        error_ids = []
+        for r in responses:
+            status = r.get("status")
+            body = r.get("body")
+            if status and status >= 400:
+                error_ids.append((r.get("id"), status))
+        t_parse = time.perf_counter() - t_parse
+
+        logger.info(
+            f"[GRAPH BATCH] total={time.perf_counter()-t_start:.3f}s "
+            f"http={t_http:.3f}s parse={t_parse:.3f}s "
+            f"responses={len(responses)} errors={len(error_ids)}"
+        )
+        if error_ids:
+            logger.error(f"[GRAPH BATCH ERROR] ids={error_ids}")
+
+        return responses
 
 
 # === SINGLETON ================================================================

@@ -210,12 +210,14 @@ VALORA_INPUT_CELL_MAP = {
 }
 
 VALORA_PROJECTION_INPUT_CELL_MAP = {
-    "revenue_forecast_rate": "M91",
+    # M91 contiene fórmulas de la plantilla; no se sobreescribe.
+    # "revenue_forecast_rate": "M91",
     "perpetual_growth_rate": "F81",
 }
 
 VALORA_INTEGRATED_INPUT_CELL_MAP = {
-    "fdc_forecast_rate": "M10",
+    # M7 y M10 contienen fórmulas de la plantilla; no se sobreescriben.
+    # "fdc_forecast_rate": "M10",
 }
 
 VALORA_RESULTS_CELL_MAP = {
