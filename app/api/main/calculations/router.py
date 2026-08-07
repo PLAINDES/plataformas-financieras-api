@@ -199,7 +199,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
     _inject_macro_data_into_payload(db, payload_data)
     print(f"[TIMER] POST macro injection: {time.perf_counter() - t_macro:.3f} seg", flush=True)
 
-    # 1. OBTENER LA PLANTILLA MAESTRA DIRECTAMENTE (SIN CLONAR)
+    # 1. OBTENER LA PLANTILLA MAESTRA DIRECTAMENTE
     t_template = time.perf_counter()
     source_template = get_default_or_latest_master_template(db)
     print(f"[TIMER] POST get template: {time.perf_counter() - t_template:.3f} seg", flush=True)
@@ -209,6 +209,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
     master_item_id = source_template.onedrive_item_id
     calculation_file_meta = None
 
+<<<<<<< HEAD
     if calc_type == CalculationType.VALORA:
         # PRUEBAS: usar directamente la plantilla maestra subida en lugar de
         # crear una copia de trabajo de Valora. Luego podemos reactivar este
@@ -227,6 +228,22 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
         #         detail="No se pudo crear la copia de trabajo de Valora",
         #     ) from exc
         pass
+=======
+    if calc_type in (CalculationType.VALORA, CalculationType.KAPITAL):
+        try:
+            calculation_file_meta = await _clone_default_template_for_calculation(
+                db, calc_type
+            )
+            master_item_id = calculation_file_meta["onedrive_item_id"]
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.exception(f"No se pudo crear la copia de trabajo de {calc_type.value}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"No se pudo crear la copia de trabajo de {calc_type.value}",
+            ) from exc
+>>>>>>> 8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
 
     # 2. CALCULAR EN RAM
     if calc_type == CalculationType.KAPITAL:
@@ -262,7 +279,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
                 master_item_id,
                 include_resultados=True,
                 include_sensibilizacion=include_sensibilizacion,
-                existing_session_id=prewarmed_session_id,
+                existing_session_id=None,
                 sensitivity_input=sensitivity_input
             )
         except Exception as exc:
@@ -278,7 +295,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
                 existing_session_id=None,
             )
         except Exception as exc:
-            logger.warning(f"Error procesando Valora en RAM: {exc}")
+            logger.exception(f"Error procesando Valora en RAM: {exc}")
         print(f"[TIMER] POST Excel Valora enrichment total: {time.perf_counter() - t_excel:.3f} seg", flush=True)
 
     # GUARDAR EN BD

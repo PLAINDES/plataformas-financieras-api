@@ -1,4 +1,5 @@
 # app/api/main/router.py
+import io
 import logging
 import os
 import re
@@ -6,10 +7,13 @@ import uuid
 from datetime import datetime
 from typing import Any, List, Optional
 
+import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_admin
 from app.db.database import get_db
 from app.models.main import (
     AppConfiguration,
@@ -17,6 +21,7 @@ from app.models.main import (
     CalculationType,
     TemplateComplement,
 )
+from app.models.user import User
 from app.schemas.main import (
     AppConfigurationUpdate,
     TemplateComplementCreate,
@@ -26,6 +31,9 @@ from app.schemas.main import (
 from app.core.config import settings
 from app.core.constants import AWS_BASE_PREFIX
 from app.services.aws_service import s3_service
+
+BVL_S3_FOLDER = "bvl_cotizacion"
+BVL_MARKER_KEY = f"{AWS_BASE_PREFIX}{BVL_S3_FOLDER}/current.json"
 
 logger = logging.getLogger(__name__)
 
@@ -499,3 +507,166 @@ def set_default_valora_template(payload: dict):
     # Retornar historial actualizado
     updated_templates = _list_valora_templates()
     return {"templates": updated_templates}
+
+
+# === BVL COTIZACIÓN ==========================================================
+
+
+class BvlCotizacionItem(BaseModel):
+    empresa: str
+    id: str
+    numero_acciones: Optional[float]
+    capitalizacion_bursatil: Optional[float]
+    valor_por_accion: Optional[float]
+
+
+class BvlCotizacionResponse(BaseModel):
+    items: list[BvlCotizacionItem]
+
+
+class BvlDeletePayload(BaseModel):
+    empresa: str
+    id: str
+
+
+def _parse_number_peruvian(value) -> Optional[float]:
+    """Convierte strings como 'S/502,731,591' o '1,196,979,979' a float."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    s = str(value).strip()
+    if not s:
+        return None
+    # Quitar prefijo de moneda
+    s = re.sub(r"^[A-Z]{2,3}\s*", "", s)
+    # Quitar separadores de miles
+    s = s.replace(",", "").replace(" ", "")
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _dataframe_to_bvl_items(df: pd.DataFrame) -> list[dict]:
+    df = df.copy()
+    col_map = {}
+    for col in df.columns:
+        col_norm = str(col).strip().lower().replace(" ", "_")
+        if col_norm in ("empresa", "company", "nombre"):
+            col_map[col] = "empresa"
+        elif col_norm in ("id", "ticker", "código", "codigo"):
+            col_map[col] = "id"
+        elif col_norm in (
+            "n._de_acciones",
+            "n_de_acciones",
+            "número_de_acciones",
+            "numero_de_acciones",
+            "acciones",
+        ):
+            col_map[col] = "numero_acciones"
+        elif col_norm in (
+            "capitalización_bursátil",
+            "capitalizacion_bursatil",
+            "capitalización",
+            "capitalizacion",
+        ):
+            col_map[col] = "capitalizacion_bursatil"
+        elif col_norm in ("valor_por_accion", "valor_por_acción", "precio", "valor"):
+            col_map[col] = "valor_por_accion"
+    df = df.rename(columns=col_map)
+
+    required = {"empresa", "id"}
+    missing = required - set(df.columns)
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Faltan columnas requeridas: {', '.join(missing)}. "
+            "Columnas detectadas: " + ", ".join(str(c) for c in df.columns),
+        )
+
+    items = []
+    for _, row in df.iterrows():
+        empresa = str(row.get("empresa", "")).strip()
+        id_val = str(row.get("id", "")).strip()
+        if not empresa or not id_val:
+            continue
+        items.append(
+            {
+                "empresa": empresa,
+                "id": id_val,
+                "numero_acciones": _parse_number_peruvian(row.get("numero_acciones")),
+                "capitalizacion_bursatil": _parse_number_peruvian(
+                    row.get("capitalizacion_bursatil")
+                ),
+                "valor_por_accion": _parse_number_peruvian(row.get("valor_por_accion")),
+            }
+        )
+    return items
+
+
+@router.get("/bvl-cotizacion", response_model=BvlCotizacionResponse)
+def get_bvl_cotizacion():
+    data = s3_service.get_json_object(BVL_MARKER_KEY)
+    if not data:
+        return {"items": []}
+    items = data.get("items", [])
+    return {"items": items}
+
+
+@router.post("/bvl-cotizacion/upload", response_model=BvlCotizacionResponse)
+async def upload_bvl_cotizacion(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_admin),
+):
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="No se proporcionó ningún archivo.")
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in [".xlsx", ".xls", ".csv"]:
+        raise HTTPException(
+            status_code=400, detail="Solo se permiten archivos Excel o CSV"
+        )
+
+    content = await file.read()
+    try:
+        if ext == ".csv":
+            df = pd.read_csv(io.BytesIO(content))
+        else:
+            df = pd.read_excel(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"No se pudo leer el archivo: {e}"
+        ) from e
+
+    items = _dataframe_to_bvl_items(df)
+
+    s3_service.put_json_object(
+        BVL_MARKER_KEY,
+        {"items": items, "updated_at": datetime.utcnow().isoformat()},
+    )
+
+    return {"items": items}
+
+
+@router.delete("/bvl-cotizacion/empresa", response_model=BvlCotizacionResponse)
+async def delete_bvl_empresa(
+    payload: BvlDeletePayload,
+    current_user: User = Depends(get_current_admin),
+):
+    data = s3_service.get_json_object(BVL_MARKER_KEY)
+    items = data.get("items", []) if data else []
+    filtered = [
+        item for item in items
+        if not (item.get("empresa") == payload.empresa and item.get("id") == payload.id)
+    ]
+
+    if len(filtered) == len(items):
+        raise HTTPException(status_code=404, detail="Empresa no encontrada en la cotización BVL.")
+
+    s3_service.put_json_object(
+        BVL_MARKER_KEY,
+        {"items": filtered, "updated_at": datetime.utcnow().isoformat()},
+    )
+
+    return {"items": filtered}

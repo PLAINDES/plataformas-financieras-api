@@ -327,32 +327,38 @@ class OneDriveDriveMixin:
         else:
             raise ValueError("Necesitas proporcionar 'path' o ambos 'env' y 'folder'")
 
+        all_items = []
+        next_link: Optional[str] = url
         async with httpx.AsyncClient() as client:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code == 404:
-                return []
-            if resp.status_code == 401:
-                token = await self._force_refresh_token()
-                headers = self._headers(token)
-                resp = await client.get(url, headers=headers)
+            while next_link:
+                resp = await client.get(next_link, headers=headers)
                 if resp.status_code == 404:
                     return []
-            resp.raise_for_status()
-            items = resp.json().get("value", [])
-            # Filter only files (not folders)
-            return [
-                {
-                    "id": item.get("id"),
-                    "name": item.get("name"),
-                    "type": "file",
-                    "size": item.get("size"),
-                    "created_at": item.get("createdDateTime"),
-                    "modified_at": item.get("lastModifiedDateTime"),
-                    "web_url": item.get("webUrl"),
-                }
-                for item in items
-                if "folder" not in item  # Only files
-            ]
+                if resp.status_code == 401:
+                    token = await self._force_refresh_token()
+                    headers = self._headers(token)
+                    resp = await client.get(next_link, headers=headers)
+                    if resp.status_code == 404:
+                        return []
+                resp.raise_for_status()
+                data = resp.json()
+                all_items.extend(data.get("value", []))
+                next_link = data.get("@odata.nextLink")
+
+        # Filter only files (not folders)
+        return [
+            {
+                "id": item.get("id"),
+                "name": item.get("name"),
+                "type": "file",
+                "size": item.get("size"),
+                "created_at": item.get("createdDateTime"),
+                "modified_at": item.get("lastModifiedDateTime"),
+                "web_url": item.get("webUrl"),
+            }
+            for item in all_items
+            if "folder" not in item  # Only files
+        ]
 
     async def delete_file(self, item_id: str) -> None:
         """Elimina un archivo de OneDrive por su item ID."""
@@ -409,8 +415,8 @@ class OneDriveDriveMixin:
                 raise Exception("No se recibió URL de monitoreo para la copia")
 
             # 3. Esperar a que MS termine de copiar
-            for _ in range(20):  # Reintentar durante ~10 segundos maximo
-                await asyncio.sleep(0.5)
+            for _ in range(30):  # Reintentar durante ~7.5 segundos maximo
+                await asyncio.sleep(0.25)
                 status_resp = await client.get(monitor_url)
                 if status_resp.status_code == 200:
                     status_data = status_resp.json()

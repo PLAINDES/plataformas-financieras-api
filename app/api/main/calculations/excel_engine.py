@@ -1,6 +1,9 @@
 # app/api/main/calculations_router.py
 import asyncio
+<<<<<<< HEAD
 import json
+=======
+>>>>>>> 8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
 import logging
 import time
 from typing import Any
@@ -9,6 +12,8 @@ from uuid import uuid4
 
 import httpx
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 from app.core.constants import (
     KAPITAL_CUSTOM_INPUT_CELL_MAP,
@@ -190,9 +195,14 @@ async def _write_inputs_to_excel(
 
     # Enviar a Microsoft en lotes de 20 (Límite del API Graph)
     chunks = [write_requests[i : i + 20] for i in range(0, len(write_requests), 20)]
-    batch_tasks = [service.execute_batch(chunk) for chunk in chunks]
-    if batch_tasks:
-        await asyncio.gather(*batch_tasks)
+    for chunk in chunks:
+        logger.info(f"[KAPITAL WRITE] Enviando chunk de {len(chunk)} requests")
+        responses = await service.execute_batch(chunk)
+        for r in responses:
+            if r.get("status", 0) >= 400:
+                logger.error(
+                    f"[KAPITAL WRITE ERROR] id={r.get('id')} status={r.get('status')} body={r.get('body')}"
+                )
 
 
 async def _read_market_block(
@@ -274,14 +284,21 @@ async def _build_excel_output_entries(
             },
         )
 
-    # Dividir las celdas en lotes de 20 y ejecutar simultáneamente
+    # Dividir las celdas en lotes de 20 y ejecutar secuencialmente
     chunks = [read_requests[i : i + 20] for i in range(0, len(read_requests), 20)]
-    batch_tasks = [service.execute_batch(chunk) for chunk in chunks]
-    batch_results = await asyncio.gather(*batch_tasks)
+    batch_results: list[list[dict]] = []
+    for chunk in chunks:
+        logger.info(f"[KAPITAL READ] Enviando chunk de {len(chunk)} requests")
+        batch_results.append(await service.execute_batch(chunk))
 
     # Procesar el mega-paquete de respuestas
     for chunk_responses in batch_results:
         for resp in chunk_responses:
+            if resp.get("status", 0) >= 400:
+                logger.error(
+                    f"[KAPITAL READ ERROR] id={resp.get('id')} status={resp.get('status')} body={resp.get('body')}"
+                )
+                continue
             cat, market, field = mapping[resp["id"]]
 
             val = None
@@ -346,11 +363,11 @@ async def _enrich_payload_with_excel_outputs(
                 flush=True,
             )
             session_id = None
-    # Si no pasaron sesión, crea una nueva
+    # Si no pasaron sesión, crea una nueva con persistencia para copia de trabajo
     if not session_id:
         t0 = time.perf_counter()
         session_id = await service._create_workbook_session(
-            item_id, persist_changes=False
+            item_id, persist_changes=True
         )
         print(
             f"[RAM] Nueva sesión creada: {time.perf_counter() - t0:.2f} seg", flush=True
@@ -487,15 +504,26 @@ async def _write_valora_inputs_to_excel(
     er_rows = results_table.get("rows", [])
     years = balance_table.get("years", []) or results_table.get("years", [])
 
+    # Forzar años a enteros puros. FORECAST.ETS requiere eje temporal numérico;
+    # si una celda del rango se escribe como texto, la función devuelve error.
     normalized_years = []
     for y in years:
-        y_str = str(y).strip()
-        if y_str.isdigit():
-            normalized_years.append(int(y_str))
+        n = _extract_number(y)
+        if n is not None:
+            normalized_years.append(int(n))
         else:
-            normalized_years.append(y_str)
+            # Si no se puede parsear, lo dejamos como None para no enviar string
+            normalized_years.append(None)
 
-    # Reordenar de menor a mayor si vienen en orden descendente
+    N = len(normalized_years)
+    if N == 0:
+        return
+
+    N = min(N, 8)
+
+    # Siempre ordenar años de menor a mayor (2018...,2025) para que E2 sea el
+    # año más antiguo y L2 el más reciente. Se invierten los valores de cada
+    # fila del balance y resultado para mantener la correspondencia con el eje.
     if len(normalized_years) >= 2:
         y0 = normalized_years[0]
         y1 = normalized_years[-1]
@@ -514,41 +542,50 @@ async def _write_valora_inputs_to_excel(
                 for r in er_rows
             ]
 
-    N = len(normalized_years)
-    if N == 0:
-        return
+    # Truncamos a máximo 8 años.
+    years_to_write = normalized_years[:N]
 
-    N = min(N, 8)
+    # El rango de años se ajusta al número de años enviados.
+    # Ej: 8 años -> E2:L2; 5 años -> H2:L2. Así no se pisan columnas vacías
+    # ni se envía una matriz de dimensiones incorrectas a Graph API.
+    def _col_letter(offset: int) -> str:
+        # offset 0 -> C, 1 -> D, ..., 9 -> L
+        return chr(ord("C") + offset)
 
-    # 1. Matriz de años para Fila 3: C3:L3 (1 x 10)
-    # La maestra usa E:L para ocho periodos históricos. Los vacíos se escriben
-    # explícitamente para no mezclar datos residuales de cálculos anteriores.
-    bg_matrix = [["" for _ in range(8)] for _ in range(32)]
+    years_start_col = _col_letter(10 - N)
+    years_range = f"{years_start_col}2:L2"
+    years_range_er = f"{years_start_col}37:L37"
+    logger.info(
+        f"[VALORA WRITE] Rango de años: {years_range} para {N} años "
+        f"ordenados ascendente: {years_to_write}"
+    )
+
+    def _build_year_row(years: list) -> list:
+        """Genera una fila de años del tamaño exacto del rango destino."""
+        return [[int(y) if y is not None and y != "" else None for y in years]]
+
+    # 1. Matriz de Balance General: E4:L35 (32 filas x 8 columnas)
+    # años ordenados ascendentemente: el primer valor va a la primera columna (E).
+    bg_matrix = [[None for _ in range(8)] for _ in range(32)]
     for r in range(min(32, len(bg_rows))):
         row_dict = bg_rows[r] if isinstance(bg_rows[r], dict) else {}
         row_vals = list(row_dict.get("values", [])[:N])
-        if row_vals:
-            row_vals = [row_vals[0]] * (8 - len(row_vals)) + row_vals
-        for col_offset, val in enumerate(row_vals[-8:]):
-            if val is not None and val != "":
-                try:
-                    bg_matrix[r][col_offset] = float(val)
-                except (ValueError, TypeError):
-                    bg_matrix[r][col_offset] = val
+        for col_offset, val in enumerate(row_vals):
+            n = _extract_number(val)
+            if n is not None:
+                bg_matrix[r][col_offset] = n
+            # Si no es numérico, dejamos None (no string) para no corromper fórmulas
 
-    # 3. Estado de Resultados: C38:L51 (14 filas x 10 columnas)
-    er_matrix = [["" for _ in range(8)] for _ in range(14)]
+    # 2. Matriz de Estado de Resultados: E38:L51 (14 filas x 8 columnas)
+    er_matrix = [[None for _ in range(8)] for _ in range(14)]
     for r in range(min(14, len(er_rows))):
         row_dict = er_rows[r] if isinstance(er_rows[r], dict) else {}
         row_vals = list(row_dict.get("values", [])[:N])
-        if row_vals:
-            row_vals = [row_vals[0]] * (8 - len(row_vals)) + row_vals
-        for col_offset, val in enumerate(row_vals[-8:]):
-            if val is not None and val != "":
-                try:
-                    er_matrix[r][col_offset] = float(val)
-                except (ValueError, TypeError):
-                    er_matrix[r][col_offset] = val
+        for col_offset, val in enumerate(row_vals):
+            n = _extract_number(val)
+            if n is not None:
+                er_matrix[r][col_offset] = n
+            # Si no es numérico, dejamos None
 
     headers = {"Content-Type": "application/json"}
     if session_id:
@@ -560,32 +597,26 @@ async def _write_valora_inputs_to_excel(
         {
             "id": "1",
             "method": "PATCH",
-            "url": _build_excel_range_url(email, item_id, sheet_name, "C3:L3"),
-            "body": {
-                "formulas": [[
-                    '=IF(C2="","",1)',
-                    '=IF(D2="","",MAX($C3:C3)+1)',
-                    '=IF(E2="","",MAX($C3:D3)+1)',
-                    '=IF(F2="","",MAX($C3:E3)+1)',
-                    '=IF(G2="","",MAX($C3:F3)+1)',
-                    '=IF(H2="","",MAX($C3:G3)+1)',
-                    '=IF(I2="","",MAX($C3:H3)+1)',
-                    '=IF(J2="","",MAX($C3:I3)+1)',
-                    '=IF(K2="","",MAX($C3:J3)+1)',
-                    '=IF(L2="","",MAX($C3:K3)+1)',
-                ]],
-            },
+            "url": _build_excel_range_url(email, item_id, sheet_name, years_range),
+            "body": {"values": _build_year_row(years_to_write)},
             "headers": headers,
         },
         {
             "id": "2",
+            "method": "PATCH",
+            "url": _build_excel_range_url(email, item_id, sheet_name, years_range_er),
+            "body": {"values": _build_year_row(years_to_write)},
+            "headers": headers,
+        },
+        {
+            "id": "3",
             "method": "PATCH",
             "url": _build_excel_range_url(email, item_id, sheet_name, "E4:L35"),
             "body": {"values": bg_matrix},
             "headers": headers,
         },
         {
-            "id": "3",
+            "id": "4",
             "method": "PATCH",
             "url": _build_excel_range_url(email, item_id, sheet_name, "E38:L51"),
             "body": {"values": er_matrix},
@@ -597,22 +628,31 @@ async def _write_valora_inputs_to_excel(
         await service.execute_batch(write_requests)
     except Exception:
         sheet_name_fallback = "Proyeccion"
-        write_requests_fallback = [
-            {
-                "id": req["id"],
-                "method": req["method"],
-                "url": _build_excel_range_url(
-                    email,
-                    item_id,
-                    sheet_name_fallback,
-                    req["url"].split("/range(address='")[1].split("')")[0],
-                ),
-                "body": req["body"],
-                "headers": req["headers"],
-            }
-            for req in write_requests
-        ]
-        await service.execute_batch(write_requests_fallback)
+        write_requests_fallback = []
+        for req in write_requests:
+            try:
+                raw_range = req["url"].split("/range(address='")[1].split("')")[0]
+            except IndexError:
+                raw_range = ""
+            if not raw_range:
+                write_requests_fallback.append(req)
+                continue
+            write_requests_fallback.append(
+                {
+                    "id": req["id"],
+                    "method": req["method"],
+                    "url": _build_excel_range_url(
+                        email,
+                        item_id,
+                        sheet_name_fallback,
+                        raw_range,
+                    ),
+                    "body": req["body"],
+                    "headers": req["headers"],
+                }
+            )
+        if write_requests_fallback:
+            await service.execute_batch(write_requests_fallback)
 
     mapped_write_requests: list[dict[str, Any]] = []
     req_id = 1
@@ -735,6 +775,7 @@ def _is_excel_error(value: Any) -> bool:
     return value.strip().startswith("#")
 
 
+<<<<<<< HEAD
 # =========================================================
 # VALORA FORECAST FALLBACK (ETS)
 # =========================================================
@@ -1143,33 +1184,57 @@ async def _apply_valora_forecast_fallback(
     return forecast_method
 
 
+=======
+>>>>>>> 8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
 async def _enrich_payload_with_valora_excel(
     payload_data: dict[str, Any],
     item_id: str,
     existing_session_id: str | None = None,
 ) -> dict[str, Any]:
+    from time import perf_counter
+
+    def _lap(label: str, start: float) -> float:
+        elapsed = perf_counter() - start
+        logger.info(f"[VALORA TIMER] {label}: {elapsed:.3f} seg")
+        return perf_counter()
+
     service = get_onedrive_service()
     latest_input = _extract_input_payload(payload_data)
 
+    t_total = perf_counter()
+
     session_id = existing_session_id
     if session_id:
+        t0 = perf_counter()
         try:
             await service.force_calculate_excel(item_id, session_id=session_id)
         except Exception:
             session_id = None
+        t0 = _lap("force_calculate_excel en sesión previa", t0)
+    else:
+        t0 = perf_counter()
 
     if not session_id:
         session_id = await service._create_workbook_session(
             item_id, persist_changes=True
         )
+        t0 = _lap("create_workbook_session", t0)
 
-    if latest_input:
-        await _write_valora_inputs_to_excel(
-            item_id=item_id, input_payload=latest_input, session_id=session_id
-        )
+    logger.info(f"[VALORA] Sesión {session_id} abierta para item {item_id}")
 
-    await service.force_calculate_excel(item_id, session_id=session_id)
+    try:
+        if latest_input:
+            logger.info(
+                f"[VALORA] Escribiendo inputs en Excel para item {item_id}; "
+                f"balance_rows={len(latest_input.get('balance_table', {}).get('rows', []))}, "
+                f"results_rows={len(latest_input.get('results_table', {}).get('rows', []))}"
+            )
+            await _write_valora_inputs_to_excel(
+                item_id=item_id, input_payload=latest_input, session_id=session_id
+            )
+            t0 = _lap("_write_valora_inputs_to_excel", t0)
 
+<<<<<<< HEAD
     payload_data["active_session_id"] = session_id
     payload_data["resultados"] = await _build_valora_output_entry(
         item_id, session_id=session_id
@@ -1197,5 +1262,37 @@ async def _enrich_payload_with_valora_excel(
             "forecast_method", {"conceptos": "excel", "integrado": "excel"}
         )
 
+=======
+        # Breve respiro para Excel Online (reduce si es posible tras pruebas)
+        await asyncio.sleep(0.3)
+        t0 = _lap("sleep post-escritura", t0)
+
+        logger.info(f"[VALORA] Forzando recálculo fullRebuild")
+        await service.force_calculate_excel(item_id, session_id=session_id)
+        t0 = _lap("force_calculate_excel fullRebuild", t0)
+
+        logger.info(f"[VALORA] Leyendo resultados")
+        resultados = await _build_valora_output_entry(item_id, session_id=session_id)
+        t0 = _lap("_build_valora_output_entry", t0)
+
+        logger.info(f"[VALORA] Resultados leídos: {resultados}")
+        payload_data["active_session_id"] = session_id
+        payload_data["resultados"] = resultados
+        payload_data["resultados"]["inputs"] = latest_input
+    except Exception as exc:
+        logger.exception(f"[VALORA] Error durante enriquecimiento Excel: {exc}")
+        raise
+    finally:
+        try:
+            await service._close_workbook_session(item_id, session_id)
+            logger.info(f"[VALORA] Sesión {session_id} cerrada")
+        except Exception:
+            logger.warning(
+                f"[VALORA] No se pudo cerrar la sesión {session_id} del workbook",
+                exc_info=True,
+            )
+
+    _lap("TIEMPO TOTAL enrich_payload_with_valora_excel", t_total)
+>>>>>>> 8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
     return payload_data
 
