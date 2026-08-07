@@ -40,10 +40,8 @@ KAPITAL_INPUT_CELL_MAP = {
     "industria": "C5",
     "tasa_libre_riesgo": "C6",
     "anio_bono": "C7",
-    "costo_deuda": "C8",
-    "porcentaje_deuda": "C9",
-    "subsector": "C10",
-    "tickers_subsector": "C11",
+    "costo_deuda": "C9",
+    "porcentaje_deuda": "C10",
 }
 
 # Hoja WACC
