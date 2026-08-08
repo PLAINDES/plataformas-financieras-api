@@ -28,7 +28,7 @@ KAPITAL_EXPECTED_DEVALUATION = "C16"
 KAPITAL_SENSITIVITY_INPUT_CELL_MAP = {}
 
 KAPITAL_CUSTOM_INPUT_CELL_MAP = {
-    "beta_subsector": "F28",
+    "beta_subsector": "F24",
     "beta_subsector_alt": "F40",
 }
 
@@ -63,7 +63,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd(1-t)": "D51",
         "d_empresa": "D52",
     },
-    "mercado_emergente": {
+    "mercado_emergente_dolares": {
         "ke": "E47",
         "koa": "E48",
         "kd": "E49",
@@ -71,7 +71,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd(1-t)": "E51",
         "d_empresa": "E52",
     },
-    "empresa_dolares": {
+    "mercado_emergente_moneda_local": {
         "ke": "F47",
         "koa": "F48",
         "kd": "F49",
@@ -79,12 +79,21 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd(1-t)": "F51",
         "d_empresa": "F52",
     },
-    "empresa_soles": {
+    "empresa_dolares": {
         "ke": "G47",
         "koa": "G48",
         "kd": "G49",
         "cppc": "G50",
         "kd(1-t)": "G51",
+        "d_empresa": "G52",
+    },
+    "empresa_moneda_local": {
+        "ke": "H47",
+        "koa": "H48",
+        "kd": "H49",
+        "cppc": "H50",
+        "kd(1-t)": "H51",
+        "d_empresa": "H52",
     },
 }
 # Hoja WACC
@@ -95,8 +104,9 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd": "D69",
         "cppc": "D70",
         "kd(1-t)": "D71",
+        "d_empresa": "D72",
     },
-    "mercado_emergente": {
+    "mercado_emergente_dolares": {
         "ke": "E67",
         "koa": "E68",
         "kd": "E69",
@@ -104,7 +114,7 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd(1-t)": "E71",
         "d_empresa": "E72",
     },
-    "empresa_dolares": {
+    "mercado_emergente_moneda_local": {
         "ke": "F67",
         "koa": "F68",
         "kd": "F69",
@@ -112,12 +122,21 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd(1-t)": "F71",
         "d_empresa": "F72",
     },
-    "empresa_soles": {
+    "empresa_dolares": {
         "ke": "G67",
         "koa": "G68",
         "kd": "G69",
         "cppc": "G70",
         "kd(1-t)": "G71",
+        "d_empresa": "G72",
+    },
+    "empresa_moneda_local": {
+        "ke": "H67",
+        "koa": "H68",
+        "kd": "H69",
+        "cppc": "H70",
+        "kd(1-t)": "H71",
+        "d_empresa": "H72",
     },
 }
 
