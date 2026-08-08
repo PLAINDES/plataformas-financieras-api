@@ -265,11 +265,6 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
             t_sens_macro = time.perf_counter()
             _enrich_input_with_macros(db, sensitivity_input)
             print(f"[TIMER] POST sensitivity macro enrichment: {time.perf_counter() - t_sens_macro:.3f} seg", flush=True)
-            
-            if has_beta:
-                if "damodaran" not in sensitivity_input or not isinstance(sensitivity_input["damodaran"], dict):
-                    sensitivity_input["damodaran"] = {}
-                sensitivity_input["damodaran"]["beta"] = latest_input.get("beta_desapalancado")
 
         include_sensibilizacion = sensitivity_input is not None
         t_excel = time.perf_counter()
@@ -395,16 +390,6 @@ async def update_calculation(
                 t_sens_macro = time.perf_counter()
                 _enrich_input_with_macros(db, sensitivity_input)
                 print(f"[TIMER] PUT sensitivity macro enrichment: {time.perf_counter() - t_sens_macro:.3f} seg", flush=True)
-                
-                # Override beta
-                if has_beta:
-                    if "damodaran" not in sensitivity_input or not isinstance(sensitivity_input["damodaran"], dict):
-                        sensitivity_input["damodaran"] = {}
-                    sensitivity_input["damodaran"]["beta"] = incoming_input_raw.get("beta_desapalancado")
-                elif main_sector_changed and not has_beta:
-                    # Si cambió el sector principal, el BOA de esa sensibilidad debe ser el BOA calculado por Damodaran
-                    # El valor de 'beta' ya fue inyectado por _enrich_input_with_macros arriba
-                    pass
 
             has_beta_for_sensitivity = sensitivity_input is not None
 
@@ -589,12 +574,6 @@ async def refresh_calculation(
         
         # Enriquecer con macros
         _enrich_input_with_macros(db, sensitivity_input)
-        
-        # Override beta
-        if has_beta:
-            if "damodaran" not in sensitivity_input or not isinstance(sensitivity_input["damodaran"], dict):
-                sensitivity_input["damodaran"] = {}
-            sensitivity_input["damodaran"]["beta"] = latest_input.get("beta_desapalancado")
 
     try:
         # Enriquecer y forzar recálculo usando la sesión existente o creando una nueva

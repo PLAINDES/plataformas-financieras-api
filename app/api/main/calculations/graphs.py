@@ -53,6 +53,12 @@ async def _generate_calculation_images(data: dict, browser: Browser) -> list[str
     # Extraer el d_empresa base de dolares para usarlo como respaldo en moneda local
     base_d_empresa = base_resultado.get("empresa_dolares", {}).get("d_empresa", "0%")
 
+    def _block(source: dict, resultado_key: str, *legacy: str) -> dict:
+        for key in (resultado_key, *legacy):
+            if key in source and source[key]:
+                return source[key]
+        return {}
+
     # CREAR CONTEXTO Y PÁGINA UNA SOLA VEZ
     context = await browser.new_context()
     page = await context.new_page()
@@ -62,10 +68,12 @@ async def _generate_calculation_images(data: dict, browser: Browser) -> list[str
         cards_gen = []
         if "mercado_desarrollado" in base_resultado and base_resultado["mercado_desarrollado"].get("kd"):
             cards_gen.append(_build_card_dict("Mercado Desarrollado", base_resultado["mercado_desarrollado"]))
-        if "mercado_emergente" in base_resultado and base_resultado["mercado_emergente"].get("kd"):
-            cards_gen.append(_build_card_dict("Mercado Emergente", base_resultado["mercado_emergente"]))
-        if "empresa_soles" in base_resultado and base_resultado["empresa_soles"].get("kd"):
-            cards_gen.append(_build_card_dict(f"Tu Empresa ({moneda_local})", base_resultado["empresa_soles"], base_d_empresa))
+        if _block(base_resultado, "mercado_emergente_dolares", "mercado_emergente").get("kd"):
+            cards_gen.append(_build_card_dict("Mercado Emergente (USD)", _block(base_resultado, "mercado_emergente_dolares", "mercado_emergente")))
+        if _block(base_resultado, "mercado_emergente_moneda_local").get("kd"):
+            cards_gen.append(_build_card_dict(f"Mercado Emergente ({moneda_local})", _block(base_resultado, "mercado_emergente_moneda_local")))
+        if _block(base_resultado, "empresa_moneda_local", "empresa_soles").get("kd"):
+            cards_gen.append(_build_card_dict(f"Tu Empresa ({moneda_local})", _block(base_resultado, "empresa_moneda_local", "empresa_soles"), base_d_empresa))
         if "empresa_dolares" in base_resultado and base_resultado["empresa_dolares"].get("kd"):
             titulo_usd = "Tu Empresa (USD Ext)" if moneda_local == "USD" else "Tu Empresa (USD)"
             cards_gen.append(_build_card_dict(titulo_usd, base_resultado["empresa_dolares"]))
@@ -84,10 +92,12 @@ async def _generate_calculation_images(data: dict, browser: Browser) -> list[str
                 cards_sens.append(_build_card_dict("Mercado Desarrollado", base_resultado["mercado_desarrollado"]))
 
             # Datos Sensibilizados
-            if "mercado_emergente" in sens_primera and sens_primera["mercado_emergente"].get("kd"):
-                cards_sens.append(_build_card_dict("Mercado Emergente (Sens)", sens_primera["mercado_emergente"]))
-            if "empresa_soles" in sens_primera and sens_primera["empresa_soles"].get("kd"):
-                cards_sens.append(_build_card_dict(f"Tu Empresa {moneda_local} (Sens)", sens_primera["empresa_soles"], base_d_empresa))
+            if _block(sens_primera, "mercado_emergente_dolares", "mercado_emergente").get("kd"):
+                cards_sens.append(_build_card_dict("Mercado Emergente (USD) (Sens)", _block(sens_primera, "mercado_emergente_dolares", "mercado_emergente")))
+            if _block(sens_primera, "mercado_emergente_moneda_local").get("kd"):
+                cards_sens.append(_build_card_dict(f"Mercado Emergente {moneda_local} (Sens)", _block(sens_primera, "mercado_emergente_moneda_local")))
+            if _block(sens_primera, "empresa_moneda_local", "empresa_soles").get("kd"):
+                cards_sens.append(_build_card_dict(f"Tu Empresa {moneda_local} (Sens)", _block(sens_primera, "empresa_moneda_local", "empresa_soles"), base_d_empresa))
             if "empresa_dolares" in sens_primera and sens_primera["empresa_dolares"].get("kd"):
                 titulo_usd_sens = "Tu Empresa USD Ext (Sens)" if moneda_local == "USD" else "Tu Empresa USD (Sens)"
                 cards_sens.append(_build_card_dict(titulo_usd_sens, sens_primera["empresa_dolares"], base_d_empresa))
@@ -101,25 +111,29 @@ async def _generate_calculation_images(data: dict, browser: Browser) -> list[str
             # VISTA COMPARACIÓN
             for i, sens in enumerate(sensibilizaciones):
 
-                # Construir datos para el Mercado Desarrollado estático
+                # Construir datos para el Mercado de una Desarrollado estático
                 dev_data = _build_card_dict("Mercado Desarrollado", base_resultado.get("mercado_desarrollado", {}))
 
                 # Fila Original
                 orig_cards = []
-                if "mercado_emergente" in base_resultado and base_resultado["mercado_emergente"].get("kd"):
-                    orig_cards.append(_build_card_dict("Mercado Emergente", base_resultado["mercado_emergente"]))
-                if "empresa_soles" in base_resultado and base_resultado["empresa_soles"].get("kd"):
-                    orig_cards.append(_build_card_dict(f"Tu Empresa ({moneda_local})", base_resultado["empresa_soles"], base_d_empresa))
+                if _block(base_resultado, "mercado_emergente_dolares", "mercado_emergente").get("kd"):
+                    orig_cards.append(_build_card_dict("Mercado Emergente", _block(base_resultado, "mercado_emergente_dolares", "mercado_emergente")))
+                if _block(base_resultado, "mercado_emergente_moneda_local").get("kd"):
+                    orig_cards.append(_build_card_dict(f"Mercado Emergente ({moneda_local})", _block(base_resultado, "mercado_emergente_moneda_local")))
+                if _block(base_resultado, "empresa_moneda_local", "empresa_soles").get("kd"):
+                    orig_cards.append(_build_card_dict(f"Tu Empresa ({moneda_local})", _block(base_resultado, "empresa_moneda_local", "empresa_soles"), base_d_empresa))
                 if "empresa_dolares" in base_resultado and base_resultado["empresa_dolares"].get("kd"):
                     titulo_usd_sens = "Tu Empresa USD Ext (Sens)" if moneda_local == "USD" else "Tu Empresa USD (Sens)"
                     orig_cards.append(_build_card_dict(titulo_usd_sens, base_resultado["empresa_dolares"], base_d_empresa))
 
                 # Fila Sensibilizada
                 sens_cards = []
-                if "mercado_emergente" in sens and sens["mercado_emergente"].get("kd"):
-                    sens_cards.append(_build_card_dict("Mercado Emergente", sens["mercado_emergente"]))
-                if "empresa_soles" in sens and sens["empresa_soles"].get("kd"):
-                    sens_cards.append(_build_card_dict(f"Tu Empresa ({moneda_local})", sens["empresa_soles"], base_d_empresa))
+                if _block(sens, "mercado_emergente_dolares", "mercado_emergente").get("kd"):
+                    sens_cards.append(_build_card_dict("Mercado Emergente", _block(sens, "mercado_emergente_dolares", "mercado_emergente")))
+                if _block(sens, "mercado_emergente_moneda_local").get("kd"):
+                    sens_cards.append(_build_card_dict(f"Mercado Emergente ({moneda_local})", _block(sens, "mercado_emergente_moneda_local")))
+                if _block(sens, "empresa_moneda_local", "empresa_soles").get("kd"):
+                    sens_cards.append(_build_card_dict(f"Tu Empresa ({moneda_local})", _block(sens, "empresa_moneda_local", "empresa_soles"), base_d_empresa))
                 if "empresa_dolares" in sens and sens["empresa_dolares"].get("kd"):
                     titulo_usd_sens = "Tu Empresa USD Ext (Sens)" if moneda_local == "USD" else "Tu Empresa USD (Sens)"
                     sens_cards.append(_build_card_dict(titulo_usd_sens, sens["empresa_dolares"], base_d_empresa))
