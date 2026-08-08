@@ -28,7 +28,7 @@ KAPITAL_EXPECTED_DEVALUATION = "C16"
 KAPITAL_SENSITIVITY_INPUT_CELL_MAP = {}
 
 KAPITAL_CUSTOM_INPUT_CELL_MAP = {
-    "beta_subsector": "F36",
+    "beta_subsector": "F24",
     "beta_subsector_alt": "F40",
 }
 
@@ -40,10 +40,8 @@ KAPITAL_INPUT_CELL_MAP = {
     "industria": "C5",
     "tasa_libre_riesgo": "C6",
     "anio_bono": "C7",
-    "costo_deuda": "C8",
-    "porcentaje_deuda": "C9",
-    "subsector": "C10",
-    "tickers_subsector": "C11",
+    "costo_deuda": "C9",
+    "porcentaje_deuda": "C10",
 }
 
 # Hoja WACC
@@ -65,7 +63,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd(1-t)": "D51",
         "d_empresa": "D52",
     },
-    "mercado_emergente": {
+    "mercado_emergente_dolares": {
         "ke": "E47",
         "koa": "E48",
         "kd": "E49",
@@ -73,7 +71,7 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd(1-t)": "E51",
         "d_empresa": "E52",
     },
-    "empresa_dolares": {
+    "mercado_emergente_moneda_local": {
         "ke": "F47",
         "koa": "F48",
         "kd": "F49",
@@ -81,12 +79,21 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd(1-t)": "F51",
         "d_empresa": "F52",
     },
-    "empresa_soles": {
+    "empresa_dolares": {
         "ke": "G47",
         "koa": "G48",
         "kd": "G49",
         "cppc": "G50",
         "kd(1-t)": "G51",
+        "d_empresa": "G52",
+    },
+    "empresa_moneda_local": {
+        "ke": "H47",
+        "koa": "H48",
+        "kd": "H49",
+        "cppc": "H50",
+        "kd(1-t)": "H51",
+        "d_empresa": "H52",
     },
 }
 # Hoja WACC
@@ -97,8 +104,9 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd": "D69",
         "cppc": "D70",
         "kd(1-t)": "D71",
+        "d_empresa": "D72",
     },
-    "mercado_emergente": {
+    "mercado_emergente_dolares": {
         "ke": "E67",
         "koa": "E68",
         "kd": "E69",
@@ -106,7 +114,7 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd(1-t)": "E71",
         "d_empresa": "E72",
     },
-    "empresa_dolares": {
+    "mercado_emergente_moneda_local": {
         "ke": "F67",
         "koa": "F68",
         "kd": "F69",
@@ -114,12 +122,21 @@ KAPITAL_SENSITIVITY_CELL_MAP = {
         "kd(1-t)": "F71",
         "d_empresa": "F72",
     },
-    "empresa_soles": {
+    "empresa_dolares": {
         "ke": "G67",
         "koa": "G68",
         "kd": "G69",
         "cppc": "G70",
         "kd(1-t)": "G71",
+        "d_empresa": "G72",
+    },
+    "empresa_moneda_local": {
+        "ke": "H67",
+        "koa": "H68",
+        "kd": "H69",
+        "cppc": "H70",
+        "kd(1-t)": "H71",
+        "d_empresa": "H72",
     },
 }
 
@@ -195,4 +212,54 @@ COUNTRY_LOCAL_CURRENCIES = {
     "Colombia": "COP",
     "Ecuador": "USD",
     "Peru": "PEN",
+}
+
+VALORA_INPUT_CELL_MAP = {
+    "fecha": "C2",
+    "pais": "C3",
+    "moneda": "C4",
+    "industria": "C5",
+    "tasa_libre_riesgo": "C6",
+    "anio_bono": "C7",
+    "shares": "C8",
+    "costo_deuda": "C9",
+    "porcentaje_deuda": "C10",
+}
+
+VALORA_PROJECTION_INPUT_CELL_MAP = {
+    # M91 contiene fórmulas de la plantilla; no se sobreescribe.
+    # "revenue_forecast_rate": "M91",
+    "perpetual_growth_rate": "F81",
+}
+
+VALORA_INTEGRATED_INPUT_CELL_MAP = {
+    # M7 y M10 contienen fórmulas de la plantilla; no se sobreescriben.
+    # "fdc_forecast_rate": "M10",
+}
+
+VALORA_RESULTS_CELL_MAP = {
+    "wacc": ("Conceptos", "C23"),
+    "balance": {
+        "activo": ("Proyección", "L18"),
+        "pasivo": ("Proyección", "L29"),
+        "patrimonio": ("Proyección", "L34"),
+    },
+    "conceptos": {
+        "activo": ("Conceptos", "Q24"),
+        "pasivo": ("Conceptos", "Q26"),
+        "empresa": ("Conceptos", "Q25"),
+        "patrimonio": ("Conceptos", "Q27"),
+        "precio_accion": ("Conceptos", "Q28"),
+        "tasa_forecast": ("Conceptos", "T30"),
+        "tasa_perpetua": ("Conceptos", "T31"),
+    },
+    "integrado": {
+        "activo": ("Integrado", "P34"),
+        "pasivo": ("Integrado", "P36"),
+        "empresa": ("Integrado", "P35"),
+        "patrimonio": ("Integrado", "P37"),
+        "precio_accion": ("Integrado", "P38"),
+        "tasa_forecast": ("Integrado", "S40"),
+        "tasa_perpetua": ("Integrado", "S41"),
+    },
 }

@@ -1,11 +1,14 @@
 # app/api/main/calculations_router.py
 import asyncio
+import logging
 import time
 from typing import Any
 from urllib.parse import quote
 from uuid import uuid4
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 from app.core.constants import (
     KAPITAL_CUSTOM_INPUT_CELL_MAP,
@@ -25,6 +28,10 @@ from app.core.constants import (
     KAPITAL_SENSITIVITY_CELL_MAP,
     KAPITAL_SENSITIVITY_INPUT_CELL_MAP,
     KAPITAL_TAX_CELL_MAP,
+    VALORA_INPUT_CELL_MAP,
+    VALORA_INTEGRATED_INPUT_CELL_MAP,
+    VALORA_PROJECTION_INPUT_CELL_MAP,
+    VALORA_RESULTS_CELL_MAP,
 )
 from app.models.main import CalculationType
 from app.services.onedrive.service import get_onedrive_service
@@ -78,6 +85,45 @@ def _build_excel_range_url(
 # =========================================================
 
 
+def _append_input_write_requests(
+    write_requests: list[dict[str, Any]],
+    field_data: dict[str, Any] | None,
+    cell_map: dict[str, str],
+    *,
+    user_email: str,
+    item_id: str,
+    sheet_name: str,
+    headers: dict[str, str],
+    req_id: int,
+    skip_empty: bool = False,
+) -> int:
+    if not isinstance(field_data, dict):
+        return req_id
+
+    for field, target_cell in cell_map.items():
+        if not target_cell or field not in field_data:
+            continue
+
+        value = field_data[field]
+        if skip_empty and value in (None, ""):
+            continue
+
+        write_requests.append(
+            {
+                "id": str(req_id),
+                "method": "PATCH",
+                "url": _build_excel_range_url(
+                    user_email, item_id, sheet_name, target_cell
+                ),
+                "body": {"values": [[_to_excel_input_value(field, value)]]},
+                "headers": headers,
+            }
+        )
+        req_id += 1
+
+    return req_id
+
+
 async def _write_inputs_to_excel(
     item_id: str, input_payload: dict, session_id: str | None = None
 ) -> None:
@@ -89,32 +135,19 @@ async def _write_inputs_to_excel(
 
     def add_write_req(field_data, cell_map, fallback_sheet=KAPITAL_INPUT_SHEET):
         nonlocal req_id
-        # Si field_data no es un diccionario válido, salimos
-        if not isinstance(field_data, dict):
-            return
-
-        for f, target_code in cell_map.items():
-            # Buscamos 'f' dentro de 'field_data', NO en 'input_payload'
-            if not target_code or f not in field_data:
-                continue
-
-            mapped_val = _to_excel_input_value(f, field_data[f])
-            headers = {"Content-Type": "application/json"}
-            if session_id:
-                headers["workbook-session-id"] = session_id
-
-            write_requests.append(
-                {
-                    "id": str(req_id),
-                    "method": "PATCH",
-                    "url": _build_excel_range_url(
-                        email, item_id, fallback_sheet, target_code
-                    ),
-                    "body": {"values": [[mapped_val]]},
-                    "headers": headers,
-                }
-            )
-            req_id += 1
+        headers = {"Content-Type": "application/json"}
+        if session_id:
+            headers["workbook-session-id"] = session_id
+        req_id = _append_input_write_requests(
+            write_requests,
+            field_data,
+            cell_map,
+            user_email=email,
+            item_id=item_id,
+            sheet_name=fallback_sheet,
+            headers=headers,
+            req_id=req_id,
+        )
 
     add_write_req(input_payload, KAPITAL_INPUT_CELL_MAP)
     add_write_req(input_payload, KAPITAL_SENSITIVITY_INPUT_CELL_MAP)
@@ -155,9 +188,14 @@ async def _write_inputs_to_excel(
 
     # Enviar a Microsoft en lotes de 20 (Límite del API Graph)
     chunks = [write_requests[i : i + 20] for i in range(0, len(write_requests), 20)]
-    batch_tasks = [service.execute_batch(chunk) for chunk in chunks]
-    if batch_tasks:
-        await asyncio.gather(*batch_tasks)
+    for chunk in chunks:
+        logger.info(f"[KAPITAL WRITE] Enviando chunk de {len(chunk)} requests")
+        responses = await service.execute_batch(chunk)
+        for r in responses:
+            if r.get("status", 0) >= 400:
+                logger.error(
+                    f"[KAPITAL WRITE ERROR] id={r.get('id')} status={r.get('status')} body={r.get('body')}"
+                )
 
 
 async def _read_market_block(
@@ -239,14 +277,21 @@ async def _build_excel_output_entries(
             },
         )
 
-    # Dividir las celdas en lotes de 20 y ejecutar simultáneamente
+    # Dividir las celdas en lotes de 20 y ejecutar secuencialmente
     chunks = [read_requests[i : i + 20] for i in range(0, len(read_requests), 20)]
-    batch_tasks = [service.execute_batch(chunk) for chunk in chunks]
-    batch_results = await asyncio.gather(*batch_tasks)
+    batch_results: list[list[dict]] = []
+    for chunk in chunks:
+        logger.info(f"[KAPITAL READ] Enviando chunk de {len(chunk)} requests")
+        batch_results.append(await service.execute_batch(chunk))
 
     # Procesar el mega-paquete de respuestas
     for chunk_responses in batch_results:
         for resp in chunk_responses:
+            if resp.get("status", 0) >= 400:
+                logger.error(
+                    f"[KAPITAL READ ERROR] id={resp.get('id')} status={resp.get('status')} body={resp.get('body')}"
+                )
+                continue
             cat, market, field = mapping[resp["id"]]
 
             val = None
@@ -311,11 +356,11 @@ async def _enrich_payload_with_excel_outputs(
                 flush=True,
             )
             session_id = None
-    # Si no pasaron sesión, crea una nueva
+    # Si no pasaron sesión, crea una nueva con persistencia para copia de trabajo
     if not session_id:
         t0 = time.perf_counter()
         session_id = await service._create_workbook_session(
-            item_id, persist_changes=False
+            item_id, persist_changes=True
         )
         print(
             f"[RAM] Nueva sesión creada: {time.perf_counter() - t0:.2f} seg", flush=True
@@ -452,15 +497,26 @@ async def _write_valora_inputs_to_excel(
     er_rows = results_table.get("rows", [])
     years = balance_table.get("years", []) or results_table.get("years", [])
 
+    # Forzar años a enteros puros. FORECAST.ETS requiere eje temporal numérico;
+    # si una celda del rango se escribe como texto, la función devuelve error.
     normalized_years = []
     for y in years:
-        y_str = str(y).strip()
-        if y_str.isdigit():
-            normalized_years.append(int(y_str))
+        n = _extract_number(y)
+        if n is not None:
+            normalized_years.append(int(n))
         else:
-            normalized_years.append(y_str)
+            # Si no se puede parsear, lo dejamos como None para no enviar string
+            normalized_years.append(None)
 
-    # Reordenar de menor a mayor si vienen en orden descendente
+    N = len(normalized_years)
+    if N == 0:
+        return
+
+    N = min(N, 8)
+
+    # Siempre ordenar años de menor a mayor (2018...,2025) para que E2 sea el
+    # año más antiguo y L2 el más reciente. Se invierten los valores de cada
+    # fila del balance y resultado para mantener la correspondencia con el eje.
     if len(normalized_years) >= 2:
         y0 = normalized_years[0]
         y1 = normalized_years[-1]
@@ -479,48 +535,50 @@ async def _write_valora_inputs_to_excel(
                 for r in er_rows
             ]
 
-    N = len(normalized_years)
-    if N == 0:
-        return
+    # Truncamos a máximo 8 años.
+    years_to_write = normalized_years[:N]
 
-    N = min(N, 10)
+    # El rango de años se ajusta al número de años enviados.
+    # Ej: 8 años -> E2:L2; 5 años -> H2:L2. Así no se pisan columnas vacías
+    # ni se envía una matriz de dimensiones incorrectas a Graph API.
+    def _col_letter(offset: int) -> str:
+        # offset 0 -> C, 1 -> D, ..., 9 -> L
+        return chr(ord("C") + offset)
 
-    # 1. Matriz de años para Fila 3: C3:L3 (1 x 10)
-    years_matrix = [[None for _ in range(10)]]
-    for i in range(N):
-        col_offset = 9 - (N - 1 - i)
-        if 0 <= col_offset < 10:
-            years_matrix[0][col_offset] = normalized_years[i]
+    years_start_col = _col_letter(10 - N)
+    years_range = f"{years_start_col}2:L2"
+    years_range_er = f"{years_start_col}37:L37"
+    logger.info(
+        f"[VALORA WRITE] Rango de años: {years_range} para {N} años "
+        f"ordenados ascendente: {years_to_write}"
+    )
 
-    # 2. Balance General: C4:L35 (32 filas x 10 columnas)
-    bg_matrix = [[None for _ in range(10)] for _ in range(32)]
+    def _build_year_row(years: list) -> list:
+        """Genera una fila de años del tamaño exacto del rango destino."""
+        return [[int(y) if y is not None and y != "" else None for y in years]]
+
+    # 1. Matriz de Balance General: E4:L35 (32 filas x 8 columnas)
+    # años ordenados ascendentemente: el primer valor va a la primera columna (E).
+    bg_matrix = [[None for _ in range(8)] for _ in range(32)]
     for r in range(min(32, len(bg_rows))):
         row_dict = bg_rows[r] if isinstance(bg_rows[r], dict) else {}
-        row_vals = row_dict.get("values", [])
-        for i in range(min(N, len(row_vals))):
-            col_offset = 9 - (N - 1 - i)
-            if 0 <= col_offset < 10:
-                val = row_vals[i]
-                if val is not None and val != "":
-                    try:
-                        bg_matrix[r][col_offset] = float(val)
-                    except (ValueError, TypeError):
-                        bg_matrix[r][col_offset] = val
+        row_vals = list(row_dict.get("values", [])[:N])
+        for col_offset, val in enumerate(row_vals):
+            n = _extract_number(val)
+            if n is not None:
+                bg_matrix[r][col_offset] = n
+            # Si no es numérico, dejamos None (no string) para no corromper fórmulas
 
-    # 3. Estado de Resultados: C38:L51 (14 filas x 10 columnas)
-    er_matrix = [[None for _ in range(10)] for _ in range(14)]
+    # 2. Matriz de Estado de Resultados: E38:L51 (14 filas x 8 columnas)
+    er_matrix = [[None for _ in range(8)] for _ in range(14)]
     for r in range(min(14, len(er_rows))):
         row_dict = er_rows[r] if isinstance(er_rows[r], dict) else {}
-        row_vals = row_dict.get("values", [])
-        for i in range(min(N, len(row_vals))):
-            col_offset = 9 - (N - 1 - i)
-            if 0 <= col_offset < 10:
-                val = row_vals[i]
-                if val is not None and val != "":
-                    try:
-                        er_matrix[r][col_offset] = float(val)
-                    except (ValueError, TypeError):
-                        er_matrix[r][col_offset] = val
+        row_vals = list(row_dict.get("values", [])[:N])
+        for col_offset, val in enumerate(row_vals):
+            n = _extract_number(val)
+            if n is not None:
+                er_matrix[r][col_offset] = n
+            # Si no es numérico, dejamos None
 
     headers = {"Content-Type": "application/json"}
     if session_id:
@@ -532,21 +590,28 @@ async def _write_valora_inputs_to_excel(
         {
             "id": "1",
             "method": "PATCH",
-            "url": _build_excel_range_url(email, item_id, sheet_name, "C3:L3"),
-            "body": {"values": years_matrix},
+            "url": _build_excel_range_url(email, item_id, sheet_name, years_range),
+            "body": {"values": _build_year_row(years_to_write)},
             "headers": headers,
         },
         {
             "id": "2",
             "method": "PATCH",
-            "url": _build_excel_range_url(email, item_id, sheet_name, "C4:L35"),
-            "body": {"values": bg_matrix},
+            "url": _build_excel_range_url(email, item_id, sheet_name, years_range_er),
+            "body": {"values": _build_year_row(years_to_write)},
             "headers": headers,
         },
         {
             "id": "3",
             "method": "PATCH",
-            "url": _build_excel_range_url(email, item_id, sheet_name, "C38:L51"),
+            "url": _build_excel_range_url(email, item_id, sheet_name, "E4:L35"),
+            "body": {"values": bg_matrix},
+            "headers": headers,
+        },
+        {
+            "id": "4",
+            "method": "PATCH",
+            "url": _build_excel_range_url(email, item_id, sheet_name, "E38:L51"),
             "body": {"values": er_matrix},
             "headers": headers,
         },
@@ -554,28 +619,153 @@ async def _write_valora_inputs_to_excel(
 
     try:
         await service.execute_batch(write_requests)
-    except Exception as exc:
-        print(
-            f"Advertencia escribiendo en hoja 'Proyección' ({exc}). Reintentando en 'Proyeccion'...",
-            flush=True,
-        )
+    except Exception:
         sheet_name_fallback = "Proyeccion"
-        write_requests_fallback = [
+        write_requests_fallback = []
+        for req in write_requests:
+            try:
+                raw_range = req["url"].split("/range(address='")[1].split("')")[0]
+            except IndexError:
+                raw_range = ""
+            if not raw_range:
+                write_requests_fallback.append(req)
+                continue
+            write_requests_fallback.append(
+                {
+                    "id": req["id"],
+                    "method": req["method"],
+                    "url": _build_excel_range_url(
+                        email,
+                        item_id,
+                        sheet_name_fallback,
+                        raw_range,
+                    ),
+                    "body": req["body"],
+                    "headers": req["headers"],
+                }
+            )
+        if write_requests_fallback:
+            await service.execute_batch(write_requests_fallback)
+
+    mapped_write_requests: list[dict[str, Any]] = []
+    req_id = 1
+
+    def add_valora_write_requests(
+        field_data: dict[str, Any] | None,
+        cell_map: dict[str, str],
+        sheet: str,
+    ) -> None:
+        nonlocal req_id
+        req_id = _append_input_write_requests(
+            mapped_write_requests,
+            field_data,
+            cell_map,
+            user_email=email,
+            item_id=item_id,
+            sheet_name=sheet,
+            headers=headers,
+            req_id=req_id,
+            skip_empty=True,
+        )
+
+    add_valora_write_requests(input_payload, VALORA_INPUT_CELL_MAP, "Plantilla Usuario")
+    add_valora_write_requests(input_payload, KAPITAL_INPUT_WACC, KAPITAL_RESULTS_SHEET)
+    add_valora_write_requests(
+        input_payload.get("damodaran"),
+        KAPITAL_DAMODARAN_CELL_MAP,
+        KAPITAL_RESULTS_SHEET,
+    )
+    add_valora_write_requests(
+        input_payload.get("prima"), KAPITAL_PRIMA_CELL_MAP, KAPITAL_RESULTS_SHEET
+    )
+    add_valora_write_requests(
+        input_payload.get("embi"), KAPITAL_EMBI_CELL_MAP, KAPITAL_RESULTS_SHEET
+    )
+    add_valora_write_requests(
+        input_payload.get("rf"), KAPITAL_RF_CELL_MAP, KAPITAL_RESULTS_SHEET
+    )
+    add_valora_write_requests(
+        input_payload.get("riesgo"), KAPITAL_RIESGO_CELL_MAP, KAPITAL_RESULTS_SHEET
+    )
+    add_valora_write_requests(
+        input_payload.get("tax"), KAPITAL_TAX_CELL_MAP, KAPITAL_RESULTS_SHEET
+    )
+    add_valora_write_requests(
+        input_payload, VALORA_PROJECTION_INPUT_CELL_MAP, "Proyección"
+    )
+    add_valora_write_requests(
+        input_payload, VALORA_INTEGRATED_INPUT_CELL_MAP, "Integrado"
+    )
+
+    chunks = [
+        mapped_write_requests[i : i + 20]
+        for i in range(0, len(mapped_write_requests), 20)
+    ]
+    for chunk in chunks:
+        await service.execute_batch(chunk)
+
+
+async def _build_valora_output_entry(
+    item_id: str, session_id: str | None = None
+) -> dict[str, Any]:
+    service = get_onedrive_service()
+    email = service.config.user_email
+    headers = {"Content-Type": "application/json"}
+    if session_id:
+        headers["workbook-session-id"] = session_id
+
+    result = {
+        "created_at": _now_iso(),
+        "balance": {},
+        "conceptos": {},
+        "integrado": {},
+    }
+    requests = []
+    mapping = {}
+
+    for key, target in VALORA_RESULTS_CELL_MAP.items():
+        if key == "wacc":
+            sheet_name, cell = target
+            mapping[str(len(requests) + 1)] = ("wacc", None)
+            requests.append((sheet_name, cell))
+            continue
+        for field, (sheet_name, cell) in target.items():
+            mapping[str(len(requests) + 1)] = (key, field)
+            requests.append((sheet_name, cell))
+
+    responses = await service.execute_batch(
+        [
             {
-                "id": req["id"],
-                "method": req["method"],
-                "url": _build_excel_range_url(
-                    email,
-                    item_id,
-                    sheet_name_fallback,
-                    req["url"].split("/range(address='")[1].split("')")[0],
-                ),
-                "body": req["body"],
-                "headers": req["headers"],
+                "id": str(index),
+                "method": "GET",
+                "url": _build_excel_range_url(email, item_id, sheet_name, cell),
+                "headers": headers,
             }
-            for req in write_requests
+            for index, (sheet_name, cell) in enumerate(requests, start=1)
         ]
-        await service.execute_batch(write_requests_fallback)
+    )
+
+    for response in responses:
+        target = mapping.get(str(response.get("id")))
+        body = response.get("body") or {}
+        if not target or response.get("status") != 200:
+            continue
+        value = _first_matrix_value(body.get("text"))
+        if value is None:
+            value = _first_matrix_value(body.get("values"))
+        category, field = target
+        if field is None:
+            result[category] = value
+        else:
+            result.setdefault(category, {})[field] = value
+
+    return result
+
+
+def _is_excel_error(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    return value.strip().startswith("#")
 
 
 async def _enrich_payload_with_valora_excel(
@@ -583,35 +773,78 @@ async def _enrich_payload_with_valora_excel(
     item_id: str,
     existing_session_id: str | None = None,
 ) -> dict[str, Any]:
+    from time import perf_counter
+
+    def _lap(label: str, start: float) -> float:
+        elapsed = perf_counter() - start
+        logger.info(f"[VALORA TIMER] {label}: {elapsed:.3f} seg")
+        return perf_counter()
+
     service = get_onedrive_service()
     latest_input = _extract_input_payload(payload_data)
 
+    t_total = perf_counter()
+
     session_id = existing_session_id
     if session_id:
+        t0 = perf_counter()
         try:
             await service.force_calculate_excel(item_id, session_id=session_id)
         except Exception:
             session_id = None
+        t0 = _lap("force_calculate_excel en sesión previa", t0)
+    else:
+        t0 = perf_counter()
 
     if not session_id:
         session_id = await service._create_workbook_session(
-            item_id, persist_changes=False
+            item_id, persist_changes=True
         )
+        t0 = _lap("create_workbook_session", t0)
 
-    if latest_input:
-        await _write_valora_inputs_to_excel(
-            item_id=item_id, input_payload=latest_input, session_id=session_id
-        )
+    logger.info(f"[VALORA] Sesión {session_id} abierta para item {item_id}")
 
-    await service.force_calculate_excel(item_id, session_id=session_id)
+    try:
+        if latest_input:
+            logger.info(
+                f"[VALORA] Escribiendo inputs en Excel para item {item_id}; "
+                f"balance_rows={len(latest_input.get('balance_table', {}).get('rows', []))}, "
+                f"results_rows={len(latest_input.get('results_table', {}).get('rows', []))}"
+            )
+            await _write_valora_inputs_to_excel(
+                item_id=item_id, input_payload=latest_input, session_id=session_id
+            )
+            t0 = _lap("_write_valora_inputs_to_excel", t0)
 
-    payload_data["active_session_id"] = session_id
-    if "resultados" not in payload_data or not isinstance(
-        payload_data["resultados"], dict
-    ):
-        payload_data["resultados"] = {}
-    payload_data["resultados"]["inputs"] = latest_input
-    payload_data["resultados"]["created_at"] = _now_iso()
+        # Breve respiro para Excel Online (reduce si es posible tras pruebas)
+        await asyncio.sleep(0.3)
+        t0 = _lap("sleep post-escritura", t0)
 
+        logger.info(f"[VALORA] Forzando recálculo fullRebuild")
+        await service.force_calculate_excel(item_id, session_id=session_id)
+        t0 = _lap("force_calculate_excel fullRebuild", t0)
+
+        logger.info(f"[VALORA] Leyendo resultados")
+        resultados = await _build_valora_output_entry(item_id, session_id=session_id)
+        t0 = _lap("_build_valora_output_entry", t0)
+
+        logger.info(f"[VALORA] Resultados leídos: {resultados}")
+        payload_data["active_session_id"] = session_id
+        payload_data["resultados"] = resultados
+        payload_data["resultados"]["inputs"] = latest_input
+    except Exception as exc:
+        logger.exception(f"[VALORA] Error durante enriquecimiento Excel: {exc}")
+        raise
+    finally:
+        try:
+            await service._close_workbook_session(item_id, session_id)
+            logger.info(f"[VALORA] Sesión {session_id} cerrada")
+        except Exception:
+            logger.warning(
+                f"[VALORA] No se pudo cerrar la sesión {session_id} del workbook",
+                exc_info=True,
+            )
+
+    _lap("TIEMPO TOTAL enrich_payload_with_valora_excel", t_total)
     return payload_data
 
