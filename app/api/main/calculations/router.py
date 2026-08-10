@@ -223,7 +223,6 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"No se pudo crear la copia de trabajo de {calc_type.value}",
             ) from exc
-8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
 
     # 2. CALCULAR EN RAM
     if calc_type == CalculationType.KAPITAL:
