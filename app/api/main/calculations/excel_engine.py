@@ -788,56 +788,25 @@ async def _enrich_payload_with_valora_excel(
     latest_input = _extract_input_payload(payload_data)
 
     t_total = perf_counter()
-
     session_id = existing_session_id
+    t0 = perf_counter()
+
     if session_id:
-        t0 = perf_counter()
         try:
             await service.force_calculate_excel(item_id, session_id=session_id)
         except Exception:
             session_id = None
-        t0 = _lap("force_calculate_excel en sesión previa", t0)
-    else:
-        t0 = perf_counter()
+        else:
+            t0 = _lap("force_calculate_excel en sesión previa", t0)
 
     if not session_id:
+        t0 = perf_counter()
         session_id = await service._create_workbook_session(
             item_id, persist_changes=True
         )
         t0 = _lap("create_workbook_session", t0)
 
     logger.info(f"[VALORA] Sesión {session_id} abierta para item {item_id}")
-        # Breve respiro para Excel Online (reduce si es posible tras pruebas)
-        await asyncio.sleep(0.3)
-        t0 = _lap("sleep post-escritura", t0)
-
-        logger.info(f"[VALORA] Forzando recálculo fullRebuild")
-        await service.force_calculate_excel(item_id, session_id=session_id)
-        t0 = _lap("force_calculate_excel fullRebuild", t0)
-
-        logger.info(f"[VALORA] Leyendo resultados")
-        resultados = await _build_valora_output_entry(item_id, session_id=session_id)
-        t0 = _lap("_build_valora_output_entry", t0)
-
-        logger.info(f"[VALORA] Resultados leídos: {resultados}")
-        payload_data["active_session_id"] = session_id
-        payload_data["resultados"] = resultados
-        payload_data["resultados"]["inputs"] = latest_input
-    except Exception as exc:
-        logger.exception(f"[VALORA] Error durante enriquecimiento Excel: {exc}")
-        raise
-    finally:
-        try:
-            await service._close_workbook_session(item_id, session_id)
-            logger.info(f"[VALORA] Sesión {session_id} cerrada")
-        except Exception:
-            logger.warning(
-                f"[VALORA] No se pudo cerrar la sesión {session_id} del workbook",
-                exc_info=True,
-            )
-
-    _lap("TIEMPO TOTAL enrich_payload_with_valora_excel", t_total)
-
 
     try:
         if latest_input:
@@ -851,15 +820,14 @@ async def _enrich_payload_with_valora_excel(
             )
             t0 = _lap("_write_valora_inputs_to_excel", t0)
 
-        # Breve respiro para Excel Online (reduce si es posible tras pruebas)
         await asyncio.sleep(0.3)
         t0 = _lap("sleep post-escritura", t0)
 
-        logger.info(f"[VALORA] Forzando recálculo fullRebuild")
+        logger.info("[VALORA] Forzando recálculo fullRebuild")
         await service.force_calculate_excel(item_id, session_id=session_id)
         t0 = _lap("force_calculate_excel fullRebuild", t0)
 
-        logger.info(f"[VALORA] Leyendo resultados")
+        logger.info("[VALORA] Leyendo resultados")
         resultados = await _build_valora_output_entry(item_id, session_id=session_id)
         t0 = _lap("_build_valora_output_entry", t0)
 
@@ -881,6 +849,5 @@ async def _enrich_payload_with_valora_excel(
             )
 
     _lap("TIEMPO TOTAL enrich_payload_with_valora_excel", t_total)
-
     return payload_data
 
