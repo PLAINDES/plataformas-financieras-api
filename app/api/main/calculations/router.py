@@ -209,26 +209,6 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
     master_item_id = source_template.onedrive_item_id
     calculation_file_meta = None
 
-<<<<<<< HEAD
-    if calc_type == CalculationType.VALORA:
-        # PRUEBAS: usar directamente la plantilla maestra subida en lugar de
-        # crear una copia de trabajo de Valora. Luego podemos reactivar este
-        # bloque para volver al flujo aislado por copia.
-        # try:
-        #     calculation_file_meta = await _clone_default_template_for_calculation(
-        #         db, calc_type
-        #     )
-        #     master_item_id = calculation_file_meta["onedrive_item_id"]
-        # except HTTPException:
-        #     raise
-        # except Exception as exc:
-        #     logger.exception("No se pudo crear la copia de trabajo de Valora")
-        #     raise HTTPException(
-        #         status_code=status.HTTP_502_BAD_GATEWAY,
-        #         detail="No se pudo crear la copia de trabajo de Valora",
-        #     ) from exc
-        pass
-=======
     if calc_type in (CalculationType.VALORA, CalculationType.KAPITAL):
         try:
             calculation_file_meta = await _clone_default_template_for_calculation(
@@ -243,7 +223,7 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"No se pudo crear la copia de trabajo de {calc_type.value}",
             ) from exc
->>>>>>> 8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
+8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
 
     # 2. CALCULAR EN RAM
     if calc_type == CalculationType.KAPITAL:

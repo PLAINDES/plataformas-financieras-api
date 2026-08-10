@@ -1,9 +1,5 @@
 # app/api/main/calculations_router.py
 import asyncio
-<<<<<<< HEAD
-import json
-=======
->>>>>>> 8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
 import logging
 import time
 from typing import Any
@@ -12,6 +8,8 @@ from uuid import uuid4
 
 import httpx
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -774,418 +772,6 @@ def _is_excel_error(value: Any) -> bool:
         return False
     return value.strip().startswith("#")
 
-
-<<<<<<< HEAD
-# =========================================================
-# VALORA FORECAST FALLBACK (ETS)
-# =========================================================
-
-# Celdas FORECAST.ETS de la maestra. Inmutable: nunca se reescriben sobre la
-# sesión persistente. Solo cuando la maestra no las resuelve, el fallback
-# calcula su valor en Python (statsmodels ETS) y lo propaga mediante una sesión
-# temporal (persist chazar are false) SIN persistir nada.
-_VALORA_FORECAST_CELLS = [
-    {
-        "key": "ingresos",
-        "sheet": "Proyección",
-        "cell": "M89",
-        "hist_range": "E89:L89",
-        "section": "conceptos",
-    },
-    {
-        "key": "gastos_admin",
-        "sheet": "Proyección",
-        "cell": "M137",
-        "hist_range": "E137:L137",
-        "section": "conceptos",
-    },
-    {
-        "key": "depreciacion",
-        "sheet": "Proyección",
-        "cell": "M170",
-        "hist_range": "E170:L170",
-        "section": "conceptos",
-    },
-    {
-        "key": "capex_1",
-        "sheet": "Proyección",
-        "cell": "M105",
-        "hist_range": "E105:L105",
-        "section": "conceptos",
-    },
-    {
-        "key": "capex_2",
-        "sheet": "Proyección",
-        "cell": "M120",
-        "hist_range": "E120:L120",
-        "section": "conceptos",
-    },
-    {
-        "key": "capex_3",
-        "sheet": "Proyección",
-        "cell": "M121",
-        "hist_range": "E121:L121",
-        "section": "conceptos",
-    },
-    {
-        "key": "fdc",
-        "sheet": "Integrado",
-        "cell": "M7",
-        "hist_range": "E8:L8",
-        "section": "integrado",
-    },
-]
-
-_SECTION_CELLS = {
-    "conceptos": {
-        "activo": ("Conceptos", "Q24"),
-        "pasivo": ("Conceptos", "Q26"),
-        "empresa": ("Conceptos", "Q25"),
-        "patrimonio": ("Conceptos", "Q27"),
-        "precio_accion": ("Conceptos", "Q28"),
-        "tasa_forecast": ("Conceptos", "T30"),
-        "tasa_perpetua": ("Conceptos", "T31"),
-    },
-    "integrado": {
-        "activo": ("Integrado", "P34"),
-        "pasivo": ("Integrado", "P36"),
-        "empresa": ("Integrado", "P35"),
-        "patrimonio": ("Integrado", "P37"),
-        "precio_accion": ("Integrado", "P38"),
-        "tasa_forecast": ("Integrado", "S40"),
-        "tasa_perpetua": ("Integrado", "S41"),
-    },
-}
-
-
-def _ets_forecast_next(values: list[Any]) -> tuple[float | None, str | None]:
-    """Pronostica un punto siguiente con ETS (AAA con fallback a AA).
-
-    No se fija seasonal_periods: se intenta AAA y, si el ajuste fracasa o la
-    serie no es suficientemente larga para estacionalidad, se cae a AA.
-    """
-    nums: list[float] = []
-    for v in values:
-        n = _extract_number(v)
-        if n is not None:
-            nums.append(n)
-    if len(nums) < 3:
-        return None, None
-
-    series = np.asarray(nums, dtype=float)
-
-    try:
-        from statsmodels.tsa.exponential_smoothing.ets import ETSModel
-    except Exception as exc:  # pragma: no cover - dep opcional
-        print(f"[VALORA][ETS] statsmodels no disponible: {exc}", flush=True)
-        return None, None
-
-    # 1. Intento AAA (aditivo-aditivo-additivo) con estacionalidad autodetectada.
-    # El ajuste ETS es determinista por construcción (L-BFGS sobre start_params
-    # derivados de los datos, sin uso del RNG global: np.random solo se usa en
-    # simulate(), no en fit()). No se toca el estado global de numpy.
-    try:
-        seasonal_len = max(2, len(series) // 2)
-        model = ETSModel(
-            series,
-            error="add",
-            trend="add",
-            seasonal="add",
-            seasonal_periods=seasonal_len,
-            damped_trend=False,
-        )
-        fit = model.fit(disp=False)
-        fc = float(np.asarray(fit.forecast(1))[0])
-        if np.isfinite(fc):
-            return fc, "ets_aaa"
-    except Exception:
-        pass
-
-    # 2. Fallback AA (aditivo-aditivo sin estacionalidad).
-    try:
-        model = ETSModel(
-            series,
-            error="add",
-            trend="add",
-            seasonal=None,
-            damped_trend=False,
-        )
-        fit = model.fit(disp=False)
-        fc = float(np.asarray(fit.forecast(1))[0])
-        if np.isfinite(fc):
-            return fc, "ets_aa"
-    except Exception as exc:
-        print(f"[VALORA][ETS] fallback AA fallido: {exc}", flush=True)
-
-    return None, None
-
-
-async def _read_row_series(
-    service,
-    item_id: str,
-    sheet: str,
-    hist_range: str,
-    session_id: str | None,
-) -> list[float]:
-    """Lee una fila histórica y devuelve solo las columnas con datos reales."""
-    body = await service.read_excel_cell(
-        item_id=item_id,
-        sheet_name=sheet,
-        cell_address=hist_range,
-        session_id=session_id,
-    )
-    values = body.get("values") or []
-    row = values[0] if values and isinstance(values[0], list) else (values or [])
-    series: list[float] = []
-    for v in row:
-        if v is None:
-            continue
-        if isinstance(v, str) and (v.strip() == "" or v.strip().startswith("#")):
-            continue
-        n = _extract_number(v)
-        if n is not None:
-            series.append(n)
-    # Sólo la parte con datos reales (no padded hacia la izquierda).
-    return series
-
-
-async def _apply_valora_forecast_fallback(
-    payload_data: dict[str, Any],
-    item_id: str,
-    session_id: str | None,
-    resultados: dict[str, Any],
-    latest_input: dict,
-) -> dict[str, str]:
-    """Detecta celdas FORECAST.ETS en error y, si hay, recalcula en Python.
-
-    Propaga vía una sesión TEMPORAL (persist_changes=False) y mezcla en
-    'resultados' solo las secciones afectadas. Devuelve el mapa forecast_method.
-    """
-    service = get_onedrive_service()
-    email = service.config.user_email
-    forecast_method = {"conceptos": "excel", "integrado": "excel"}
-
-    # 1. Leer los forecast en la sesión real abierta.
-    headers = {"Content-Type": "application/json"}
-    if session_id:
-        headers["workbook-session-id"] = session_id
-
-    check_requests = [
-        {
-            "id": str(i),
-            "method": "GET",
-            "url": _build_excel_range_url(email, item_id, fc["sheet"], fc["cell"]),
-            "headers": headers,
-        }
-        for i, fc in enumerate(_VALORA_FORECAST_CELLS)
-    ]
-    check_responses = await service.execute_batch(check_requests)
-    check_by_id = {str(resp.get("id")): resp for resp in check_responses}
-
-    failed: list[dict] = []
-    for fc, req in zip(_VALORA_FORECAST_CELLS, check_requests):
-        resp = check_by_id.get(str(req["id"])) or {}
-        body = resp.get("body") or {}
-        text = _first_matrix_value(body.get("text"))
-        if _is_excel_error(text if text is not None else ""):
-            failed.append(fc)
-
-    if not failed:
-        return forecast_method
-
-    affected_sections = {fc["section"] for fc in failed}
-    computed: dict[str, dict] = {}
-    for fc in failed:
-        series = await _read_row_series(
-            service, item_id, fc["sheet"], fc["hist_range"], session_id
-        )
-        value, model = _ets_forecast_next(series)
-        computed[fc["key"]] = {"cell": fc["cell"], "sheet": fc["sheet"],
-                               "value": value, "model": model}
-        print(
-            f"[VALORA][FALLBACK] item={item_id} celda={fc['sheet']}!{fc['cell']} "
-            f"modelo={model} valor={value}",
-            flush=True,
-        )
-
-    # 2) Sesión temporal (no persiso nada) para todas las fallidas juntas.
-    temp_session = await service._create_workbook_session(
-        item_id, persist_changes=False
-    )
-    try:
-        # Reescribe históricos base para que la sesion temporal tenga contexto.
-        if latest_input:
-            await _write_valora_inputs_to_excel(
-                item_id=item_id, input_payload=latest_input, session_id=temp_session
-            )
-
-        temp_headers = {"Content-Type": "application/json", "workbook-session-id": temp_session}
-        override_requests = []
-        for i, fc in enumerate(failed):
-            value = (computed.get(fc["key"]) or {}).get("value")
-            if value is None:
-                continue
-            override_requests.append(
-                {
-                    "id": str(i),
-                    "method": "PATCH",
-                    "url": _build_excel_range_url(
-                        email, item_id, fc["sheet"], fc["cell"]
-                    ),
-                    "body": {"values": [[value]]},
-                    "headers": temp_headers,
-                }
-            )
-        print(
-            f"[VALORA][FALLBACK-DBG] OVERRIDES a escribir en sesión temp {temp_session}: "
-            f"{override_requests}",
-            flush=True,
-        )
-        override_responses = []
-        if override_requests:
-            override_responses = await service.execute_batch(override_requests)
-            print(
-                f"[VALORA][FALLBACK-DBG] Respuestas de overrides: "
-                f"{[(r.get('id'), r.get('status'), r.get('body')) for r in override_responses]}",
-                flush=True,
-            )
-
-        print(
-            f"[VALORA][FALLBACK-DBG] fullRebuild ANTES de leer salidas (sesión temp)",
-            flush=True,
-        )
-        await service.force_calculate_excel(item_id, session_id=temp_session)
-        print(
-            f"[VALORA][FALLBACK-DBG] fullRebuild HECHO (sesión temp)",
-            flush=True,
-        )
-
-        # 3) Leer solo las celdas de salida de las secciones afectadas.
-        section_requests = []
-        section_mapping = {}
-        index = 1
-        for section in ["conceptos", "integrado"]:
-            if section not in affected_sections:
-                continue
-            for field, (sheet, cell) in _SECTION_CELLS[section].items():
-                section_mapping[str(index)] = (section, field)
-                section_requests.append(
-                    {
-                        "id": str(index),
-                        "method": "GET",
-                        "url": _build_excel_range_url(email, item_id, sheet, cell),
-                        "headers": {"workbook-session-id": temp_session},
-                    }
-                )
-                index += 1
-
-        section_responses = await service.execute_batch(section_requests)
-
-        # Leer también los 3 forecast sobre-escritos para confirmar qué valor real
-        # quedó (y su tipo) en la sesión temp tras el fullRebuild.
-        verify_forecast = [
-            {
-                "id": str(900 + i),
-                "method": "GET",
-                "url": _build_excel_range_url(email, item_id, fc["sheet"], fc["cell"]),
-                "headers": {"workbook-session-id": temp_session},
-            }
-            for i, fc in enumerate([f for f in _VALORA_FORECAST_CELLS if f in failed])
-        ]
-        if verify_forecast:
-            verify_responses = await service.execute_batch(verify_forecast)
-            verify_by_id = {str(resp.get("id")): resp for resp in verify_responses}
-            for req in verify_forecast:
-                resp = verify_by_id.get(str(req["id"]))
-                fc_cell = req["url"].split("address='")[1].split("'")[0]
-                print(
-                    f"[VALORA][FALLBACK-DBG] forecast tras rebuild {fc_cell} -> "
-                    f"status={resp.get('status') if resp else 'MISSING'} "
-                    f"body={resp.get('body') if resp else None}",
-                    flush=True,
-                )
-
-        # Diagnóstico de la cadena de Conceptos: eslabones intermedios entre los
-        # forecast y el NPV(M19:AA19). Body completo (para ver errorText real).
-        chain_requests = []
-        chain_by_label = {}
-        chain_targets = [
-            ("Proyección", "M92", "prop_ing"),
-            ("Proyección", "M193", "fb_x_ing"),
-            ("Proyección", "M195", "fb_cfe"),
-            ("Proyección", "M214", "fb_term"),
-            ("Conceptos", "M19:AA19", "fcf_npv_row"),
-            ("Conceptos", "Q22", "npv_result"),
-        ]
-        for i, (sh, cel, label) in enumerate(chain_targets, start=2000):
-            chain_requests.append(
-                {
-                    "id": str(i),
-                    "method": "GET",
-                    "url": _build_excel_range_url(email, item_id, sh, cel),
-                    "headers": {"workbook-session-id": temp_session},
-                }
-            )
-            chain_by_label[label] = str(i)
-        chain_responses = await service.execute_batch(chain_requests)
-        chain_by_id = {str(resp.get("id")): resp for resp in chain_responses}
-        for label, rid in chain_by_label.items():
-            resp = chain_by_id.get(rid)
-            print(
-                f"[VALORA][FALLBACK-DBG] CHAIN {label} -> "
-                f"status={resp.get('status') if resp else 'MISSING'} "
-                f"body={json.dumps(resp.get('body') if resp else None, default=str)}",
-                flush=True,
-            )
-
-        for resp in section_responses:
-            target = section_mapping.get(str(resp.get("id")))
-            body = resp.get("body") or {}
-            if not target:
-                continue
-            section, field = target
-            raw_text = _first_matrix_value(body.get("text"))
-            raw_value = _first_matrix_value(body.get("values"))
-            print(
-                f"[VALORA][FALLBACK-DBG] LECTURA {section}.{field} "
-                f"status={resp.get('status')} text={raw_text!r} values={raw_value!r}",
-                flush=True,
-            )
-            if resp.get("status") != 200:
-                print(
-                    f"[VALORA][FALLBACK-DBG] {section}.{field} status!=200 -> se ignora",
-                    flush=True,
-                )
-                continue
-            value = raw_text if raw_text is not None else raw_value
-            # NO pisar con un valor nulo/error: si la lectura B2 no trae un valor
-            # limpio, conservamos el que ya tenía 'resultados' (el bueno).
-            if _is_excel_error(value if isinstance(value, str) else "") or value in (None, ""):
-                print(
-                    f"[VALORA][FALLBACK-DBG] {section}.{field} trajo valor inválido "
-                    f"({value!r}) -> se conserva el existente: "
-                    f"{resultados.get(section, {}).get(field)!r}",
-                    flush=True,
-                )
-                continue
-            resultados.setdefault(section, {})[field] = value
-
-        print(
-            f"[VALORA][FALLBACK-DBG] RESULTADOS finales tras merge: "
-            f"{json.dumps(resultados, default=str)}",
-            flush=True,
-        )
-
-        for sec in affected_sections:
-            forecast_method[sec] = "ets_fallback"
-    finally:
-        await service._close_workbook_session(item_id, temp_session)
-
-    return forecast_method
-
-
-=======
->>>>>>> 8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
 async def _enrich_payload_with_valora_excel(
     payload_data: dict[str, Any],
     item_id: str,
@@ -1221,48 +807,6 @@ async def _enrich_payload_with_valora_excel(
         t0 = _lap("create_workbook_session", t0)
 
     logger.info(f"[VALORA] Sesión {session_id} abierta para item {item_id}")
-
-    try:
-        if latest_input:
-            logger.info(
-                f"[VALORA] Escribiendo inputs en Excel para item {item_id}; "
-                f"balance_rows={len(latest_input.get('balance_table', {}).get('rows', []))}, "
-                f"results_rows={len(latest_input.get('results_table', {}).get('rows', []))}"
-            )
-            await _write_valora_inputs_to_excel(
-                item_id=item_id, input_payload=latest_input, session_id=session_id
-            )
-            t0 = _lap("_write_valora_inputs_to_excel", t0)
-
-<<<<<<< HEAD
-    payload_data["active_session_id"] = session_id
-    payload_data["resultados"] = await _build_valora_output_entry(
-        item_id, session_id=session_id
-    )
-    payload_data["resultados"]["inputs"] = latest_input
-
-    # FALLBACK B2: capa adicional tras el flujo normal. Si alguna celda
-    # FORECAST.ETS quedó en error, se recalcula en Python (ETS) vía una sesión
-    # TEMPORAL sin persistir y solo se fusionan las secciones afectadas.
-    try:
-        forecast_method = await _apply_valora_forecast_fallback(
-            payload_data,
-            item_id,
-            session_id,
-            payload_data["resultados"],
-            latest_input,
-        )
-        payload_data["forecast_method"] = forecast_method
-    except Exception as exc:
-        logger.warning(
-            f"Fallback forecast de Valora no aplicable en esta pasada "
-            f"(item={item_id}): {exc}"
-        )
-        payload_data.setdefault(
-            "forecast_method", {"conceptos": "excel", "integrado": "excel"}
-        )
-
-=======
         # Breve respiro para Excel Online (reduce si es posible tras pruebas)
         await asyncio.sleep(0.3)
         t0 = _lap("sleep post-escritura", t0)
@@ -1293,6 +837,50 @@ async def _enrich_payload_with_valora_excel(
             )
 
     _lap("TIEMPO TOTAL enrich_payload_with_valora_excel", t_total)
->>>>>>> 8510b7a (feat: delete empresa BVL + estabilización cálculo Excel (Valora/Kapital))
+
+
+    try:
+        if latest_input:
+            logger.info(
+                f"[VALORA] Escribiendo inputs en Excel para item {item_id}; "
+                f"balance_rows={len(latest_input.get('balance_table', {}).get('rows', []))}, "
+                f"results_rows={len(latest_input.get('results_table', {}).get('rows', []))}"
+            )
+            await _write_valora_inputs_to_excel(
+                item_id=item_id, input_payload=latest_input, session_id=session_id
+            )
+            t0 = _lap("_write_valora_inputs_to_excel", t0)
+
+        # Breve respiro para Excel Online (reduce si es posible tras pruebas)
+        await asyncio.sleep(0.3)
+        t0 = _lap("sleep post-escritura", t0)
+
+        logger.info(f"[VALORA] Forzando recálculo fullRebuild")
+        await service.force_calculate_excel(item_id, session_id=session_id)
+        t0 = _lap("force_calculate_excel fullRebuild", t0)
+
+        logger.info(f"[VALORA] Leyendo resultados")
+        resultados = await _build_valora_output_entry(item_id, session_id=session_id)
+        t0 = _lap("_build_valora_output_entry", t0)
+
+        logger.info(f"[VALORA] Resultados leídos: {resultados}")
+        payload_data["active_session_id"] = session_id
+        payload_data["resultados"] = resultados
+        payload_data["resultados"]["inputs"] = latest_input
+    except Exception as exc:
+        logger.exception(f"[VALORA] Error durante enriquecimiento Excel: {exc}")
+        raise
+    finally:
+        try:
+            await service._close_workbook_session(item_id, session_id)
+            logger.info(f"[VALORA] Sesión {session_id} cerrada")
+        except Exception:
+            logger.warning(
+                f"[VALORA] No se pudo cerrar la sesión {session_id} del workbook",
+                exc_info=True,
+            )
+
+    _lap("TIEMPO TOTAL enrich_payload_with_valora_excel", t_total)
+
     return payload_data
 
