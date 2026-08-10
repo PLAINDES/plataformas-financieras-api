@@ -7,6 +7,9 @@ from urllib.parse import quote
 from uuid import uuid4
 
 import httpx
+import numpy as np
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +46,8 @@ from .formatters import (
     _to_excel_input_value,
 )
 from .payload_manager import _extract_input_payload
+
+logger = logging.getLogger(__name__)
 
 
 def _build_template_copy_name(calc_type: CalculationType) -> str:
@@ -767,7 +772,6 @@ def _is_excel_error(value: Any) -> bool:
         return False
     return value.strip().startswith("#")
 
-
 async def _enrich_payload_with_valora_excel(
     payload_data: dict[str, Any],
     item_id: str,
@@ -784,19 +788,19 @@ async def _enrich_payload_with_valora_excel(
     latest_input = _extract_input_payload(payload_data)
 
     t_total = perf_counter()
-
     session_id = existing_session_id
+    t0 = perf_counter()
+
     if session_id:
-        t0 = perf_counter()
         try:
             await service.force_calculate_excel(item_id, session_id=session_id)
         except Exception:
             session_id = None
-        t0 = _lap("force_calculate_excel en sesión previa", t0)
-    else:
-        t0 = perf_counter()
+        else:
+            t0 = _lap("force_calculate_excel en sesión previa", t0)
 
     if not session_id:
+        t0 = perf_counter()
         session_id = await service._create_workbook_session(
             item_id, persist_changes=True
         )
@@ -816,15 +820,14 @@ async def _enrich_payload_with_valora_excel(
             )
             t0 = _lap("_write_valora_inputs_to_excel", t0)
 
-        # Breve respiro para Excel Online (reduce si es posible tras pruebas)
         await asyncio.sleep(0.3)
         t0 = _lap("sleep post-escritura", t0)
 
-        logger.info(f"[VALORA] Forzando recálculo fullRebuild")
+        logger.info("[VALORA] Forzando recálculo fullRebuild")
         await service.force_calculate_excel(item_id, session_id=session_id)
         t0 = _lap("force_calculate_excel fullRebuild", t0)
 
-        logger.info(f"[VALORA] Leyendo resultados")
+        logger.info("[VALORA] Leyendo resultados")
         resultados = await _build_valora_output_entry(item_id, session_id=session_id)
         t0 = _lap("_build_valora_output_entry", t0)
 

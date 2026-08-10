@@ -6,10 +6,14 @@ AWS_BASE_PREFIX = "plataformas_financieras"
 # Master template sheets
 TEMPLATE_SHEET_VALORA = "Plantilla Usuario"
 TEMPLATE_SHEET_KAPITAL = "WACC"
+# Hoja "Reporte": contiene códigos y gráficos exportados. Se asigna a kapital
+# mientras se valida el pipeline; al soportar valora se clasificará por prefijo.
+TEMPLATE_SHEET_REPORTE = "Reporte"
 
 TEMPLATE_SHEET_TO_TYPE = {
     TEMPLATE_SHEET_VALORA: "valora",
     TEMPLATE_SHEET_KAPITAL: "kapital",
+    TEMPLATE_SHEET_REPORTE: "kapital",
 }
 
 

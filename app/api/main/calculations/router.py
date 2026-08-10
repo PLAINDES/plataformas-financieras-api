@@ -538,6 +538,24 @@ async def refresh_calculation(
     if not source_template or not source_template.onedrive_item_id:
         raise HTTPException(status_code=400, detail="Plantilla maestra no configurada")
 
+    current_file = (
+        calculation.data.get("file")
+        if isinstance(calculation.data, dict)
+        and isinstance(calculation.data.get("file"), dict)
+        else None
+    )
+    workbook_item_id = (
+        current_file.get("onedrive_item_id") if current_file else None
+    )
+
+    calculation_file_meta = current_file
+
+    if not workbook_item_id:
+        calculation_file_meta = await _clone_default_template_for_calculation(
+            db, CalculationType.KAPITAL
+        )
+        workbook_item_id = calculation_file_meta["onedrive_item_id"]
+
     # Preparar input de sensibilidad si existen los campos
     sensitivity_input = None
     has_beta = latest_input.get("beta_desapalancado") is not None
@@ -558,7 +576,7 @@ async def refresh_calculation(
         # Enriquecer y forzar recálculo usando la sesión existente o creando una nueva
         enriched_data = await _enrich_payload_with_excel_outputs(
             payload_data=refresh_payload,
-            item_id=source_template.onedrive_item_id,
+            item_id=workbook_item_id,
             include_resultados=True,
             include_sensibilizacion=sensitivity_input is not None,
             existing_session_id=prewarmed_session_id,
@@ -578,6 +596,7 @@ async def refresh_calculation(
     calculation.data = _normalize_calculation_data(
         payload_data=enriched_data,
         existing_data=calculation.data,
+        file_meta=calculation_file_meta,
         include_resultados_history=True,
         include_sensibilizacion_history=False,
     )
@@ -614,7 +633,7 @@ async def prewarm_excel_session(db: Session = Depends(get_db)):
     service = get_onedrive_service()
     try:
         session_id = await service._create_workbook_session(
-            source_template.onedrive_item_id, persist_changes=False
+            source_template.onedrive_item_id, persist_changes=True
         )
         return {"session_id": session_id}
     except Exception as e:
