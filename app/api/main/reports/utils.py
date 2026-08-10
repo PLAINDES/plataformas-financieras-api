@@ -20,7 +20,7 @@ def flatten_dict(d: dict, parent_key: str = '', sep: str = '.') -> dict:
 
 
 def _sanitize_text(text: str) -> str:
-    """Reemplaza caracteres Unicode comunes no soportados por latin-1"""
+    """Normaliza texto mal decodificado sin perder contenido Unicode."""
     if not text:
         return ""
     replacements = {
@@ -35,5 +35,4 @@ def _sanitize_text(text: str) -> str:
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    # Ignora cualquier otro caracter que falle en latin-1
-    return text.encode('latin-1', 'ignore').decode('latin-1')
+    return text

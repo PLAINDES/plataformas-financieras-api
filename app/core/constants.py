@@ -6,10 +6,14 @@ AWS_BASE_PREFIX = "plataformas_financieras"
 # Master template sheets
 TEMPLATE_SHEET_VALORA = "Plantilla Usuario"
 TEMPLATE_SHEET_KAPITAL = "WACC"
+# Hoja "Reporte": contiene códigos y gráficos exportados. Se asigna a kapital
+# mientras se valida el pipeline; al soportar valora se clasificará por prefijo.
+TEMPLATE_SHEET_REPORTE = "Reporte"
 
 TEMPLATE_SHEET_TO_TYPE = {
     TEMPLATE_SHEET_VALORA: "valora",
     TEMPLATE_SHEET_KAPITAL: "kapital",
+    TEMPLATE_SHEET_REPORTE: "kapital",
 }
 
 
@@ -72,6 +76,16 @@ KAPITAL_RESULTS_CELL_MAP = {
         "d_empresa": "E52",
     },
     "mercado_emergente_moneda_local": {
+        # La plantilla Kapital no expone bloque separado para mercado emergente
+        # en moneda local. Se conserva el bloque USD para compatibilidad.
+        "ke": "E47",
+        "koa": "E48",
+        "kd": "E49",
+        "cppc": "E50",
+        "kd(1-t)": "E51",
+        "d_empresa": "E52",
+    },
+    "empresa_dolares": {
         "ke": "F47",
         "koa": "F48",
         "kd": "F49",
@@ -79,21 +93,13 @@ KAPITAL_RESULTS_CELL_MAP = {
         "kd(1-t)": "F51",
         "d_empresa": "F52",
     },
-    "empresa_dolares": {
+    "empresa_moneda_local": {
         "ke": "G47",
         "koa": "G48",
         "kd": "G49",
         "cppc": "G50",
         "kd(1-t)": "G51",
-        "d_empresa": "G52",
-    },
-    "empresa_moneda_local": {
-        "ke": "H47",
-        "koa": "H48",
-        "kd": "H49",
-        "cppc": "H50",
-        "kd(1-t)": "H51",
-        "d_empresa": "H52",
+        "d_empresa": "F52",
     },
 }
 # Hoja WACC
