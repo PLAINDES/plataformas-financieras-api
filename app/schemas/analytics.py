@@ -114,6 +114,12 @@ class RetentionMetrics(BaseModel):
     recurring_users: int
 
 
+class OccupationProfileMetrics(BaseModel):
+    total_devices: int
+    audiences: List[TopItem]
+    specialist_roles: List[TopItem]
+
+
 class DashboardData(BaseModel):
     summary: DashboardSummary
     devices: List[TopItem]
@@ -125,5 +131,6 @@ class DashboardData(BaseModel):
     sessions_over_time: List[TimeSeriesItem]
     kapital_funnel: CalculationFunnel
     kapital_retention: RetentionMetrics
+    occupation_profiles: OccupationProfileMetrics
     cta_clicks: int
     avg_time_on_page: Optional[float]
