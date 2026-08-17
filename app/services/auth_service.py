@@ -57,6 +57,7 @@ class AuthService:
             "email": user_data.email,
             "name": user_data.name,
             "lastname": user_data.lastname,
+            "phone_number": user_data.phone_number,
             "password": hashed_password,
             "role": user_data.role or "user"
         })
@@ -212,6 +213,7 @@ class AuthService:
             email=user.email,
             name=user.name,
             lastname=user.lastname,
+            phone_number=user.phone_number,
             role=user.role.value,
             is_active=user.is_active,
             avatar=user.avatar,
