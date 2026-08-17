@@ -1,0 +1,1 @@
+"""Report payment endpoints."""

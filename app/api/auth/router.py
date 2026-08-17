@@ -21,6 +21,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     - **email**: Email único del usuario
     - **name**: Nombre del usuario
     - **lastname**: Apellido (opcional)
+    - **phone_number**: TelÃ©fono obligatorio
     - **password**: Contraseña (mínimo 6 caracteres)
     - **role**: Rol del usuario (user por defecto)
     """
@@ -97,6 +98,7 @@ def get_me(current_user: User = Depends(get_current_user)):
         email=current_user.email,
         name=current_user.name,
         lastname=current_user.lastname,
+        phone_number=current_user.phone_number,
         role=current_user.role.value,
         is_active=current_user.is_active,
         avatar=current_user.avatar,
@@ -123,6 +125,7 @@ def refresh_token(
             email=current_user.email,
             name=current_user.name,
             lastname=current_user.lastname,
+            phone_number=current_user.phone_number,
             role=current_user.role.value,
             is_active=current_user.is_active,
             avatar=current_user.avatar,
