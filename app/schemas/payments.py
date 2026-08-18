@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -52,3 +54,21 @@ class PaymentStatusResponse(BaseModel):
     expires_at: str | None = None
     paid_at: str | None = None
     created_at: str
+
+
+class PaymentWebhookPayload(BaseModel):
+    event: str
+    external_reference_id: str = Field(..., min_length=1, max_length=100)
+    amount: float = Field(..., gt=0)
+    currency: str = Field(..., min_length=3, max_length=3)
+    status: str
+    transaction_id: str | None = Field(default=None, max_length=255)
+    processed_at: datetime
+
+
+class PaymentWebhookResponse(BaseModel):
+    success: bool
+    payment_id: int
+    status: str
+    already_processed: bool = False
+    message: str

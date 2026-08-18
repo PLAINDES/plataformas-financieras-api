@@ -104,8 +104,9 @@ async def start_subsectores_boa(request: AnalyzeCompaniesRequest):
 @router.post("/calculate-subsectores-boa/upload", response_model=SubsectorBoaResponse)
 async def start_subsectores_boa_upload(file: UploadFile = File(...)):
     """
-    Modo depuración: lee el XLSX de subsectores, toma solo las primeras
-    BOA_DEBUG_DEFAULT_LIMIT empresas únicas y ejecuta el cálculo en línea.
+    Modo de recálculo dirigido: lee el XLSX completo y procesa TODAS las empresas.
+    Antes solo procesaba 185 filas configuradas; ahora procesa el archivo completo
+    y guarda resultados en la base de datos desde el inicio.
     """
     if not file or not file.filename:
         raise HTTPException(status_code=400, detail="No se proporcionó ningún archivo.")
@@ -116,7 +117,18 @@ async def start_subsectores_boa_upload(file: UploadFile = File(...)):
 
     content = await file.read()
     try:
-        tickers_to_process = extract_company_rows_from_xlsx(content)
+        company_rows = extract_company_rows_from_xlsx(content)
+        # Procesar TODAS las empresas del Excel, no solo las 185 anteriores
+        tickers_to_process = [
+            str(row["ticker"]).strip().upper()
+            for row in company_rows
+            if row.get("ticker")
+        ]
+        logger.info(
+            "[BOA][UPLOAD] Total de empresas en Excel: %s, a procesar: %s",
+            len(company_rows),
+            len(tickers_to_process),
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"No se pudo leer el Excel: {exc}") from exc
 
@@ -129,7 +141,7 @@ async def start_subsectores_boa_upload(file: UploadFile = File(...)):
             processed=0,
             failed=0,
             job_id=None,
-            message="No se encontraron empresas válidas en la columna 'Empresa'.",
+            message="El archivo Excel no contiene empresas con ticker válido.",
         )
 
     job_id = create_job(len(tickers_to_process))
@@ -139,9 +151,9 @@ async def start_subsectores_boa_upload(file: UploadFile = File(...)):
             calculate_subsectores_boa(
                 tickers_to_process,
                 job_id=job_id,
-                batch_size=5,
-                max_companies=None,
-                save_to_db=False,
+                batch_size=50,       # lote mayor para procesar más rápido
+                max_companies=None,  # Sin límite máximo - todas las empresas
+                save_to_db=True,     # Guardar en BD desde el inicio
                 emit_ticker_logs=False,
             )
         except Exception as exc:
@@ -163,10 +175,9 @@ async def start_subsectores_boa_upload(file: UploadFile = File(...)):
         incomplete_tickers=[],
         empty_batch_tickers=[],
         job_id=job_id,
-        message=(
-            f"Procesando {len(tickers_to_process)} tickers en segundo plano. "
-            f"El resumen parcial se imprimirá en Docker Desktop cada 5 minutos."
-        ),
+        message=f"Procesando {len(tickers_to_process)} empresas del archivo Excel en segundo plano. " +
+                "Los resultados se guardarán en la base de datos automáticamente. " +
+                "Use el indicador flotante para seguir el progreso.",
     )
 
 @router.get("/boa-active-jobs")

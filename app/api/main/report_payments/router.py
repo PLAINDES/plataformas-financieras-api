@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -22,6 +22,8 @@ from app.schemas.payments import (
     PaymentGatewayPayload,
     PaymentSessionResponse,
     PaymentStatusResponse,
+    PaymentWebhookPayload,
+    PaymentWebhookResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +31,11 @@ router = APIRouter(prefix="/main/report-payments", tags=["Report payments"])
 
 _CURRENCY_ALIASES = {"SOLES": "PEN", "SOL": "PEN", "S/": "PEN"}
 _CHECKOUT_URL_PREFIX = "https://platinumarket.proideas.org/embedded/pay"
+_WEBHOOK_EVENT_STATUS = {
+    "payment.succeeded": "paid",
+    "payment.failed": "failed",
+    "payment.expired": "expired",
+}
 
 
 def _normalize_currency(value: str | None) -> str:
@@ -116,6 +123,106 @@ def _payment_status_response(payment: ReportPayment) -> PaymentStatusResponse:
         expires_at=payment.expires_at.isoformat() if payment.expires_at else None,
         paid_at=payment.paid_at.isoformat() if payment.paid_at else None,
         created_at=payment.created_at.isoformat(),
+    )
+
+
+@router.post("/webhook", response_model=PaymentWebhookResponse)
+def receive_payment_webhook(
+    payload: PaymentWebhookPayload,
+    db: Session = Depends(get_db),
+    api_key: str | None = Header(default=None, alias="X-API-Key"),
+) -> PaymentWebhookResponse:
+    """Receive payment status notifications sent server-to-server by Certprox."""
+    configured_api_key = settings.CULQI_INTEGRATION_API_KEY.strip()
+    if not configured_api_key or api_key != configured_api_key:
+        logger.warning(
+            "[PAYMENT][WEBHOOK REJECTED] invalid_api_key external_reference_id=%s",
+            payload.external_reference_id,
+        )
+        raise HTTPException(status_code=401, detail="Webhook no autorizado")
+
+    expected_status = _WEBHOOK_EVENT_STATUS.get(payload.event)
+    if expected_status is None or payload.status != expected_status:
+        raise HTTPException(status_code=422, detail="Evento o estado de pago no valido")
+    if expected_status == "paid" and not payload.transaction_id:
+        raise HTTPException(status_code=422, detail="El pago aprobado no tiene transaction_id")
+
+    payment = db.execute(
+        select(ReportPayment).where(
+            ReportPayment.external_reference_id == payload.external_reference_id
+        )
+    ).scalar_one_or_none()
+    if not payment:
+        logger.warning(
+            "[PAYMENT][WEBHOOK UNKNOWN] external_reference_id=%s event=%s",
+            payload.external_reference_id,
+            payload.event,
+        )
+        raise HTTPException(status_code=404, detail="Referencia de pago no encontrada")
+
+    currency = payload.currency.strip().upper()
+    if currency != payment.currency or Decimal(str(payload.amount)) != payment.amount:
+        logger.warning(
+            "[PAYMENT][WEBHOOK MISMATCH] payment_id=%s amount=%s currency=%s",
+            payment.id,
+            payload.amount,
+            currency,
+        )
+        raise HTTPException(status_code=409, detail="Monto o moneda no coinciden con la sesion")
+
+    same_transaction = (
+        not payload.transaction_id
+        or not payment.transaction_id
+        or payment.transaction_id == payload.transaction_id
+    )
+    if payment.status == expected_status and same_transaction:
+        return PaymentWebhookResponse(
+            success=True,
+            payment_id=payment.id,
+            status=payment.status,
+            already_processed=True,
+            message="Evento procesado anteriormente",
+        )
+
+    # A confirmed payment is terminal and must never be downgraded by a late event.
+    if payment.status == "paid":
+        return PaymentWebhookResponse(
+            success=True,
+            payment_id=payment.id,
+            status=payment.status,
+            already_processed=True,
+            message="El pago ya fue confirmado",
+        )
+
+    payment.status = expected_status
+    if payload.transaction_id:
+        payment.transaction_id = payload.transaction_id
+    if expected_status == "paid":
+        processed_at = payload.processed_at
+        if processed_at.tzinfo is not None:
+            processed_at = processed_at.astimezone(timezone.utc).replace(tzinfo=None)
+        payment.paid_at = processed_at
+
+    try:
+        db.commit()
+        db.refresh(payment)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("[PAYMENT][WEBHOOK DB ERROR] payment_id=%s", payment.id)
+        raise HTTPException(status_code=500, detail="No se pudo actualizar el pago") from exc
+
+    print(
+        f"[PAYMENT][WEBHOOK PROCESSED] payment_id={payment.id} "
+        f"external_reference_id={payment.external_reference_id} "
+        f"event={payload.event} status={payment.status} "
+        f"transaction_id={payment.transaction_id}",
+        flush=True,
+    )
+    return PaymentWebhookResponse(
+        success=True,
+        payment_id=payment.id,
+        status=payment.status,
+        message="Estado de pago actualizado",
     )
 
 

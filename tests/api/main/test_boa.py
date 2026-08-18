@@ -102,7 +102,7 @@ class BoaHelperTests(unittest.TestCase):
             "lt:balance_sheet|st:balance_sheet",
         )
 
-    def test_missing_short_term_debt_is_diagnostic_but_calculates_as_zero(self):
+    def test_missing_short_term_debt_is_valid_and_calculates_as_zero(self):
         annual = pd.DataFrame(
             {"latest": [80.0]},
             index=["Long Term Debt"],
@@ -118,14 +118,52 @@ class BoaHelperTests(unittest.TestCase):
 
         self.assertEqual(diagnostic["reason"], "ok")
         self.assertEqual(result["debt_st"], 0.0)
-        self.assertIn("debt_st", result["missing_fields"])
-        self.assertEqual(result["diagnostic_reason"], "datos_incompletos")
+        self.assertNotIn("debt_st", result["missing_fields"])
+        self.assertEqual(result["diagnostic_reason"], "ok")
         self.assertEqual(result["debt_st_status"], "missing_normalized_to_zero")
-        self.assertFalse(boa._has_complete_values(result))
+        self.assertTrue(boa._has_complete_values(result))
         self.assertEqual(
             result["debt_st_failure_reason"],
             "sin_etiqueta_o_valor_en_balance_anual_y_trimestral",
         )
+
+    def test_missing_long_term_debt_is_valid_and_calculates_as_zero(self):
+        annual = pd.DataFrame(
+            {"latest": [20.0]},
+            index=["Current Debt"],
+        )
+        stock = FakeTicker(balance_sheet=annual)
+
+        with (
+            patch.object(boa.yf, "Ticker", lambda *args, **kwargs: stock),
+            patch.object(boa, "get_fx_rate", lambda *args, **kwargs: 1.0),
+            patch.object(boa, "_delay", lambda *args, **kwargs: None),
+        ):
+            _, result, diagnostic = boa._process_single_ticker("TEST")
+
+        self.assertEqual(diagnostic["reason"], "ok")
+        self.assertEqual(result["debt_lt"], 0.0)
+        self.assertNotIn("debt_lt", result["missing_fields"])
+        self.assertEqual(result["diagnostic_reason"], "ok")
+        self.assertEqual(result["debt_lt_status"], "missing_normalized_to_zero")
+        self.assertTrue(boa._has_complete_values(result))
+
+    def test_missing_both_debt_components_remains_incomplete(self):
+        stock = FakeTicker()
+
+        with (
+            patch.object(boa.yf, "Ticker", lambda *args, **kwargs: stock),
+            patch.object(boa, "get_fx_rate", lambda *args, **kwargs: 1.0),
+            patch.object(boa, "_delay", lambda *args, **kwargs: None),
+        ):
+            _, result, diagnostic = boa._process_single_ticker("TEST")
+
+        self.assertEqual(diagnostic["reason"], "ok")
+        self.assertIn("debt_lt", result["missing_fields"])
+        self.assertIn("debt_st", result["missing_fields"])
+        self.assertIn("debt_value", result["missing_fields"])
+        self.assertEqual(result["diagnostic_reason"], "datos_incompletos")
+        self.assertFalse(boa._has_complete_values(result))
 
     def test_verified_ticker_alias_resolves_vsco_to_vsxy(self):
         resolution = boa.resolve_ticker_symbol("VSCO", search_candidates=False)

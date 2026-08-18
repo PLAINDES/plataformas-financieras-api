@@ -678,10 +678,10 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
         )
 
     missing_fields = []
-    if raw_debt_lt is None:
-        missing_fields.append("debt_lt")
-    if raw_debt_st is None:
-        missing_fields.append("debt_st")
+    # Una empresa puede reportar toda su deuda en un solo plazo. Si al menos un
+    # componente existe, el ausente ya fue normalizado a cero y no invalida BOA.
+    if raw_debt_lt is None and raw_debt_st is None:
+        missing_fields.extend(("debt_lt", "debt_st"))
     if debt_value is None:
         missing_fields.append("debt_value")
     if market_cap is None and market_cap_usd is None:
@@ -1388,8 +1388,8 @@ def calculate_subsectores_boa(
             if api_data or last_error:
                 requests_since_pause += 1
                 if requests_since_pause >= 25 and batch_idx < total_batches - 1 and not cancel_event.is_set():
-                    logger.info("Pausa preventiva: 25 solicitudes completadas. Esperando 120s antes de continuar...")
-                    time.sleep(120)
+                    logger.info("Pausa preventiva: 25 solicitudes completadas. Esperando 15s antes de continuar...")
+                    time.sleep(15)
                     requests_since_pause = 0
 
         if save_to_db and batch_companies:
