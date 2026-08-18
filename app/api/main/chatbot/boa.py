@@ -43,28 +43,6 @@ BOA_DEBUG_DEFAULT_LIMIT = 5
 BOA_DEBUG_RANDOM_SEED = None
 BOA_LOG_TICKER_STEPS = True
 
-# Symbols reported as incomplete in the previous full BOA run. Repeated source
-# rows remain valid because one company can belong to multiple subsectors.
-BOA_INCOMPLETE_RECALCULATION_TICKERS: tuple[str, ...] = tuple(
-    """
-    BVIC.JK MNST MNST CBG.L MNST AMZN LAZ EVR.AX PJT IVZ AMG BLK TROW BEN IVZ
-    JHG AMG BCS SUM.NZ BLD CLF RAND ANET OCI.L UPL.L CIM AMZN TEP.L 6586.T
-    6586.T WTS PRX.AX GRMN 1810.T PFC.NS LEN NVR MTH RSVR AMZN TOM.L UPL.L DQ
-    DQ ISRG MOH LEN NVR MTH MHO BZH HOV FOR FPH FPH BEI.DE 8630.T 8725.T
-    ALL.L 1299.HK 8750.T BHF SIGI ALL.L ALL.L LMND ADM.L MUV2.DE HNR1.DE MTG
-    BLK TROW BEN IVZ JHG AMG BX CG AMG RAT.L ABDN.L BX RITM EVR.AX GRMN TMC
-    CLF SIM UEC.SW DNN NSP NSSC NL TPL TPL SOIL.L AROC USAC MRC.L BCC BCC
-    KEN.L DQ RGLD NYT GLPI FPI VICI REXR FRT SITC MAC RPT SILA KRC CUZ HIW
-    DEI EFC VICI.MX CHMI ALX AGNC RITM PMT CMTG CIM WSR RLJ XHR AHT SOHO.L
-    LEN NVR MTH MHO FPH AXR AOMR PINE O39.SI KW GHI SAFE HGV VAC INTG TNL AXS
-    OXBR NMIH GBLI ALL.L MCY AFG SIGI PRA ROOT HIPO PAG.L SUM.NZ BCC ASAI.L
-    ADM.L OLPX AMZN CHWY 3092.T GNTX SIMO MPWR 3968.HK MANH PCOR CLF SIM KORE
-    ANET VRNT PHI.L IDT MRTN BESS 9506.T
-    """.split()
-)
-# Ya no hay límite fijo de 185 - se procesan todas las empresas del Excel
-# BOA_INCOMPLETE_EXPECTED_SOURCE_ROWS = 185
-
 # Aliases confirmed by an authoritative source. Search results are useful for
 # discovery, but only verified aliases or identity-matched companies are used
 # automatically to avoid calculating a different company after a 404.
