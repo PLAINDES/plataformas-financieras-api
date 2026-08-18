@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from urllib.parse import unquote
 
 import pytest
 
@@ -29,17 +30,17 @@ async def test_write_valora_inputs_supports_ten_years_from_c_to_l(monkeypatch):
     await excel_engine._write_valora_inputs_to_excel("item-id", payload)
 
     requests = service.execute_batch.await_args_list[0].args[0]
-    assert "C2:L2" in requests[0]["url"]
+    assert "C2:L2" in unquote(requests[0]["url"])
     assert requests[0]["body"]["values"] == [years]
-    assert "C37:L37" in requests[1]["url"]
-    assert "C4:L35" in requests[2]["url"]
+    assert "C37:L37" in unquote(requests[1]["url"])
+    assert "C4:L35" in unquote(requests[2]["url"])
     assert len(requests[2]["body"]["values"][0]) == 10
-    assert "C38:L51" in requests[3]["url"]
+    assert "C38:L51" in unquote(requests[3]["url"])
     assert len(requests[3]["body"]["values"][0]) == 10
 
     projection_requests = service.execute_batch.await_args_list[1].args[0]
     assert len(projection_requests) == 4
-    assert "C53" in projection_requests[0]["url"]
+    assert "C53" in unquote(projection_requests[0]["url"])
     assert projection_requests[0]["body"]["values"] == [[2016]]
     projection_formulas = projection_requests[3]["body"]["formulas"]
     assert projection_formulas[0][0] is None
@@ -108,12 +109,12 @@ async def test_write_valora_inputs_clears_inactive_years_for_five_years(
     await excel_engine._write_valora_inputs_to_excel("item-id", payload)
 
     data_requests = service.execute_batch.await_args_list[0].args[0]
-    assert "H2:L2" in data_requests[0]["url"]
-    assert "H4:L35" in data_requests[2]["url"]
+    assert "H2:L2" in unquote(data_requests[0]["url"])
+    assert "H4:L35" in unquote(data_requests[2]["url"])
     assert len(data_requests) == 17
-    assert "C2:G2" in data_requests[4]["url"]
+    assert "C2:G2" in unquote(data_requests[4]["url"])
     assert data_requests[4]["body"]["values"] == [["", "", "", "", ""]]
-    assert "C53:G75" in data_requests[8]["url"]
+    assert "C53:G75" in unquote(data_requests[8]["url"])
 
     projection_requests = service.execute_batch.await_args_list[1].args[0]
     assert projection_requests[0]["body"]["values"] == [[2021]]
