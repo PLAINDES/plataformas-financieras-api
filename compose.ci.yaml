@@ -25,6 +25,6 @@ services:
       - .env.ci
     # Ejecutamos las pruebas y nos salimos
     command: >
-      sh -c "pip install pytest httpx && pytest tests/ -v"
+      sh -c "pip install pytest httpx pytest-asyncio && pytest tests/ -v"
     networks:
       - backend_network
