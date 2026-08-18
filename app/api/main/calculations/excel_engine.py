@@ -85,6 +85,478 @@ def _build_excel_range_url(
     return f"/users/{user_email}/drive/items/{item_id}/workbook/worksheets('{quote(sheet_name)}')/range(address='{quote(cell)}')"
 
 
+def _build_valora_linest_formulas(years_start_col: str) -> list[dict[str, str]]:
+    """Build the LINEST formulas using the same first historical-year column."""
+    start_col = years_start_col.upper()
+    special_start_col = chr(ord(start_col) + 1)
+
+    return [
+        {"sheet": "Proyección", "range": "E95:F95", "formula": f"=LINEST({start_col}89:M89,LN({start_col}87:M87))"},
+        {"sheet": "Proyección", "range": "J95:K95", "formula": f"=LINEST({start_col}88:L88,LN({start_col}87:L87))"},
+        {"sheet": "Proyección", "range": "E111:F111", "formula": f"=LINEST({start_col}105:M105,LN({start_col}103:M103))"},
+        {"sheet": "Proyección", "range": "J111:K111", "formula": f"=LINEST({start_col}104:L104,LN({start_col}103:L103))"},
+        {"sheet": "Proyección", "range": "E127:F127", "formula": f"=LINEST({start_col}121:M121,LN({start_col}119:M119))"},
+        {"sheet": "Proyección", "range": "J127:K127", "formula": f"=LINEST({start_col}120:L120,LN({start_col}119:L119))"},
+        {"sheet": "Proyección", "range": "E143:F143", "formula": f"=LINEST({start_col}137:M137,LN({start_col}135:M135))"},
+        {"sheet": "Proyección", "range": "J143:K143", "formula": f"=LINEST({start_col}136:L136,LN({start_col}135:L135))"},
+        {"sheet": "Proyección", "range": "G160:H160", "formula": f"=LINEST({start_col}154:L154,LN({start_col}152:L152))"},
+        {"sheet": "Proyección", "range": "J160:K160", "formula": f"=LINEST({start_col}153:L153,LN({start_col}152:L152))"},
+        {"sheet": "Proyección", "range": "G176:H176", "formula": f"=LINEST({start_col}170:M170,LN({start_col}168:M168))"},
+        {"sheet": "Proyección", "range": "J176:K176", "formula": f"=LINEST({start_col}169:L169,LN({start_col}168:L168))"},
+        {
+            "sheet": "Proyección",
+            "range": "F198:G198",
+            "formula": f"=LINEST({special_start_col}194:L194,LN({start_col}189:K189))",
+        },
+        {
+            "sheet": "Proyección",
+            "range": "K198:L198",
+            "formula": f"=LINEST({special_start_col}193:L193,LN({start_col}189:K189))",
+        },
+        {"sheet": "Proyección", "range": "F219:G219", "formula": f"=LINEST({start_col}213:L213,LN({start_col}208:L208))"},
+        {"sheet": "Proyección", "range": "K219:L219", "formula": f"=LINEST({start_col}212:L212,LN({start_col}208:L208))"},
+        {"sheet": "Integrado", "range": "J14:K14", "formula": f"=LINEST({start_col}7:L7,LN({start_col}6:L6))"},
+    ]
+
+
+def _build_valora_linest_write_requests(
+    *,
+    user_email: str,
+    item_id: str,
+    years_start_col: str,
+    headers: dict[str, str],
+    projection_sheet: str = "Proyección",
+) -> list[dict[str, Any]]:
+    requests: list[dict[str, Any]] = []
+    for req_id, definition in enumerate(
+        _build_valora_linest_formulas(years_start_col), start=1
+    ):
+        sheet_name = (
+            projection_sheet
+            if definition["sheet"] == "Proyección"
+            else definition["sheet"]
+        )
+        requests.append(
+            {
+                "id": str(req_id),
+                "method": "PATCH",
+                "url": _build_excel_range_url(
+                    user_email,
+                    item_id,
+                    sheet_name,
+                    definition["range"],
+                ),
+                # LINEST returns two coefficients. Graph treats null as "do not
+                # change this cell", so only the existing formula anchor changes.
+                "body": {"formulas": [[definition["formula"], None]]},
+                "headers": headers,
+            }
+        )
+    return requests
+
+
+def _build_valora_projection_block_formulas(
+    years_start_col: str,
+) -> list[list[str | None]]:
+    """Extend the existing projection formulas over the active historical years."""
+    start_col = years_start_col.upper()
+    columns = [chr(col) for col in range(ord(start_col), ord("L") + 1)]
+    first_row = 53
+    last_row = 75
+    matrix: list[list[str | None]] = [
+        [None for _ in columns] for _ in range(last_row - first_row + 1)
+    ]
+
+    def set_formula(row: int, column_index: int, formula: str) -> None:
+        matrix[row - first_row][column_index] = formula
+
+    # The first year is written as a fixed value. Every following year keeps
+    # the template's original continuation formula: previous year + 1.
+    for header_row in (53, 67, 72):
+        for column_index in range(1, len(columns)):
+            previous_col = columns[column_index - 1]
+            set_formula(
+                header_row,
+                column_index,
+                f"={previous_col}{header_row}+1",
+            )
+
+    source_rows = {
+        54: lambda col: f"={col}38",
+        55: lambda col: f"={col}39",
+        56: lambda col: f"={col}40",
+        57: lambda col: f"={col}41",
+        58: lambda col: f"={col}43",
+        59: lambda col: f"=+{col}44",
+        60: lambda col: f"=+{col}56+{col}57+{col}58+{col}59",
+        61: lambda col: f"=-{col}64*{col}60",
+        62: lambda col: f"={col}42",
+        63: lambda col: f"={col}60+{col}61+{col}62",
+        64: lambda col: f"=-{col}50/{col}49",
+        65: lambda col: f"=-{col}61/{col}49",
+        68: lambda col: f"={col}13",
+        69: lambda col: f"={col}14",
+        70: lambda col: f"={col}68+{col}69",
+        73: lambda col: f"={col}5+{col}8",
+        74: lambda col: f"={col}20",
+        75: lambda col: f"={col}73-{col}74",
+    }
+    for row, formula_builder in source_rows.items():
+        for column_index, column in enumerate(columns):
+            set_formula(row, column_index, formula_builder(column))
+
+    return matrix
+
+
+def _build_valora_projection_block_write_requests(
+    *,
+    user_email: str,
+    item_id: str,
+    years_start_col: str,
+    first_year: int,
+    headers: dict[str, str],
+    projection_sheet: str = "Proyección",
+) -> list[dict[str, Any]]:
+    requests = []
+    for req_id, row in enumerate((53, 67, 72), start=1):
+        requests.append(
+            {
+                "id": str(req_id),
+                "method": "PATCH",
+                "url": _build_excel_range_url(
+                    user_email,
+                    item_id,
+                    projection_sheet,
+                    f"{years_start_col}{row}",
+                ),
+                "body": {"values": [[first_year]]},
+                "headers": headers,
+            }
+        )
+
+    requests.append(
+        {
+            "id": "4",
+            "method": "PATCH",
+            "url": _build_excel_range_url(
+                user_email,
+                item_id,
+                projection_sheet,
+                f"{years_start_col}53:L75",
+            ),
+            # Null cells preserve formulas and blanks outside this block's
+            # existing year-continuation and calculation formulas.
+            "body": {
+                "formulas": _build_valora_projection_block_formulas(
+                    years_start_col
+                )
+            },
+            "headers": headers,
+        }
+    )
+    return requests
+
+
+def _build_valora_linest_source_formulas(
+    years_start_col: str,
+) -> tuple[list[list[str | None]], list[list[str | None]]]:
+    """Build the source tables used by every dynamic LINEST calculation."""
+    start_col = years_start_col.upper()
+    columns = [chr(col) for col in range(ord(start_col), ord("M") + 1)]
+    historical_columns = columns[:-1]
+    projection_first_row = 86
+    projection_last_row = 214
+    projection: list[list[str | None]] = [
+        [None for _ in columns]
+        for _ in range(projection_last_row - projection_first_row + 1)
+    ]
+
+    def set_projection(row: int, column: str, formula: str) -> None:
+        projection[row - projection_first_row][columns.index(column)] = formula
+
+    def populate_header(year_row: int, index_row: int) -> None:
+        for column in historical_columns:
+            set_projection(year_row, column, f"={column}$72")
+        set_projection(year_row, "M", f"=L{year_row}+1")
+        for index, column in enumerate(columns[1:], start=1):
+            previous = columns[index - 1]
+            set_projection(index_row, column, f"={previous}{index_row}+1")
+
+    def populate_log_block(
+        *,
+        year_row: int,
+        index_row: int,
+        historical_row: int,
+        estimate_row: int,
+        final_row: int,
+        source_formula,
+        slope_cell: str,
+        adjusted_constant_cell: str,
+        forecast_linear: bool,
+    ) -> None:
+        populate_header(year_row, index_row)
+        for column in historical_columns:
+            set_projection(
+                historical_row,
+                column,
+                source_formula(column),
+            )
+            set_projection(
+                estimate_row,
+                column,
+                f"=LN({column}{index_row})*{slope_cell}+{adjusted_constant_cell}",
+            )
+            set_projection(final_row, column, f"={column}{historical_row}")
+        if forecast_linear:
+            set_projection(
+                estimate_row,
+                "M",
+                f"=FORECAST.LINEAR(M{year_row},"
+                f"${start_col}${estimate_row}:$L${estimate_row},"
+                f"${start_col}${year_row}:$L${year_row})",
+            )
+
+    populate_log_block(
+        year_row=86,
+        index_row=87,
+        historical_row=88,
+        estimate_row=89,
+        final_row=92,
+        source_formula=lambda col: f"={col}54",
+        slope_cell="$J$95",
+        adjusted_constant_cell="$K$100",
+        forecast_linear=True,
+    )
+    for index, column in enumerate(historical_columns[1:], start=1):
+        previous = historical_columns[index - 1]
+        set_projection(91, column, f"=+{column}88/{previous}88-1")
+
+    populate_log_block(
+        year_row=102,
+        index_row=103,
+        historical_row=104,
+        estimate_row=105,
+        final_row=108,
+        source_formula=lambda col: f'=IFERROR(-{col}39,"")',
+        slope_cell="$J$111",
+        adjusted_constant_cell="$K$116",
+        forecast_linear=True,
+    )
+
+    # Sales expenses keep the template's smoothed historical series.
+    populate_header(118, 119)
+    for column in historical_columns:
+        set_projection(120, column, f'=IFERROR(-{column}57,"")')
+        set_projection(124, column, f"={column}120")
+    first_average_end = historical_columns[3]
+    set_projection(
+        121,
+        start_col,
+        f"=AVERAGE({start_col}120:{first_average_end}120)",
+    )
+    for index, column in enumerate(historical_columns[1:-1], start=1):
+        previous = historical_columns[index - 1]
+        set_projection(
+            121,
+            column,
+            "=ROUND(LET("
+            f"hoy,{column}120,ayer,{previous}120,suav_ant,{previous}121,"
+            f"crec_hist,MIN(MAX(IFERROR(hoy/ayer-1,0%),0%),10%),"
+            "estimado,suav_ant*(1+crec_hist),"
+            "candidato,IF(AND(hoy>=suav_ant,hoy<=suav_ant*1.1),hoy,estimado),"
+            "MAX(suav_ant,MIN(candidato,suav_ant*1.1))),0)",
+        )
+    previous_to_l = historical_columns[-2]
+    set_projection(
+        121,
+        "L",
+        "=ROUND(LET("
+        f"hist_ult,L120,hist_ant,{previous_to_l}120,"
+        f"suav_ant,{previous_to_l}121,"
+        f"prom_3max,AVERAGE(LARGE({start_col}120:L120,1),"
+        f"LARGE({start_col}120:L120,2),LARGE({start_col}120:L120,3)),"
+        "crec_hist,MIN(MAX(IFERROR(hist_ult/hist_ant-1,0%),0%),10%),"
+        "estimado,suav_ant*(1+crec_hist),"
+        "objetivo,MAX(hist_ult,prom_3max,estimado),"
+        "MAX(suav_ant,MIN(objetivo,suav_ant*1.1))),0)",
+    )
+    set_projection(
+        121,
+        "M",
+        f"=FORECAST.LINEAR(M118,${start_col}$121:$L$121,"
+        f"${start_col}$118:$L$118)",
+    )
+
+    populate_log_block(
+        year_row=134,
+        index_row=135,
+        historical_row=136,
+        estimate_row=137,
+        final_row=140,
+        source_formula=lambda col: f"=-{col}58",
+        slope_cell="$J$143",
+        adjusted_constant_cell="$K$148",
+        forecast_linear=True,
+    )
+    populate_log_block(
+        year_row=151,
+        index_row=152,
+        historical_row=153,
+        estimate_row=154,
+        final_row=157,
+        source_formula=lambda col: f"={col}59",
+        slope_cell="$J$160",
+        adjusted_constant_cell="$K$165",
+        forecast_linear=False,
+    )
+    set_projection(154, "M", "=+LN(M152)*$G$160+H165")
+    populate_log_block(
+        year_row=167,
+        index_row=168,
+        historical_row=169,
+        estimate_row=170,
+        final_row=173,
+        source_formula=lambda col: f"={col}62",
+        slope_cell="$J$176",
+        adjusted_constant_cell="$K$181",
+        forecast_linear=True,
+    )
+
+    # CAPEX: the dependent series starts one column after the first year and
+    # excludes L's following index, exactly as F194:L194 vs E189:K189 does.
+    populate_header(188, 189)
+    for column in historical_columns:
+        set_projection(190, column, f"={column}70")
+    for index, column in enumerate(historical_columns[1:], start=1):
+        previous = historical_columns[index - 1]
+        set_projection(192, column, f"={column}190-{previous}190")
+        set_projection(193, column, f"={column}192/{column}92")
+        set_projection(
+            194,
+            column,
+            f"=LN({previous}189)*$K$198+$L$203",
+        )
+        set_projection(195, column, f"={column}192")
+    set_projection(193, "M", "=LN(L189)*F198+G203")
+    set_projection(195, "M", "=$M$193*M92")
+    set_projection(190, "M", "=+L190+M195")
+
+    populate_header(207, 208)
+    for column in historical_columns:
+        set_projection(209, column, f"={column}75")
+        set_projection(212, column, f"={column}209/{column}92")
+        set_projection(
+            213,
+            column,
+            f"=LN({column}208)*$K$219+$L$224",
+        )
+    for index, column in enumerate(historical_columns[1:], start=1):
+        previous = historical_columns[index - 1]
+        set_projection(214, column, f"={column}209-{previous}209")
+    set_projection(211, "M", "=LN(M208)*F219+G224")
+    set_projection(212, "M", "=$M$211*M92")
+    set_projection(214, "M", "=M212-L209")
+
+    integrated_rows = 5
+    integrated: list[list[str | None]] = [
+        [None for _ in columns] for _ in range(integrated_rows)
+    ]
+
+    def set_integrated(row: int, column: str, formula: str) -> None:
+        integrated[row - 7][columns.index(column)] = formula
+
+    for column in historical_columns:
+        set_integrated(7, column, f"=Proyección!{column}63")
+        set_integrated(8, column, f"=LN({column}6)*$J$14+$K$19")
+        set_integrated(11, column, f"={column}7")
+    set_integrated(
+        8,
+        "M",
+        f"=FORECAST.LINEAR(M5,{start_col}8:L8,{start_col}5:L5)",
+    )
+
+    return projection, integrated
+
+
+def _build_valora_linest_source_write_requests(
+    *,
+    user_email: str,
+    item_id: str,
+    years_start_col: str,
+    headers: dict[str, str],
+    projection_sheet: str = "Proyección",
+) -> list[dict[str, Any]]:
+    projection, integrated = _build_valora_linest_source_formulas(
+        years_start_col
+    )
+    requests: list[dict[str, Any]] = []
+    for request_id, row in enumerate((87, 103, 119, 135, 152, 168, 189, 208), start=1):
+        requests.append(
+            {
+                "id": str(request_id),
+                "method": "PATCH",
+                "url": _build_excel_range_url(
+                    user_email,
+                    item_id,
+                    projection_sheet,
+                    f"{years_start_col}{row}",
+                ),
+                "body": {"values": [[1]]},
+                "headers": headers,
+            }
+        )
+    requests.extend(
+        [
+            {
+                "id": "9",
+                "method": "PATCH",
+                "url": _build_excel_range_url(
+                    user_email,
+                    item_id,
+                    projection_sheet,
+                    f"{years_start_col}86:M214",
+                ),
+                "body": {"formulas": projection},
+                "headers": headers,
+            },
+            {
+                "id": "10",
+                "method": "PATCH",
+                "url": _build_excel_range_url(
+                    user_email,
+                    item_id,
+                    "Integrado",
+                    f"{years_start_col}7:M11",
+                ),
+                "body": {"formulas": integrated},
+                "headers": headers,
+            },
+        ]
+    )
+    if years_start_col != "C":
+        inactive_end_col = chr(ord(years_start_col) - 1)
+        inactive_width = ord(inactive_end_col) - ord("C") + 1
+        requests.append(
+            {
+                "id": "11",
+                "method": "PATCH",
+                "url": _build_excel_range_url(
+                    user_email,
+                    item_id,
+                    "Integrado",
+                    f"C7:{inactive_end_col}11",
+                ),
+                "body": {
+                    "values": [
+                        ["" for _ in range(inactive_width)] for _ in range(5)
+                    ]
+                },
+                "headers": headers,
+            }
+        )
+    return requests
+
+
 # =========================================================
 # LÓGICA CORE DE BATCHING (LECTURA Y ESCRITURA MASIVA)
 # =========================================================
@@ -513,15 +985,12 @@ async def _write_valora_inputs_to_excel(
             # Si no se puede parsear, lo dejamos como None para no enviar string
             normalized_years.append(None)
 
-    N = len(normalized_years)
-    if N == 0:
+    if not normalized_years:
         return
 
-    N = min(N, 8)
-
-    # Siempre ordenar años de menor a mayor (2018...,2025) para que E2 sea el
-    # año más antiguo y L2 el más reciente. Se invierten los valores de cada
-    # fila del balance y resultado para mantener la correspondencia con el eje.
+    # Siempre ordenar años de menor a mayor para que el año más antiguo quede
+    # a la izquierda y el más reciente a la derecha. Se invierten también los
+    # valores de cada fila para mantener la correspondencia con el eje.
     if len(normalized_years) >= 2:
         y0 = normalized_years[0]
         y1 = normalized_years[-1]
@@ -540,12 +1009,15 @@ async def _write_valora_inputs_to_excel(
                 for r in er_rows
             ]
 
-    # Truncamos a máximo 8 años.
-    years_to_write = normalized_years[:N]
+    # La plantilla admite como máximo 10 años (C:L). Si llegan más periodos,
+    # conservamos los 10 más recientes para que el mayor año permanezca en L.
+    source_start = max(0, len(normalized_years) - 10)
+    years_to_write = normalized_years[source_start:]
+    N = len(years_to_write)
 
     # El rango de años se ajusta al número de años enviados.
-    # Ej: 8 años -> E2:L2; 5 años -> H2:L2. Así no se pisan columnas vacías
-    # ni se envía una matriz de dimensiones incorrectas a Graph API.
+    # Ej: 10 años -> C2:L2; 8 años -> E2:L2; 5 años -> H2:L2. Así no se
+    # pisan columnas vacías ni se envían dimensiones incorrectas a Graph API.
     def _col_letter(offset: int) -> str:
         # offset 0 -> C, 1 -> D, ..., 9 -> L
         return chr(ord("C") + offset)
@@ -562,23 +1034,22 @@ async def _write_valora_inputs_to_excel(
         """Genera una fila de años del tamaño exacto del rango destino."""
         return [[int(y) if y is not None and y != "" else None for y in years]]
 
-    # 1. Matriz de Balance General: E4:L35 (32 filas x 8 columnas)
-    # años ordenados ascendentemente: el primer valor va a la primera columna (E).
-    bg_matrix = [[None for _ in range(8)] for _ in range(32)]
+    # 1. Matriz de Balance General: rango dinámico de 32 filas x N años.
+    bg_matrix = [[None for _ in range(N)] for _ in range(32)]
     for r in range(min(32, len(bg_rows))):
         row_dict = bg_rows[r] if isinstance(bg_rows[r], dict) else {}
-        row_vals = list(row_dict.get("values", [])[:N])
+        row_vals = list(row_dict.get("values", [])[source_start : source_start + N])
         for col_offset, val in enumerate(row_vals):
             n = _extract_number(val)
             if n is not None:
                 bg_matrix[r][col_offset] = n
             # Si no es numérico, dejamos None (no string) para no corromper fórmulas
 
-    # 2. Matriz de Estado de Resultados: E38:L51 (14 filas x 8 columnas)
-    er_matrix = [[None for _ in range(8)] for _ in range(14)]
+    # 2. Matriz de Estado de Resultados: rango dinámico de 14 filas x N años.
+    er_matrix = [[None for _ in range(N)] for _ in range(14)]
     for r in range(min(14, len(er_rows))):
         row_dict = er_rows[r] if isinstance(er_rows[r], dict) else {}
-        row_vals = list(row_dict.get("values", [])[:N])
+        row_vals = list(row_dict.get("values", [])[source_start : source_start + N])
         for col_offset, val in enumerate(row_vals):
             n = _extract_number(val)
             if n is not None:
@@ -609,18 +1080,65 @@ async def _write_valora_inputs_to_excel(
         {
             "id": "3",
             "method": "PATCH",
-            "url": _build_excel_range_url(email, item_id, sheet_name, "E4:L35"),
+            "url": _build_excel_range_url(
+                email, item_id, sheet_name, f"{years_start_col}4:L35"
+            ),
             "body": {"values": bg_matrix},
             "headers": headers,
         },
         {
             "id": "4",
             "method": "PATCH",
-            "url": _build_excel_range_url(email, item_id, sheet_name, "E38:L51"),
+            "url": _build_excel_range_url(
+                email, item_id, sheet_name, f"{years_start_col}38:L51"
+            ),
             "body": {"values": er_matrix},
             "headers": headers,
         },
     ]
+
+    # Remove the template's static historical years to the left of the active
+    # range. This prevents a 5-year input, for example, from retaining E:G from
+    # the original 8-year workbook.
+    if years_start_col != "C":
+        inactive_end_col = chr(ord(years_start_col) - 1)
+        inactive_width = ord(inactive_end_col) - ord("C") + 1
+
+        def _blank_matrix(rows: int) -> list[list[str]]:
+            return [["" for _ in range(inactive_width)] for _ in range(rows)]
+
+        inactive_ranges = (
+            ("C2", f"{inactive_end_col}2", 1),
+            ("C4", f"{inactive_end_col}35", 32),
+            ("C37", f"{inactive_end_col}37", 1),
+            ("C38", f"{inactive_end_col}51", 14),
+            ("C53", f"{inactive_end_col}75", 23),
+            ("C86", f"{inactive_end_col}92", 7),
+            ("C102", f"{inactive_end_col}108", 7),
+            ("C118", f"{inactive_end_col}124", 7),
+            ("C134", f"{inactive_end_col}140", 7),
+            ("C151", f"{inactive_end_col}157", 7),
+            ("C167", f"{inactive_end_col}173", 7),
+            ("C188", f"{inactive_end_col}195", 8),
+            ("C207", f"{inactive_end_col}214", 8),
+        )
+        for request_id, (range_start, range_end, row_count) in enumerate(
+            inactive_ranges, start=5
+        ):
+            write_requests.append(
+                {
+                    "id": str(request_id),
+                    "method": "PATCH",
+                    "url": _build_excel_range_url(
+                        email,
+                        item_id,
+                        sheet_name,
+                        f"{range_start}:{range_end}",
+                    ),
+                    "body": {"values": _blank_matrix(row_count)},
+                    "headers": headers,
+                }
+            )
 
     try:
         await service.execute_batch(write_requests)
@@ -651,6 +1169,190 @@ async def _write_valora_inputs_to_excel(
             )
         if write_requests_fallback:
             await service.execute_batch(write_requests_fallback)
+
+    projection_block_requests = _build_valora_projection_block_write_requests(
+        user_email=email,
+        item_id=item_id,
+        years_start_col=years_start_col,
+        first_year=years_to_write[0],
+        headers=headers,
+    )
+    projection_block_responses = await service.execute_batch(
+        projection_block_requests
+    )
+    projection_block_failures = (
+        [
+            response
+            for response in projection_block_responses
+            if response.get("status", 0) >= 400
+        ]
+        if isinstance(projection_block_responses, list)
+        else []
+    )
+    if projection_block_failures and all(
+        response.get("status") == 404
+        for response in projection_block_failures
+    ):
+        projection_block_requests = _build_valora_projection_block_write_requests(
+            user_email=email,
+            item_id=item_id,
+            years_start_col=years_start_col,
+            first_year=years_to_write[0],
+            headers=headers,
+            projection_sheet="Proyeccion",
+        )
+        projection_block_responses = await service.execute_batch(
+            projection_block_requests
+        )
+        projection_block_failures = (
+            [
+                response
+                for response in projection_block_responses
+                if response.get("status", 0) >= 400
+            ]
+            if isinstance(projection_block_responses, list)
+            else []
+        )
+    if projection_block_failures:
+        raise RuntimeError(
+            "No se pudieron extender las formulas historicas de Proyeccion: "
+            f"{projection_block_failures}"
+        )
+
+    logger.info(
+        "[VALORA WRITE] Bloques historicos actualizados desde %s para %s anios",
+        years_start_col,
+        N,
+    )
+
+    linest_source_requests = _build_valora_linest_source_write_requests(
+        user_email=email,
+        item_id=item_id,
+        years_start_col=years_start_col,
+        headers=headers,
+    )
+    linest_source_responses = await service.execute_batch(
+        linest_source_requests
+    )
+    linest_source_failures = (
+        [
+            response
+            for response in linest_source_responses
+            if response.get("status", 0) >= 400
+        ]
+        if isinstance(linest_source_responses, list)
+        else []
+    )
+    source_projection_404_ids = {
+        str(response.get("id"))
+        for response in linest_source_failures
+        if response.get("status") == 404 and int(response.get("id", 0)) <= 9
+    }
+    source_non_sheet_failures = [
+        response
+        for response in linest_source_failures
+        if str(response.get("id")) not in source_projection_404_ids
+    ]
+    if source_non_sheet_failures:
+        raise RuntimeError(
+            "No se pudieron actualizar las tablas fuente de LINEST: "
+            f"{source_non_sheet_failures}"
+        )
+    if source_projection_404_ids:
+        source_fallback_requests = _build_valora_linest_source_write_requests(
+            user_email=email,
+            item_id=item_id,
+            years_start_col=years_start_col,
+            headers=headers,
+            projection_sheet="Proyeccion",
+        )
+        source_fallback_requests = [
+            request
+            for request in source_fallback_requests
+            if request["id"] in source_projection_404_ids
+        ]
+        source_fallback_responses = await service.execute_batch(
+            source_fallback_requests
+        )
+        source_fallback_failures = (
+            [
+                response
+                for response in source_fallback_responses
+                if response.get("status", 0) >= 400
+            ]
+            if isinstance(source_fallback_responses, list)
+            else []
+        )
+        if source_fallback_failures:
+            raise RuntimeError(
+                "No se pudieron actualizar las tablas fuente en Proyeccion: "
+                f"{source_fallback_failures}"
+            )
+
+    linest_requests = _build_valora_linest_write_requests(
+        user_email=email,
+        item_id=item_id,
+        years_start_col=years_start_col,
+        headers=headers,
+    )
+    linest_responses = await service.execute_batch(linest_requests)
+    linest_failures = (
+        [response for response in linest_responses if response.get("status", 0) >= 400]
+        if isinstance(linest_responses, list)
+        else []
+    )
+
+    # Some workbooks expose the projection sheet without the accent. Retry only
+    # that known naming mismatch; other formula errors must remain visible.
+    projection_404_ids = {
+        str(response.get("id"))
+        for response in linest_failures
+        if response.get("status") == 404 and int(response.get("id", 0)) <= 16
+    }
+    non_sheet_failures = [
+        response
+        for response in linest_failures
+        if str(response.get("id")) not in projection_404_ids
+    ]
+    if non_sheet_failures:
+        raise RuntimeError(
+            f"No se pudieron actualizar las formulas LINEST: {non_sheet_failures}"
+        )
+
+    if projection_404_ids:
+        fallback_requests = _build_valora_linest_write_requests(
+            user_email=email,
+            item_id=item_id,
+            years_start_col=years_start_col,
+            headers=headers,
+            projection_sheet="Proyeccion",
+        )
+        fallback_requests = [
+            request
+            for request in fallback_requests
+            if request["id"] in projection_404_ids
+        ]
+        fallback_responses = await service.execute_batch(fallback_requests)
+        fallback_failures = (
+            [
+                response
+                for response in fallback_responses
+                if response.get("status", 0) >= 400
+            ]
+            if isinstance(fallback_responses, list)
+            else []
+        )
+        if fallback_failures:
+            raise RuntimeError(
+                "No se pudieron actualizar las formulas LINEST en Proyeccion: "
+                f"{fallback_failures}"
+            )
+
+    logger.info(
+        "[VALORA WRITE] Formulas LINEST actualizadas para %s anios desde %s",
+        N,
+        years_start_col,
+    )
 
     mapped_write_requests: list[dict[str, Any]] = []
     req_id = 1
@@ -830,6 +1532,28 @@ async def _enrich_payload_with_valora_excel(
         logger.info("[VALORA] Leyendo resultados")
         resultados = await _build_valora_output_entry(item_id, session_id=session_id)
         t0 = _lap("_build_valora_output_entry", t0)
+
+        source_currency = str(latest_input.get("moneda") or "USD").upper()
+        resultados["source_currency"] = source_currency
+        if source_currency == "USD":
+            resultados["fx_to_usd"] = 1.0
+        else:
+            from app.api.main.chatbot.boa import get_fx_rate
+
+            try:
+                fx_to_usd = await asyncio.to_thread(
+                    get_fx_rate, source_currency
+                )
+                # BOA uses 1.0 as its network-failure fallback. None prevents
+                # Valora from presenting an unconverted local amount as USD.
+                resultados["fx_to_usd"] = (
+                    fx_to_usd if abs(fx_to_usd - 1.0) > 1e-9 else None
+                )
+            except Exception:
+                resultados["fx_to_usd"] = None
+                logger.exception(
+                    "[VALORA] No se pudo obtener FX %s -> USD", source_currency
+                )
 
         logger.info(f"[VALORA] Resultados leídos: {resultados}")
         payload_data["active_session_id"] = session_id
