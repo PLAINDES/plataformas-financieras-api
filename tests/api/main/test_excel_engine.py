@@ -47,7 +47,7 @@ async def test_write_valora_inputs_supports_ten_years_from_c_to_l(monkeypatch):
     assert projection_formulas[0][1] == "=C53+1"
     assert projection_formulas[1][0] == "=C38"
     assert projection_formulas[7][0] == "=+C56+C57+C58+C59"
-    assert projection_formulas[14][1] == "=D67+1"
+    assert projection_formulas[14][1] == "=C67+1"
     assert projection_formulas[19][1] == "=C72+1"
 
     source_requests = service.execute_batch.await_args_list[2].args[0]
