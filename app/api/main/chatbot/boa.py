@@ -542,10 +542,10 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
         logger.warning(f"yfinance returned empty info for {ticker}")
         _log_ticker_step(ticker, "info_vacio")
         return None, None, {"reason": "empty_info"}
-    if not info.get("shortName"):
-        logger.warning(f"yfinance info missing shortName for {ticker}: keys={list(info.keys())[:10]}")
-        _log_ticker_step(ticker, "sin_shortName", keys=list(info.keys())[:10])
-        return None, None, {"reason": "missing_shortName"}
+    if not info.get("shortName") and not info.get("longName"):
+        logger.warning(f"yfinance info missing shortName and longName for {ticker}: keys={list(info.keys())[:10]}")
+        _log_ticker_step(ticker, "sin_nombre", keys=list(info.keys())[:10])
+        info["shortName"] = ticker
 
     if cancel_event and cancel_event.is_set():
         return None, None, {"reason": "cancelled"}
@@ -729,7 +729,7 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
 
     api_data = {
         "ticker": ticker,
-        "company_name": info.get("shortName", ticker),
+        "company_name": info.get("shortName") or info.get("longName") or ticker,
         "sector": info.get("sector", "Unknown"),
         "country": country,
         "subsector": info.get("industry", info.get("industryDisp", "Unknown")),
