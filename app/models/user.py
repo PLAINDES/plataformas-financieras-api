@@ -21,6 +21,7 @@ class User(Base):
     password = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
     lastname = Column(String(255), nullable=True)
+    phone_number = Column(String(30), nullable=True)
     role = Column(SQLEnum(UserRole, values_callable=lambda enum_cls: [e.value for e in enum_cls]), default=UserRole.USER, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     avatar = Column(String(255), nullable=True)

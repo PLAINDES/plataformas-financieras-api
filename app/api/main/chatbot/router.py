@@ -1,12 +1,15 @@
 import logging
 import threading
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+import io
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.main.chatbot.boa import (
     calculate_subsectores_boa,
     cancel_job,
+    extract_company_rows_from_xlsx,
+    extract_first_companies_from_xlsx,
     create_job,
     delete_job,
     fail_job,
@@ -95,6 +98,86 @@ async def start_subsectores_boa(request: AnalyzeCompaniesRequest):
         failed=0,
         job_id=job_id,
         message=f"Procesando {len(tickers_to_process)} tickers. Se omitieron {omitted_count} que ya tenían valores."
+    )
+
+
+@router.post("/calculate-subsectores-boa/upload", response_model=SubsectorBoaResponse)
+async def start_subsectores_boa_upload(file: UploadFile = File(...)):
+    """
+    Modo de recálculo dirigido: lee el XLSX completo y procesa TODAS las empresas.
+    Antes solo procesaba 185 filas configuradas; ahora procesa el archivo completo
+    y guarda resultados en la base de datos desde el inicio.
+    """
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="No se proporcionó ningún archivo.")
+
+    ext = (file.filename or "").lower().rsplit(".", 1)[-1]
+    if ext not in {"xlsx", "xls"}:
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos Excel (.xlsx, .xls)")
+
+    content = await file.read()
+    try:
+        company_rows = extract_company_rows_from_xlsx(content)
+        # Procesar TODAS las empresas del Excel, no solo las 185 anteriores
+        tickers_to_process = [
+            str(row["ticker"]).strip().upper()
+            for row in company_rows
+            if row.get("ticker")
+        ]
+        logger.info(
+            "[BOA][UPLOAD] Total de empresas en Excel: %s, a procesar: %s",
+            len(company_rows),
+            len(tickers_to_process),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"No se pudo leer el Excel: {exc}") from exc
+
+    if not tickers_to_process:
+        return SubsectorBoaResponse(
+            success=True,
+            valid_companies=[],
+            errors=[],
+            total=0,
+            processed=0,
+            failed=0,
+            job_id=None,
+            message="El archivo Excel no contiene empresas con ticker válido.",
+        )
+
+    job_id = create_job(len(tickers_to_process))
+
+    def _run():
+        try:
+            calculate_subsectores_boa(
+                tickers_to_process,
+                job_id=job_id,
+                batch_size=50,       # lote mayor para procesar más rápido
+                max_companies=None,  # Sin límite máximo - todas las empresas
+                save_to_db=True,     # Guardar en BD desde el inicio
+                emit_ticker_logs=False,
+            )
+        except Exception as exc:
+            fail_job(job_id, str(exc))
+            logger.exception(f"Error en background BOA job {job_id}")
+
+    threading.Thread(target=_run, daemon=True).start()
+
+    return SubsectorBoaResponse(
+        success=True,
+        valid_companies=[],
+        errors=[],
+        total=len(tickers_to_process),
+        processed=0,
+        failed=0,
+        complete_count=0,
+        incomplete_count=0,
+        complete_tickers=[],
+        incomplete_tickers=[],
+        empty_batch_tickers=[],
+        job_id=job_id,
+        message=f"Procesando {len(tickers_to_process)} empresas del archivo Excel en segundo plano. " +
+                "Los resultados se guardarán en la base de datos automáticamente. " +
+                "Use el indicador flotante para seguir el progreso.",
     )
 
 @router.get("/boa-active-jobs")

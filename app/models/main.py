@@ -134,6 +134,57 @@ class Report(Base):
     def __repr__(self):
         return f"<Report {self.nombre}>"
 
+
+class ReportPayment(Base):
+    __tablename__ = "main_report_payments"
+
+    id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
+    external_reference_id = Column(String(100), nullable=False, unique=True, index=True)
+    report_id = Column(
+        MySQLBigInt(unsigned=True),
+        ForeignKey("main_reports.id"),
+        nullable=False,
+        index=True,
+    )
+    calculation_id = Column(
+        MySQLBigInt(unsigned=True),
+        ForeignKey("main_calculations.id"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        MySQLBigInt(unsigned=True),
+        ForeignKey("sys_users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    session_token = Column(String(500), nullable=True)
+    checkout_url = Column(String(1000), nullable=True)
+    amount = Column(Numeric(10, 2), nullable=False)
+    currency = Column(String(3), nullable=False)
+    description = Column(String(255), nullable=False)
+    status = Column(String(30), nullable=False, default="pending", index=True)
+    transaction_id = Column(String(255), nullable=True, unique=True, index=True)
+
+    # Snapshot of the customer data sent when the payment session was created.
+    customer_email = Column(String(255), nullable=False)
+    customer_first_name = Column(String(255), nullable=False)
+    customer_last_name = Column(String(255), nullable=True)
+    customer_phone = Column(String(30), nullable=False)
+
+    expires_at = Column(DateTime, nullable=True)
+    paid_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+    report = relationship("Report")
+    calculation = relationship("Calculation")
+    user = relationship("User")
+
+    def __repr__(self):
+        return f"<ReportPayment {self.external_reference_id} - {self.status}>"
+
 class Cover(Base):
     __tablename__ = "main_covers"
 

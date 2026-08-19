@@ -96,6 +96,13 @@ class Settings(BaseSettings):
 
     BOT_API_KEY: str = ""
 
+    # Certprox / Culqi. The API key must never be exposed to the frontend.
+    CULQI_INTEGRATION_BASE_URL: str = ""
+    CULQI_INTEGRATION_API_KEY: str = ""
+    PAYMENT_SUCCESS_REDIRECT_URL: str = ""
+    PAYMENT_FAILURE_REDIRECT_URL: str = ""
+    CULQI_PAYMENTS_ENABLED: bool = False
+
     class Config:
         env_file = ".env"
         case_sensitive = True

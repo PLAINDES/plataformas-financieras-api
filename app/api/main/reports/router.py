@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import re
 import tempfile
 from typing import Optional
 from urllib.parse import quote
@@ -45,7 +46,168 @@ router = APIRouter(prefix="/main", tags=["Main"])
 def delete_temp_file(path: str):
     if os.path.exists(path):
         os.remove(path)
-        print(f"Archivo temporal eliminado: {path}")
+
+
+def _build_locked_preview_html(payment_url: Optional[str]) -> str:
+    cta_url = payment_url or "#"
+    return f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8" />
+      <style>
+        @page {{ margin: 0; }}
+        html, body {{
+          margin: 0;
+          padding: 0;
+          width: 210mm;
+          height: 297mm;
+          overflow: hidden;
+          background:
+            radial-gradient(circle at 20% 20%, rgba(60, 130, 255, 0.18), transparent 28%),
+            radial-gradient(circle at 80% 15%, rgba(10, 40, 80, 0.18), transparent 26%),
+            linear-gradient(180deg, #f4f8ff 0%, #eaf1ff 100%);
+          font-family: Arial, Helvetica, sans-serif;
+        }}
+        .page {{
+          position: relative;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }}
+        .shape {{
+          position: absolute;
+          filter: blur(18px);
+          opacity: 0.45;
+          border-radius: 999px;
+        }}
+        .shape.s1 {{ width: 170px; height: 170px; background: #1657ff; top: 9%; left: 9%; }}
+        .shape.s2 {{ width: 210px; height: 210px; background: #0d2f6d; bottom: 10%; right: 10%; }}
+        .shape.s3 {{ width: 120px; height: 120px; background: #8fd3ff; bottom: 22%; left: 18%; }}
+        .card {{
+          position: relative;
+          width: 140mm;
+          max-width: 88vw;
+          border-radius: 24px;
+          background: rgba(11, 42, 82, 0.95);
+          color: #fff;
+          box-shadow: 0 24px 60px rgba(10, 32, 64, 0.28);
+          padding: 28px 30px 24px;
+          text-align: center;
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+        }}
+        .badge {{
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 14px;
+          border-radius: 999px;
+          background: rgba(86, 179, 255, 0.18);
+          color: #bde6ff;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+          margin-bottom: 14px;
+        }}
+        h1 {{
+          margin: 0;
+          font-size: 30px;
+          line-height: 1.08;
+          color: #ffffff;
+        }}
+        .subtitle {{
+          margin: 14px auto 0;
+          max-width: 86%;
+          font-size: 16px;
+          line-height: 1.5;
+          color: rgba(255, 255, 255, 0.92);
+        }}
+        .checks {{
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+          margin: 24px auto 18px;
+          max-width: 92%;
+          text-align: left;
+        }}
+        .check {{
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          font-size: 14px;
+          line-height: 1.4;
+          color: #eef6ff;
+        }}
+        .check .icon {{
+          flex: 0 0 20px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #59c7ff;
+          color: #08213f;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 900;
+          font-size: 13px;
+          margin-top: 1px;
+        }}
+        .cta-row {{
+          display: flex;
+          justify-content: center;
+          margin-top: 18px;
+        }}
+        .cta {{
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          border: 0;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #1f6bff 0%, #2d8cff 100%);
+          color: #fff;
+          text-decoration: none;
+          padding: 14px 22px;
+          font-size: 15px;
+          font-weight: 700;
+          box-shadow: 0 14px 30px rgba(27, 106, 255, 0.32);
+        }}
+        .note {{
+          margin-top: 12px;
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.78);
+        }}
+      </style>
+    </head>
+    <body>
+      <div class="page">
+        <div class="shape s1"></div>
+        <div class="shape s2"></div>
+        <div class="shape s3"></div>
+        <div class="card">
+          <div class="badge">Documento protegido</div>
+          <h1>¿Desea tener acceso completo al documento?</h1>
+          <div class="subtitle">
+            Adquiera su reporte para desbloquear todo el contenido y visualizar las páginas restantes.
+          </div>
+          <div class="checks">
+            <div class="check"><span class="icon">✓</span><span>Acceso completo al documento y a todas sus páginas.</span></div>
+            <div class="check"><span class="icon">✓</span><span>Descarga final del reporte con todos los resultados.</span></div>
+            <div class="check"><span class="icon">✓</span><span>Contenido actualizado, validado y listo para compartir.</span></div>
+          </div>
+          <div class="cta-row">
+            <a class="cta" href="{cta_url}" target="_blank" rel="noopener noreferrer">Pagar y desbloquear</a>
+          </div>
+          <div class="note">El pago habilita el acceso completo al reporte.</div>
+        </div>
+      </div>
+    </body>
+    </html>
+    """
 
 
 def _report_to_response(report: Report) -> dict:
@@ -80,6 +242,8 @@ def list_reports(
     search: Optional[str] = None,
     type: Optional[str] = None,
     activo: Optional[bool] = 1,
+    sector_empresa: Optional[str] = None,
+    bono_ajustado: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     base_query = select(Report)
@@ -100,6 +264,8 @@ def list_reports(
         "search": search,
         "type": type,
         "activo": activo,
+        "sector_empresa": sector_empresa,
+        "bono_ajustado": bono_ajustado,
     }
 
     query = apply_filters(
@@ -110,6 +276,10 @@ def list_reports(
         enum_fields={"type": CalculationType},
         eager_loads=eager,
     )
+    if sector_empresa:
+        query = query.where(Report.sector_empresa.ilike(sector_empresa))
+    if bono_ajustado:
+        query = query.where(Report.bono_ajustado.ilike(bono_ajustado))
 
     # order newest first
     query = query.order_by(Report.created_at.desc(), Report.id.desc())
@@ -266,7 +436,6 @@ def create_report(data: ReportUpdate, db: Session = Depends(get_db)):
     db.add(report)
     db.commit()
     db.refresh(report)
-    logger.info(f"_report_to_response(report): {_report_to_response(report)}")
     response = _report_to_response(report)
     return jsonable_encoder(response)
 
@@ -324,10 +493,6 @@ async def upload_report_file(
     if not report or report.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Report not found")
 
-    print("STORAGE_DIR:", STORAGE_DIR)
-    print("STORAGE_DIR absoluto:", os.path.abspath(STORAGE_DIR))
-    print("__file__:", __file__)
-
     os.makedirs(STORAGE_DIR, exist_ok=True)
 
     filename = f"Reporte-{report_id}.pdf"
@@ -377,6 +542,15 @@ async def generate_report_pdf(
     calculation = db.get(Calculation, calculation_id)
     if not report or not calculation:
         raise HTTPException(status_code=404, detail="Recurso no encontrado")
+    if report.deleted_at is not None or not report.activo:
+        raise HTTPException(status_code=404, detail="Reporte no disponible")
+    if report.type != calculation.type:
+        raise HTTPException(status_code=403, detail="Reporte no permitido para este cálculo")
+    if not is_preview:
+        raise HTTPException(
+            status_code=403,
+            detail="El reporte completo requiere validación de pago en servidor",
+        )
 
     browser = request.app.state.browser
     if not browser:
@@ -385,31 +559,75 @@ async def generate_report_pdf(
     onedrive_service = get_onedrive_service()
     html_content = report.contentEditor or ""
 
-    session_id = (
-        calculation.data.get("active_session_id")
-        if isinstance(calculation.data, dict)
+    calculation_data = calculation.data if isinstance(calculation.data, dict) else {}
+    session_id = calculation_data.get("active_session_id")
+    calculation_file = (
+        calculation_data.get("file")
+        if isinstance(calculation_data.get("file"), dict)
         else None
     )
-    item_id = report.template.onedrive_item_id
+    item_id = (
+        calculation_file.get("onedrive_item_id")
+        if calculation_file and calculation_file.get("onedrive_item_id")
+        else report.template.onedrive_item_id
+    )
 
-    template_codes = (
+    raw_html_codes = sorted(set(re.findall(r"\$\$[^$\s]+\$\$", html_content)))
+
+    def _normalise_code(raw_code: str) -> str:
+        clean_code = re.sub(r"\s+", "", str(raw_code or ""))
+        return f"$${clean_code.replace('$$', '').upper()}$$"
+
+    html_code_set = {code.upper() for code in raw_html_codes}
+
+    linked_template_codes = (
         db.execute(
             select(TemplateCode)
             .join(TemplateCode.master_templates)
-            .where(MasterTemplate.id == report.template_id)
+            .where(
+                MasterTemplate.id == report.template_id,
+                TemplateCode.deleted_at.is_(None),
+            )
         )
         .scalars()
         .all()
     )
+
+    template_codes_by_code = {
+        _normalise_code(code_obj.code): code_obj
+        for code_obj in linked_template_codes
+        if _normalise_code(code_obj.code) in html_code_set
+    }
+
+    needs_fallback = any(
+        code for code in raw_html_codes if code.upper() not in template_codes_by_code
+    )
+    if needs_fallback:
+        fallback_candidates = (
+            db.execute(
+                select(TemplateCode).where(
+                    TemplateCode.type == report.type,
+                    TemplateCode.deleted_at.is_(None),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for code_obj in fallback_candidates:
+            normalized_code = _normalise_code(code_obj.code)
+            if (
+                normalized_code in html_code_set
+                and normalized_code not in template_codes_by_code
+            ):
+                template_codes_by_code[normalized_code] = code_obj
+
+    template_codes = list(template_codes_by_code.values())
 
     def _is_image_code(code_obj: TemplateCode) -> bool:
         return (
             code_obj.template_code_image_id is not None
             or code_obj.template_code_image is not None
         )
-
-    def _normalise_code(raw_code: str) -> str:
-        return f"$${str(raw_code).replace('$$', '').upper()}$$"
 
     # 1. Separar códigos encontrados en el HTML (Textos vs Gráficos)
     text_codes = []
@@ -529,6 +747,16 @@ async def generate_report_pdf(
                             rendered_value = values_block[0][0]
 
                     if rendered_value is None or str(rendered_value).strip() == "":
+                        logger.warning(
+                            "Empty report template value report_id=%s code=%s sheet=%s "
+                            "coordinate=%s status=%s body=%s",
+                            report.id,
+                            norm_code,
+                            c_obj.hoja,
+                            c_obj.coordinate,
+                            resp.get("status"),
+                            resp.get("body"),
+                        )
                         html_content = html_content.replace(
                             norm_code, f"<p><em>[Sin valor: {c_obj.nombre}]</em></p>"
                         )
@@ -538,6 +766,12 @@ async def generate_report_pdf(
                         )
 
     html_content = _sanitize_text(html_content)
+    html_content = re.sub(
+        r"<(p|div)([^>]*)>(?:\s|&nbsp;|<br[^>]*>|<span[^>]*>\s*</span>)*</\1>",
+        r'<\1\2 class="pf-empty-block">&nbsp;</\1>',
+        html_content,
+        flags=re.IGNORECASE,
+    )
     html_content = html_content.replace("<code>", "<b>").replace("</code>", "</b>")
 
     # Formato de portada
@@ -559,13 +793,114 @@ async def generate_report_pdf(
         <style>
             @page {{ margin: 0; }}
             body {{
-                font-family: Helvetica, Arial, sans-serif;
-                font-size: 12px; color: #000; margin: 0; padding: 0; background-color: #fff;
+                color: #000;
+                margin: 0;
+                padding: 0;
+                background-color: #fff;
             }}
             .cover-container {{ width: 100vw; height: 100vh; page-break-after: always; }}
             .cover-image {{ width: 100%; height: 100%; object-fit: cover; }}
-            .content-container {{ padding: 20mm; box-sizing: border-box; }}
-            p {{ text-align: justify; }}
+            .content-container {{
+                width: 170mm;
+                max-width: 170mm;
+                margin: 0 auto;
+                padding: 18mm 0;
+                box-sizing: border-box;
+            }}
+            .content-container * {{
+                box-sizing: border-box;
+                max-width: 100%;
+            }}
+            .content-container p {{
+                white-space: pre-wrap;
+                margin: 0 0 0.9em;
+                line-height: 1.45;
+                overflow-wrap: break-word;
+                word-break: normal;
+            }}
+            .content-container div {{
+                overflow-wrap: break-word;
+                word-break: normal;
+            }}
+            .content-container .pf-empty-block {{
+                display: block;
+                min-height: 1.35em;
+                line-height: 1.35;
+                margin: 0 0 0.9em;
+            }}
+            .content-container p:empty::before {{
+                content: "\\00a0";
+            }}
+            .content-container h1,
+            .content-container h2,
+            .content-container h3,
+            .content-container h4,
+            .content-container h5,
+            .content-container h6 {{
+                break-after: avoid;
+                break-inside: avoid;
+                page-break-after: avoid;
+                page-break-inside: avoid;
+                margin: 1.1em 0 0.55em;
+            }}
+            .content-container h1 + p,
+            .content-container h2 + p,
+            .content-container h3 + p,
+            .content-container h4 + p,
+            .content-container h5 + p,
+            .content-container h6 + p,
+            .content-container h1 + ul,
+            .content-container h2 + ul,
+            .content-container h3 + ul,
+            .content-container h4 + ul,
+            .content-container h5 + ul,
+            .content-container h6 + ul,
+            .content-container h1 + ol,
+            .content-container h2 + ol,
+            .content-container h3 + ol,
+            .content-container h4 + ol,
+            .content-container h5 + ol,
+            .content-container h6 + ol,
+            .content-container h1 + table,
+            .content-container h2 + table,
+            .content-container h3 + table,
+            .content-container h4 + table,
+            .content-container h5 + table,
+            .content-container h6 + table {{
+                break-before: avoid;
+                page-break-before: avoid;
+            }}
+            .content-container table {{
+                border-collapse: collapse;
+                width: 100% !important;
+                max-width: 100%;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }}
+            .content-container tr,
+            .content-container td,
+            .content-container th,
+            .content-container blockquote,
+            .content-container pre,
+            .content-container ul,
+            .content-container ol {{
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }}
+            .content-container td,
+            .content-container th {{
+                padding: 8px 12px;
+            }}
+            .content-container blockquote {{
+                padding: 12px 16px;
+                margin: 0 0 1em;
+            }}
+            .content-container img {{
+                max-width: 100%;
+                height: auto;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }}
         </style>
     </head>
     <body>
@@ -590,15 +925,32 @@ async def generate_report_pdf(
         await page.close()
         await context.close()
 
-    # Procesamiento de preview
     if is_preview:
         reader = PdfReader(temp_path)
-        if len(reader.pages) > 2:
+        total_pages = len(reader.pages)
+        if total_pages > 2:
+            lock_fd, lock_path = tempfile.mkstemp(suffix="-lock.pdf")
+            os.close(lock_fd)
+            lock_context = await browser.new_context()
+            lock_page = await lock_context.new_page()
+            try:
+                lock_html = _build_locked_preview_html(report.link_pago)
+                await lock_page.set_content(lock_html, wait_until="networkidle")
+                await lock_page.pdf(
+                    path=lock_path, format="A4", print_background=True
+                )
+            finally:
+                await lock_page.close()
+                await lock_context.close()
+
+            lock_reader = PdfReader(lock_path)
             writer = PdfWriter()
             writer.add_page(reader.pages[0])
             writer.add_page(reader.pages[1])
+            writer.add_page(lock_reader.pages[0])
             with open(temp_path, "wb") as f:
                 writer.write(f)
+            delete_temp_file(lock_path)
 
     background_tasks.add_task(delete_temp_file, temp_path)
 

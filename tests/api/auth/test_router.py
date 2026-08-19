@@ -44,6 +44,7 @@ def create_fresh_user(client: TestClient) -> dict:
     payload = {
         "email": test_email,
         "name": "QA User",
+        "phone_number": "999999999",
         "password": password,
         "role": "user"
     }
@@ -71,6 +72,7 @@ def test_register_user_success(client: TestClient, db_session: Session):
         "email": "nuevo_usuario_qa@example.com",
         "name": "Usuario",
         "lastname": "Prueba",
+        "phone_number": "999999999",
         "password": "securepassword123",
         "role": "user"
     }
@@ -86,6 +88,7 @@ def test_register_user_success(client: TestClient, db_session: Session):
     db_user = db_session.query(User).filter(User.email == payload["email"]).first()
     assert db_user is not None
     assert db_user.name == "Usuario"
+    assert db_user.phone_number == payload["phone_number"]
 
 
 def test_register_user_duplicate_email(client: TestClient):
@@ -97,6 +100,7 @@ def test_register_user_duplicate_email(client: TestClient):
     payload = {
         "email": user_creds["email"], # Email que acabamos de crear
         "name": "Clon",
+        "phone_number": "999999999",
         "password": "password123"
     }
 

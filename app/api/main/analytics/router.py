@@ -19,6 +19,7 @@ from app.schemas.analytics import (
     DashboardSummary,
     CalculationFunnel,
     RetentionMetrics,
+    OccupationProfileMetrics,
     TopItem,
     TimeSeriesItem,
 )
@@ -29,6 +30,60 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 # Lima, Peru timezone (UTC-5)
 LIMA_TZ = timezone(timedelta(hours=-5))
+
+
+def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
+    latest_by_device = {}
+    for metadata, timestamp in rows:
+        if not isinstance(metadata, dict):
+            continue
+        device_id = str(metadata.get("device_id") or "").strip()
+        audience = str(metadata.get("audience") or "").strip().lower()
+        if not device_id or audience not in {"specialist", "student"}:
+            continue
+        previous = latest_by_device.get(device_id)
+        if previous is None or timestamp > previous[2]:
+            latest_by_device[device_id] = (
+                audience,
+                str(metadata.get("role") or "Otro").strip() or "Otro",
+                timestamp,
+            )
+
+    total_devices = len(latest_by_device)
+    audience_counts = {"Especialistas": 0, "Estudiantes": 0}
+    role_counts = {}
+    for audience, raw_role, _ in latest_by_device.values():
+        if audience == "specialist":
+            audience_counts["Especialistas"] += 1
+            role = "Otro" if raw_role.lower() == "otro" else raw_role
+            role_counts[role] = role_counts.get(role, 0) + 1
+        elif audience == "student":
+            audience_counts["Estudiantes"] += 1
+
+    specialist_total = audience_counts["Especialistas"]
+    audiences = [
+        TopItem(
+            label=label,
+            count=count,
+            percentage=round(count / max(total_devices, 1) * 100, 1),
+        )
+        for label, count in audience_counts.items()
+    ]
+    specialist_roles = [
+        TopItem(
+            label=label,
+            count=count,
+            percentage=round(count / max(specialist_total, 1) * 100, 1),
+        )
+        for label, count in sorted(
+            role_counts.items(), key=lambda item: (-item[1], item[0])
+        )
+    ]
+    return OccupationProfileMetrics(
+        total_devices=total_devices,
+        audiences=audiences,
+        specialist_roles=specialist_roles,
+    )
 
 
 def now_lima() -> datetime:
@@ -466,6 +521,14 @@ def get_dashboard(
         )
     ).one()
 
+    occupation_rows = db.execute(
+        select(AnalyticsEvent.event_metadata, AnalyticsEvent.timestamp)
+        .where(AnalyticsEvent.timestamp >= since)
+        .where(AnalyticsEvent.event_name == "occupation_profile_completed")
+        .order_by(AnalyticsEvent.timestamp.asc())
+    ).all()
+    occupation_profiles = build_occupation_profile_metrics(occupation_rows)
+
     # Devices
     devices_result = db.execute(
         select(AnalyticsSession.device_type, func.count(AnalyticsSession.id))
@@ -573,6 +636,7 @@ def get_dashboard(
             new_users=int(new_users),
             recurring_users=int(recurring_users),
         ),
+        occupation_profiles=occupation_profiles,
         cta_clicks=cta_clicks,
         avg_time_on_page=round(avg_time_on_page, 1) if avg_time_on_page else None,
     )

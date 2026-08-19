@@ -830,7 +830,20 @@ VALUES (
         '2026-01-20 15:33:07',
         '2026-01-20 15:33:07'
     );
-INSERT IGNORE INTO `sys_users`
+INSERT IGNORE INTO `sys_users` (
+        `id`,
+        `email`,
+        `password`,
+        `name`,
+        `lastname`,
+        `role`,
+        `is_active`,
+        `avatar`,
+        `settings`,
+        `created_at`,
+        `updated_at`,
+        `deleted_at`
+    )
 VALUES (
         1,
         'admin@kapitals.com',
