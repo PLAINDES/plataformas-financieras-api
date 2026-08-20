@@ -267,3 +267,11 @@ VALORA_RESULTS_CELL_MAP = {
         "tasa_perpetua": ("Integrado", "S41"),
     },
 }
+
+# Valora sensitivity inputs (Plantilla Usuario)
+VALORA_SENSITIVITY_INPUT_CELL_MAP = {
+    "forecast_ingresos": "C13",
+    "forecast_fde": "C14",
+    "crecimiento_perpetuo": "C15",
+}
+

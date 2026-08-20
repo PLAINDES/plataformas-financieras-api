@@ -138,7 +138,8 @@ class OneDriveExcelMixin:
             headers["workbook-session-id"] = session_id
 
         encoded_sheet = quote(sheet_name)
-        encoded_cell = quote(cell_address)
+        # Preservar ':' en rangos (ej: F91:L91) para evitar 400 Bad Request en Graph API
+        encoded_cell = quote(cell_address, safe=":")
         url = (
             f"{GRAPH_BASE}/users/{self.config.user_email}/drive/items/{item_id}"
             f"/workbook/worksheets('{encoded_sheet}')/range(address='{encoded_cell}')"

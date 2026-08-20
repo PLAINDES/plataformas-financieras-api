@@ -35,6 +35,7 @@ from app.core.constants import (
     VALORA_INTEGRATED_INPUT_CELL_MAP,
     VALORA_PROJECTION_INPUT_CELL_MAP,
     VALORA_RESULTS_CELL_MAP,
+    VALORA_SENSITIVITY_INPUT_CELL_MAP,
 )
 from app.models.main import CalculationType
 from app.services.onedrive.service import get_onedrive_service
@@ -1478,6 +1479,7 @@ async def _enrich_payload_with_valora_excel(
     payload_data: dict[str, Any],
     item_id: str,
     existing_session_id: str | None = None,
+    sensitivity_input: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from time import perf_counter
 
@@ -1510,10 +1512,12 @@ async def _enrich_payload_with_valora_excel(
 
     logger.info(f"[VALORA] Sesión {session_id} abierta para item {item_id}")
 
+    sensibilidad_entry: dict[str, Any] | None = None
+
     try:
         if latest_input:
             logger.info(
-                f"[VALORA] Escribiendo inputs en Excel para item {item_id}; "
+                f"[VALORA] Escribiendo inputs base en Excel para item {item_id}; "
                 f"balance_rows={len(latest_input.get('balance_table', {}).get('rows', []))}, "
                 f"results_rows={len(latest_input.get('results_table', {}).get('rows', []))}"
             )
@@ -1521,6 +1525,28 @@ async def _enrich_payload_with_valora_excel(
                 item_id=item_id, input_payload=latest_input, session_id=session_id
             )
             t0 = _lap("_write_valora_inputs_to_excel", t0)
+
+        # --- SENSIBILIDAD VALORA ---
+        if sensitivity_input:
+            logger.info(
+                f"[VALORA] Escribiendo inputs de sensibilidad: {sensitivity_input}"
+            )
+            for field, cell in VALORA_SENSITIVITY_INPUT_CELL_MAP.items():
+                val = sensitivity_input.get(field)
+                if val is not None:
+                    # Normalizar valor si es porcentaje
+                    final_val = _to_excel_input_value(field, val)
+                    logger.info(
+                        f"[VALORA SENSITIVITY] Writing {field}={final_val} to Plantilla Usuario!{cell}"
+                    )
+                    await service.update_excel_cell(
+                        item_id,
+                        "Plantilla Usuario",
+                        cell,
+                        final_val,
+                        session_id=session_id,
+                    )
+            t0 = _lap("write_valora_sensitivity_inputs", t0)
 
         await asyncio.sleep(0.3)
         t0 = _lap("sleep post-escritura", t0)
@@ -1559,6 +1585,18 @@ async def _enrich_payload_with_valora_excel(
         payload_data["active_session_id"] = session_id
         payload_data["resultados"] = resultados
         payload_data["resultados"]["inputs"] = latest_input
+
+        if sensitivity_input:
+            sensibilidad_entry = {
+                "created_at": _now_iso(),
+                "inputs": sensitivity_input,
+            }
+            # Copiar resultados relevantes de sensibilidad
+            for key in ("wacc", "balance", "conceptos", "integrado"):
+                if key in resultados:
+                    sensibilidad_entry[key] = resultados[key]
+            logger.info(f"[VALORA] Sensibilidad entry construida: {sensibilidad_entry}")
+            payload_data["sensibilizacion"] = [sensibilidad_entry]
     except Exception as exc:
         logger.exception(f"[VALORA] Error durante enriquecimiento Excel: {exc}")
         raise

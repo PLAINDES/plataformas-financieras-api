@@ -1,6 +1,9 @@
 import json
+import logging
 
 from app.models.main import CalculationType
+
+logger = logging.getLogger(__name__)
 
 from .formatters import _now_iso
 
@@ -97,47 +100,31 @@ def _merge_unique_entries(
     existing_entries: list[dict], incoming_entries: object
 ) -> list[dict]:
     """
-    Mezcla las entradas históricas garantizando la unicidad basada en el valor del BOA
-    y la industria/subsector para diferenciar sensibilizaciones.
+    Mezcla las entradas históricas garantizando la unicidad.
+    Para Kapital usa BOA + industria + subsector.
+    Para Valora (sin BOA) usa el hash del payload completo.
     """
 
     def _get_entry_key(e):
         boa = e.get("boa")
         ind = e.get("industria", "")
         sub = e.get("subsector", "")
-        return f"{boa}-{ind}-{sub}"
+        if boa is not None:
+            return f"boa:{boa}-ind:{ind}-sub:{sub}"
+        # Fallback para entradas sin BOA (Valora)
+        return json.dumps(
+            _entry_payload_without_timestamp(e),
+            sort_keys=True,
+            ensure_ascii=False,
+        )
 
-    merged = {_get_entry_key(e): e for e in existing_entries if e.get("boa") is not None}
+    merged = {_get_entry_key(e): e for e in existing_entries}
     incoming = _stamp_entries(incoming_entries)
 
-    # Fallback de compatibilidad
-    if not merged and existing_entries:
-        existing_keys = {
-            json.dumps(
-                _entry_payload_without_timestamp(entry),
-                sort_keys=True,
-                ensure_ascii=False,
-            )
-            for entry in existing_entries
-        }
-        res = list(existing_entries)
-        for entry in incoming:
-            key = json.dumps(
-                _entry_payload_without_timestamp(entry),
-                sort_keys=True,
-                ensure_ascii=False,
-            )
-            if key not in existing_keys:
-                res.append(entry)
-        return _stamp_entries(res)
-
-    # Fusionar entradas entrantes usando el 'boa' + industria + subsector como clave única
     for entry in incoming:
         key = _get_entry_key(entry)
-        # Reemplaza o añade el bloque del escenario específico
         merged[key] = entry
 
-    # Convertir los valores del diccionario a una lista
     return _stamp_entries(list(merged.values()))
 
 

@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.analytics import AnalyticsSession, AnalyticsPageView, AnalyticsEvent
+from app.models.main import Calculation, CalculationType
+from app.services.valora.recommender import read_valora_recommendations
 from app.schemas.analytics import (
     TrackPayload,
     AnalyticsSessionCreate,
@@ -640,3 +642,55 @@ def get_dashboard(
         cta_clicks=cta_clicks,
         avg_time_on_page=round(avg_time_on_page, 1) if avg_time_on_page else None,
     )
+
+
+@router.get("/valora-recommendations/{calculation_id}")
+async def get_valora_recommendations(
+    calculation_id: int, db: Session = Depends(get_db)
+):
+    """
+    Devuelve las tasas recomendadas para el módulo de sensibilidad de Valora
+    leyendo directamente la copia de trabajo en Excel Online.
+    """
+    calculation = db.get(Calculation, calculation_id)
+    if not calculation:
+        raise HTTPException(status_code=404, detail="Calculation not found")
+
+    if calculation.type != CalculationType.VALORA:
+        raise HTTPException(
+            status_code=400, detail="Solo disponible para cálculos Valora"
+        )
+
+    data = calculation.data or {}
+    file_meta = data.get("file") or {}
+    item_id = file_meta.get("onedrive_item_id")
+    session_id = data.get("active_session_id")
+
+    if not item_id:
+        raise HTTPException(
+            status_code=400, detail="No se encontró el archivo de trabajo (onedrive_item_id)"
+        )
+
+    logger.info(
+        f"[VALORA RECOMMENDATIONS] calculation_id={calculation_id}, "
+        f"item_id={item_id}, session_id={session_id}"
+    )
+
+    try:
+        result = await read_valora_recommendations(
+            item_id,
+            session_id=session_id,
+            calculation_data=calculation.data,
+            db=db,
+        )
+        logger.info(
+            f"[VALORA RECOMMENDATIONS] Recomendaciones obtenidas exitosamente para calculation_id={calculation_id}"
+        )
+        return result
+    except Exception as e:
+        logger.exception(
+            f"[VALORA RECOMMENDATIONS] Error obteniendo recomendaciones: {e}"
+        )
+        raise HTTPException(
+            status_code=502, detail="Error leyendo recomendaciones del Excel"
+        )

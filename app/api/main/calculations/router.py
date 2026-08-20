@@ -314,6 +314,7 @@ async def update_calculation(
         base_changed = True
         enriched_sensibilizacion = None
         has_beta_for_sensitivity = False
+        has_valora_sensitivity = False
         calculation_file_meta = None
         existing_session = None
 
@@ -462,12 +463,42 @@ async def update_calculation(
                 ):
                     existing_session = calculation.data.get("active_session_id")
 
+                # Detectar inputs de sensibilidad de Valora (3 tasas)
+                incoming_input_raw = _extract_input_payload(update_data["data"])
+                valora_sens_fields = {
+                    "forecast_ingresos",
+                    "forecast_fde",
+                    "crecimiento_perpetuo",
+                }
+                sens_fields_present = valora_sens_fields & set(incoming_input_raw.keys())
+                sensitivity_input = None
+                if sens_fields_present:
+                    has_valora_sensitivity = True
+                    sensitivity_input = {
+                        k: v for k, v in incoming_input_raw.items() if k in valora_sens_fields
+                    }
+                    logger.info(
+                        f"[VALORA PUT] Sensibilidad detectada con campos {sens_fields_present}: {sensitivity_input}"
+                    )
+                else:
+                    logger.info("[VALORA PUT] No se detectaron campos de sensibilidad.")
+
+                include_sensibilizacion_history = has_valora_sensitivity
+
                 try:
                     update_data["data"] = await _enrich_payload_with_valora_excel(
                         update_data["data"],
                         workbook_item_id,
                         existing_session_id=existing_session,
+                        sensitivity_input=sensitivity_input,
                     )
+                    if isinstance(update_data["data"], dict):
+                        enriched_sensibilizacion = update_data["data"].get(
+                            "sensibilizacion"
+                        )
+                        logger.info(
+                            f"[VALORA PUT] enriched_sensibilizacion presente={enriched_sensibilizacion is not None}"
+                        )
                 except Exception as exc:
                     logger.exception(
                         "Could not enrich valora update payload from Excel"
@@ -486,11 +517,17 @@ async def update_calculation(
             include_sensibilizacion_history=include_sensibilizacion_history,
         )
 
-        if has_beta_for_sensitivity and isinstance(update_data["data"], dict):
+        if (has_beta_for_sensitivity or has_valora_sensitivity) and isinstance(
+            update_data["data"], dict
+        ):
             if not update_data["data"].get("sensibilizacion") and isinstance(
                 enriched_sensibilizacion, list
             ):
                 update_data["data"]["sensibilizacion"] = enriched_sensibilizacion
+                logger.info(
+                    f"[PUT] Inyectando enriched_sensibilizacion fallback. "
+                    f"has_beta={has_beta_for_sensitivity}, has_valora={has_valora_sensitivity}"
+                )
 
         if (
             isinstance(update_data["data"], dict)
