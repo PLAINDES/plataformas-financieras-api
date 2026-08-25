@@ -35,32 +35,50 @@ LIMA_TZ = timezone(timedelta(hours=-5))
 
 
 def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
-    latest_by_device = {}
+    def normalize_label(value: object) -> str:
+        return str(value or "").strip()
+
+    def normalize_key(value: object) -> str:
+        return normalize_label(value).casefold()
+
+    def canonical_label(value: object) -> str:
+        label = normalize_label(value)
+        if not label:
+            return "Otro"
+        parts = [part.capitalize() for part in label.casefold().split()]
+        return " ".join(parts)
+
+    unique_devices = set()
+    latest_by_device: dict[str, tuple] = {}
     for metadata, timestamp in rows:
         if not isinstance(metadata, dict):
             continue
         device_id = str(metadata.get("device_id") or "").strip()
         audience = str(metadata.get("audience") or "").strip().lower()
-        if not device_id or audience not in {"specialist", "student"}:
+        if not device_id or audience not in {"specialist"}:
             continue
-        previous = latest_by_device.get(device_id)
-        if previous is None or timestamp > previous[2]:
-            latest_by_device[device_id] = (
-                audience,
-                str(metadata.get("role") or "Otro").strip() or "Otro",
-                timestamp,
-            )
+        unique_devices.add(device_id)
+        prev = latest_by_device.get(device_id)
+        if prev is None or timestamp > prev[0]:
+            latest_by_device[device_id] = (timestamp, metadata)
 
-    total_devices = len(latest_by_device)
-    audience_counts = {"Especialistas": 0, "Estudiantes": 0}
-    role_counts = {}
-    for audience, raw_role, _ in latest_by_device.values():
-        if audience == "specialist":
-            audience_counts["Especialistas"] += 1
-            role = "Otro" if raw_role.lower() == "otro" else raw_role
-            role_counts[role] = role_counts.get(role, 0) + 1
-        elif audience == "student":
-            audience_counts["Estudiantes"] += 1
+    total_devices = len(unique_devices)
+    audience_counts = {"Especialistas": total_devices, "Empresas": 0}
+    role_counts: dict[str, dict[str, object]] = {}
+    company_counts: dict[str, dict[str, object]] = {}
+    for device_id, (timestamp, metadata) in latest_by_device.items():
+        raw_role = canonical_label(metadata.get("role"))
+        raw_company = canonical_label(metadata.get("company") or metadata.get("company_name"))
+        role_key = normalize_key(raw_role)
+        company_key = normalize_key(raw_company)
+        role_entry = role_counts.setdefault(role_key, {"label": raw_role, "count": 0})
+        company_entry = company_counts.setdefault(company_key, {"label": raw_company, "count": 0})
+        role_entry["label"] = role_entry["label"] or raw_role
+        company_entry["label"] = company_entry["label"] or raw_company
+        role_entry["count"] = int(role_entry["count"]) + 1
+        company_entry["count"] = int(company_entry["count"]) + 1
+
+    audience_counts["Empresas"] = total_devices
 
     specialist_total = audience_counts["Especialistas"]
     audiences = [
@@ -73,18 +91,29 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
     ]
     specialist_roles = [
         TopItem(
-            label=label,
-            count=count,
-            percentage=round(count / max(specialist_total, 1) * 100, 1),
+            label=value["label"],
+            count=int(value["count"]),
+            percentage=round(int(value["count"]) / max(specialist_total, 1) * 100, 1),
         )
-        for label, count in sorted(
-            role_counts.items(), key=lambda item: (-item[1], item[0])
+        for _, value in sorted(
+            role_counts.items(), key=lambda item: (-int(item[1]["count"]), item[1]["label"])
+        )
+    ]
+    company_names = [
+        TopItem(
+            label=value["label"],
+            count=int(value["count"]),
+            percentage=round(int(value["count"]) / max(audience_counts["Empresas"], 1) * 100, 1),
+        )
+        for _, value in sorted(
+            company_counts.items(), key=lambda item: (-int(item[1]["count"]), item[1]["label"])
         )
     ]
     return OccupationProfileMetrics(
         total_devices=total_devices,
         audiences=audiences,
         specialist_roles=specialist_roles,
+        company_names=company_names,
     )
 
 

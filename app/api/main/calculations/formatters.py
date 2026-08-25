@@ -89,6 +89,9 @@ def _to_excel_input_value(field: str, value: object) -> object:
         "revenue_forecast_rate",
         "fdc_forecast_rate",
         "perpetual_growth_rate",
+        "forecast_ingresos",
+        "forecast_fde",
+        "crecimiento_perpetuo",
     }
 
     if field not in percentage_like_fields:
@@ -117,10 +120,13 @@ def _to_excel_input_value(field: str, value: object) -> object:
         "revenue_forecast_rate",
         "fdc_forecast_rate",
         "perpetual_growth_rate",
+        "forecast_ingresos",
+        "forecast_fde",
+        "crecimiento_perpetuo",
     ):
-        # La plantilla Valora espera estos rates ya en escala directa
-        # (ej: 5 para 5%). No dividir.
-        final_val = n
+        # La plantilla Valora usa escala decimal (0.02 = 2%).
+        # Si el valor viene como porcentaje entero (ej: 2, 5), dividir por 100.
+        final_val = n / 100 if n > 1 else n
     else:
         # Para todos los demás porcentajes (tasa_impositiva, porcentaje_deuda, etc)
         final_val = n / 100 if abs(n) > 1 else n

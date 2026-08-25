@@ -44,20 +44,67 @@ REGLAS:
 
 
 def _extract_json(text: str) -> dict:
-    """Extrae el primer objeto JSON válido de la respuesta."""
+    """Extrae el primer objeto JSON válido de la respuesta.
+    Maneja JSON envuelto en markdown code blocks y JSON truncado."""
+    if not text:
+        return {}
+
+    cleaned = text.strip()
+
+    code_block = re.search(r"```(?:json)?\s*\n?(.*)", cleaned, re.DOTALL)
+    if code_block:
+        cleaned = code_block.group(1).strip()
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3].strip()
+
     try:
-        return json.loads(text)
+        return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match:
+
+    repaired = _repair_truncated_json(cleaned)
+    if repaired:
         try:
-            return json.loads(match.group(0))
+            return json.loads(repaired)
         except json.JSONDecodeError:
-            logger.warning(
-                "[VALORA AI] Respuesta Gemini no parseable como JSON", exc_info=True
-            )
+            pass
+
     return {}
+
+
+def _repair_truncated_json(text: str) -> str | None:
+    """Intenta reparar JSON truncado cerrando llaves/corchetes pendientes."""
+    open_braces = 0
+    open_brackets = 0
+    in_string = False
+    escape = False
+
+    for ch in text:
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            open_braces += 1
+        elif ch == "}":
+            open_braces = max(0, open_braces - 1)
+        elif ch == "[":
+            open_brackets += 1
+        elif ch == "]":
+            open_brackets = max(0, open_brackets - 1)
+
+    if in_string:
+        text += '"'
+    text += "]" * open_brackets
+    text += "}" * open_braces
+    return text
 
 
 async def generate_valora_ai_analysis(result: dict) -> dict | None:
@@ -85,7 +132,7 @@ async def generate_valora_ai_analysis(result: dict) -> dict | None:
     data = {
         "warnings": result.get("warnings", []),
         "rates": rates_summary,
-    }
+    }   
 
     prompt = SYSTEM_PROMPT.format(data=json.dumps(data, ensure_ascii=False, default=str))
 
@@ -93,7 +140,7 @@ async def generate_valora_ai_analysis(result: dict) -> dict | None:
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.4,
-            "maxOutputTokens": 2048,
+            "maxOutputTokens": 4096,
             "topP": 0.8,
             "topK": 40,
         },
@@ -105,6 +152,7 @@ async def generate_valora_ai_analysis(result: dict) -> dict | None:
         return None
 
     parsed = _extract_json(raw_text)
+
     if not parsed.get("rates"):
         logger.warning("[VALORA AI] Respuesta sin bloque 'rates'.")
         return None

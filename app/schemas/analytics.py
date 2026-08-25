@@ -118,6 +118,7 @@ class OccupationProfileMetrics(BaseModel):
     total_devices: int
     audiences: List[TopItem]
     specialist_roles: List[TopItem]
+    company_names: List[TopItem]
 
 
 class DashboardData(BaseModel):

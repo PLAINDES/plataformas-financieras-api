@@ -48,6 +48,13 @@ def delete_temp_file(path: str):
         os.remove(path)
 
 
+def _build_payment_launcher_url(request: Request, checkout_url: Optional[str]) -> str:
+    if not checkout_url:
+        return "#"
+    origin = request.headers.get("origin", "").rstrip("/") or "http://localhost:5173"
+    return f"{origin}/payment/launcher?checkout={quote(checkout_url, safe='')}"
+
+
 def _build_locked_preview_html(payment_url: Optional[str]) -> str:
     cta_url = payment_url or "#"
     return f"""
@@ -925,32 +932,35 @@ async def generate_report_pdf(
         await page.close()
         await context.close()
 
-    if is_preview:
-        reader = PdfReader(temp_path)
-        total_pages = len(reader.pages)
-        if total_pages > 2:
-            lock_fd, lock_path = tempfile.mkstemp(suffix="-lock.pdf")
-            os.close(lock_fd)
-            lock_context = await browser.new_context()
-            lock_page = await lock_context.new_page()
-            try:
-                lock_html = _build_locked_preview_html(report.link_pago)
-                await lock_page.set_content(lock_html, wait_until="networkidle")
-                await lock_page.pdf(
-                    path=lock_path, format="A4", print_background=True
-                )
-            finally:
-                await lock_page.close()
-                await lock_context.close()
-
-            lock_reader = PdfReader(lock_path)
-            writer = PdfWriter()
-            writer.add_page(reader.pages[0])
-            writer.add_page(reader.pages[1])
-            writer.add_page(lock_reader.pages[0])
-            with open(temp_path, "wb") as f:
-                writer.write(f)
-            delete_temp_file(lock_path)
+    # Lock page removed from PDF — overlay now rendered client-side in ReportViewer
+    # if is_preview:
+    #     reader = PdfReader(temp_path)
+    #     total_pages = len(reader.pages)
+    #     if total_pages > 2:
+    #         lock_fd, lock_path = tempfile.mkstemp(suffix="-lock.pdf")
+    #         os.close(lock_fd)
+    #         lock_context = await browser.new_context()
+    #         lock_page = await lock_context.new_page()
+    #         try:
+    #             lock_html = _build_locked_preview_html(
+    #                 _build_payment_launcher_url(request, report.link_pago)
+    #             )
+    #             await lock_page.set_content(lock_html, wait_until="networkidle")
+    #             await lock_page.pdf(
+    #                 path=lock_path, format="A4", print_background=True
+    #             )
+    #         finally:
+    #             await lock_page.close()
+    #             await lock_context.close()
+    #
+    #         lock_reader = PdfReader(lock_path)
+    #         writer = PdfWriter()
+    #         writer.add_page(reader.pages[0])
+    #         writer.add_page(reader.pages[1])
+    #         writer.add_page(lock_reader.pages[0])
+    #         with open(temp_path, "wb") as f:
+    #             writer.write(f)
+    #         delete_temp_file(lock_path)
 
     background_tasks.add_task(delete_temp_file, temp_path)
 

@@ -802,6 +802,44 @@ def _count_missing_fields(companies: list[dict]) -> dict[str, int]:
     return counts
 
 
+def calcular_boa_ponderado_por_subsector(companies: list[dict]) -> dict:
+    """Calcula BOA Ponderado por subsector: Σ(Wi% × beta_unlevered).
+
+    Wi% = total_assets_i / Σ(total_assets) del subsector.
+    Solo se incluyen empresas con total_assets > 0 y beta_unlevered válido.
+    """
+    subsectores: dict[str, list[dict]] = {}
+    for c in companies:
+        sub = c.get("subsector") or "Unknown"
+        subsectores.setdefault(sub, []).append(c)
+
+    result = {}
+    for sub, empresas in subsectores.items():
+        activos_total = sum(e.get("total_assets", 0) or 0 for e in empresas)
+        if activos_total == 0:
+            result[sub] = {"boa_ponderado": 0.0, "wi_por_empresa": {}}
+            continue
+
+        boa_ponderado = 0.0
+        wi_map: dict[str, dict] = {}
+        for e in empresas:
+            activos = e.get("total_assets", 0) or 0
+            boa = e.get("beta_unlevered", 0) or 0
+            wi = activos / activos_total if activos_total > 0 else 0
+            boa_ponderado += wi * boa
+            wi_map[e.get("ticker", "")] = {
+                "wi": round(wi, 6),
+                "activo_mercado": activos,
+                "beta_unlevered": boa,
+            }
+        result[sub] = {
+            "boa_ponderado": round(boa_ponderado, 6),
+            "activos_total": activos_total,
+            "wi_por_empresa": wi_map,
+        }
+    return result
+
+
 def _build_summary_payload(companies: list[dict], total: int, processed_ok: int, failed_count: int) -> dict:
     completed_companies = [company for company in companies if _has_complete_values(company)]
     incomplete_companies = [company for company in companies if not _has_complete_values(company)]
@@ -1437,6 +1475,7 @@ def calculate_subsectores_boa(
     )
     if stop_reason == "interrumpido" and rate_limit_hits > 0:
         stop_reason = "rate_limit"
+    boa_ponderado_data = calcular_boa_ponderado_por_subsector(companies) if companies else {}
     result = {
         "success": True,
         "valid_companies": [],
@@ -1448,6 +1487,7 @@ def calculate_subsectores_boa(
         "empty_batch_tickers": empty_batch_tickers,
         **_build_summary_payload(companies, len(ticker_rows), processed_ok, failed_count),
         "ticker_rows": ticker_table_rows,
+        "boa_ponderado_por_subsector": boa_ponderado_data,
     }
     _log_summary_block(f"[BOA][RESULTADO FINAL][{job_id}]", result)
     _log_final_status(job_id, result, stop_reason)

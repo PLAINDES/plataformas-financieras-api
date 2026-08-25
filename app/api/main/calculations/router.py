@@ -466,23 +466,29 @@ async def update_calculation(
                 # Detectar inputs de sensibilidad de Valora (3 tasas)
                 incoming_input_raw = _extract_input_payload(update_data["data"])
                 valora_sens_fields = {
-                    "forecast_ingresos",
-                    "forecast_fde",
-                    "crecimiento_perpetuo",
+                    "revenue_forecast_rate": "forecast_ingresos",
+                    "fdc_forecast_rate": "forecast_fde",
+                    "perpetual_growth_rate": "crecimiento_perpetuo",
+                    "forecast_ingresos": "forecast_ingresos",
+                    "forecast_fde": "forecast_fde",
+                    "crecimiento_perpetuo": "crecimiento_perpetuo",
                 }
-                sens_fields_present = valora_sens_fields & set(incoming_input_raw.keys())
-                sensitivity_input = None
-                if sens_fields_present:
+                sensitivity_input = {
+                    target: incoming_input_raw[source]
+                    for source, target in valora_sens_fields.items()
+                    if incoming_input_raw.get(source) not in (None, "")
+                }
+                if sensitivity_input:
                     has_valora_sensitivity = True
-                    sensitivity_input = {
-                        k: v for k, v in incoming_input_raw.items() if k in valora_sens_fields
-                    }
                     logger.info(
-                        f"[VALORA PUT] Sensibilidad detectada con campos {sens_fields_present}: {sensitivity_input}"
+                        f"[VALORA PUT] Sensibilidad detectada: {sensitivity_input}"
                     )
                 else:
+                    sensitivity_input = None
                     logger.info("[VALORA PUT] No se detectaron campos de sensibilidad.")
 
+                # El recálculo se guarda en sensibilizacion; resultados conserva el cálculo base.
+                include_resultados_history = not has_valora_sensitivity
                 include_sensibilizacion_history = has_valora_sensitivity
 
                 try:
