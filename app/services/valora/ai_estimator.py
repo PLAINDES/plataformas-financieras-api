@@ -13,51 +13,30 @@ from app.services.valora.gemini_client import call_gemini
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """Eres un analista financiero senior especializado en valoración de empresas por DCF.
-Tu tarea es estimar tres tasas clave para el primer período de proyección de un modelo de flujo de caja libre en Excel,
-utilizando TODO el contexto que se te proporciona.
+SYSTEM_PROMPT = """Analista financiero DCF. Estima 3 tasas primer período proyección usando todo el contexto.
 
-CONTEXTO COMPLETO DEL CÁLCULO:
+CONTEXTO:
 {context}
 
-TASAS A ESTIMAR (en formato decimal, ej. 0.10 = 10%):
-1. **forecast_ingresos**: tasa de crecimiento de los ingresos/ventas para el primer período de proyección.
-2. **forecast_fde**: tasa de crecimiento del flujo de efectivo/libre (FDE/FCF) para el primer período de proyección.
-3. **crecimiento_perpetuo**: tasa de crecimiento perpetuo a largo plazo del FDE.
+TASAS (decimal, 0.10=10%):
+1. forecast_ingresos: crecimiento ingresos/ventas.
+2. forecast_fde: crecimiento FDE/FCF.
+3. crecimiento_perpetuo: crecimiento perpetuo largo plazo FDE.
 
-INSTRUCCIONES:
-- Usa los datos históricos de la empresa (CAGR, YoY) como punto de partida.
-- Ajusta por el sector/industria y el país usando los datos de Damodaran, EMBI, inflación, tasa libre de riesgo y prima de riesgo.
-- El crecimiento perpetuo debe ser conservador: típicamente cercano a la inflación o crecimiento del PIB del país, y siempre razonablemente menor al WACC/costo de capital.
-- Si el sector es cíclico o volátil, suaviza las tasas de forecast hacia medias sectoriales.
-- Justifica cada estimación en 1-2 oraciones en español, citando los datos clave que usaste.
-- Proporciona un rango razonable (min, max) alrededor de cada estimación.
+REGLAS:
+- Partir de CAGR/YoY históricos.
+- Ajustar por sector/país: Damodaran, EMBI, inflación, tasa libre riesgo, prima riesgo.
+- Perpetuo conservador: cercano inflación/PIB, menor WACC.
+- Si sector cíclico/volátil, suavizar hacia medias sectoriales.
+- Rationale: 1-2 oraciones, citar datos clave.
+- suggested_range: min/max decimales.
+- confidence: "high"/"medium"/"low".
 
-REGLAS ESTRICTAS:
-- Responde EXCLUSIVAMENTE con un objeto JSON válido. NO agregues texto fuera del JSON.
-- suggested_range usa decimales (0.10 = 10%).
-- confidence debe ser "high", "medium" o "low".
-
-ESTRUCTURA JSON EXACTA:
+JSON EXACTO, sin texto fuera:
 {{
-  "forecast_ingresos": {{
-    "value": 0.12,
-    "rationale": "...",
-    "confidence": "medium",
-    "suggested_range": {{"min": 0.08, "max": 0.16}}
-  }},
-  "forecast_fde": {{
-    "value": 0.10,
-    "rationale": "...",
-    "confidence": "medium",
-    "suggested_range": {{"min": 0.06, "max": 0.14}}
-  }},
-  "crecimiento_perpetuo": {{
-    "value": 0.025,
-    "rationale": "...",
-    "confidence": "high",
-    "suggested_range": {{"min": 0.015, "max": 0.035}}
-  }}
+  "forecast_ingresos": {{"value": 0.12, "rationale": "...", "confidence": "medium", "suggested_range": {{"min": 0.08, "max": 0.16}}}},
+  "forecast_fde": {{"value": 0.10, "rationale": "...", "confidence": "medium", "suggested_range": {{"min": 0.06, "max": 0.14}}}},
+  "crecimiento_perpetuo": {{"value": 0.025, "rationale": "...", "confidence": "high", "suggested_range": {{"min": 0.015, "max": 0.035}}}}
 }}"""
 
 
@@ -69,21 +48,67 @@ RATE_LIMITS = {
 
 
 def _extract_json(text: str) -> dict:
-    """Extrae el primer objeto JSON válido de la respuesta."""
+    """Extrae el primer objeto JSON válido de la respuesta.
+    Maneja JSON envuelto en markdown code blocks y JSON truncado."""
+    if not text:
+        return {}
+
+    cleaned = text.strip()
+
+    code_block = re.search(r"```(?:json)?\s*\n?(.*)", cleaned, re.DOTALL)
+    if code_block:
+        cleaned = code_block.group(1).strip()
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3].strip()
+
     try:
-        return json.loads(text)
+        return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match:
+
+    repaired = _repair_truncated_json(cleaned)
+    if repaired:
         try:
-            return json.loads(match.group(0))
+            return json.loads(repaired)
         except json.JSONDecodeError:
-            logger.warning(
-                "[VALORA AI ESTIMATOR] Respuesta no parseable como JSON",
-                exc_info=True,
-            )
+            pass
+
     return {}
+
+
+def _repair_truncated_json(text: str) -> str | None:
+    """Intenta reparar JSON truncado cerrando llaves/corchetes pendientes."""
+    open_braces = 0
+    open_brackets = 0
+    in_string = False
+    escape = False
+
+    for ch in text:
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            open_braces += 1
+        elif ch == "}":
+            open_braces = max(0, open_braces - 1)
+        elif ch == "[":
+            open_brackets += 1
+        elif ch == "]":
+            open_brackets = max(0, open_brackets - 1)
+
+    if in_string:
+        text += '"'
+    text += "]" * open_brackets
+    text += "}" * open_braces
+    return text
 
 
 def _validate_value(value: Any, key: str) -> float | None:
@@ -125,7 +150,7 @@ async def estimate_valora_rates(context: dict[str, Any]) -> dict[str, Any] | Non
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.25,
-            "maxOutputTokens": 2048,
+            "maxOutputTokens": 8192,
             "topP": 0.8,
             "topK": 40,
         },
@@ -135,7 +160,11 @@ async def estimate_valora_rates(context: dict[str, Any]) -> dict[str, Any] | Non
     if not raw_text:
         return None
 
+    logger.warning("[VALORA AI ESTIMATOR] Raw response len=%d, first 300: %s", len(raw_text), raw_text[:300])
+
     parsed = _extract_json(raw_text)
+    logger.warning("[VALORA AI ESTIMATOR] Parsed keys: %s", list(parsed.keys()) if parsed else "empty")
+
     rates: dict[str, Any] = {}
     any_valid = False
 

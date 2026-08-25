@@ -273,6 +273,35 @@ async def read_valora_recommendations(
         f"[VALORA RECOMMENDER] Starting for item={item_id} session={session_id}"
     )
 
+    # Si no hay sesión o la sesión está expirada, crear una nueva
+    active_session_id = session_id
+    if not active_session_id:
+        try:
+            active_session_id = await service._create_workbook_session(
+                item_id, persist_changes=False
+            )
+            logger.info(f"[VALORA RECOMMENDER] Nueva sesión creada: {active_session_id}")
+        except Exception as e:
+            logger.warning(f"[VALORA RECOMMENDER] No se pudo crear sesión: {e}")
+            active_session_id = None
+    else:
+        # Verificar que la sesión sigue válida, si no, crear nueva
+        try:
+            await service.force_calculate_excel(item_id, session_id=active_session_id)
+        except Exception:
+            logger.info(f"[VALORA RECOMMENDER] Sesión expirada {active_session_id}, creando nueva")
+            try:
+                active_session_id = await service._create_workbook_session(
+                    item_id, persist_changes=False
+                )
+                logger.info(f"[VALORA RECOMMENDER] Nueva sesión creada: {active_session_id}")
+            except Exception as e:
+                logger.warning(f"[VALORA RECOMMENDER] No se pudo crear sesión de reemplazo: {e}")
+                active_session_id = None
+
+    # Usar active_session_id de aquí en adelante
+    session_id = active_session_id
+
     # Extraer inputs del cálculo como fallback ante lecturas de Excel
     calc_inputs = (calculation_data or {}).get("inputs", [{}])[0] if calculation_data else {}
     if not isinstance(calc_inputs, dict):
