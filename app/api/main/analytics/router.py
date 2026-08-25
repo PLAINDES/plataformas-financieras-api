@@ -49,6 +49,7 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
         return " ".join(parts)
 
     unique_devices = set()
+    latest_by_device: dict[str, tuple] = {}
     for metadata, timestamp in rows:
         if not isinstance(metadata, dict):
             continue
@@ -57,21 +58,17 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
         if not device_id or audience not in {"specialist"}:
             continue
         unique_devices.add(device_id)
+        prev = latest_by_device.get(device_id)
+        if prev is None or timestamp > prev[0]:
+            latest_by_device[device_id] = (timestamp, metadata)
 
     total_devices = len(unique_devices)
-    audience_counts = {"Especialistas": 0, "Empresas": 0}
+    audience_counts = {"Especialistas": total_devices, "Empresas": 0}
     role_counts: dict[str, dict[str, object]] = {}
     company_counts: dict[str, dict[str, object]] = {}
-    for metadata, timestamp in rows:
-        if not isinstance(metadata, dict):
-            continue
-        device_id = str(metadata.get("device_id") or "").strip()
-        audience = str(metadata.get("audience") or "").strip().lower()
-        if not device_id or audience not in {"specialist"}:
-            continue
+    for device_id, (timestamp, metadata) in latest_by_device.items():
         raw_role = canonical_label(metadata.get("role"))
         raw_company = canonical_label(metadata.get("company") or metadata.get("company_name"))
-        audience_counts["Especialistas"] += 1
         role_key = normalize_key(raw_role)
         company_key = normalize_key(raw_company)
         role_entry = role_counts.setdefault(role_key, {"label": raw_role, "count": 0})
@@ -81,7 +78,7 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
         role_entry["count"] = int(role_entry["count"]) + 1
         company_entry["count"] = int(company_entry["count"]) + 1
 
-    audience_counts["Empresas"] = len(company_counts)
+    audience_counts["Empresas"] = total_devices
 
     specialist_total = audience_counts["Especialistas"]
     audiences = [
