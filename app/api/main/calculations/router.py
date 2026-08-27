@@ -463,7 +463,7 @@ async def update_calculation(
                 ):
                     existing_session = calculation.data.get("active_session_id")
 
-                # Detectar inputs de sensibilidad de Valora (3 tasas)
+                # Detectar inputs de sensibilidad de Valora (3 tasas + beta desapalancado)
                 incoming_input_raw = _extract_input_payload(update_data["data"])
                 valora_sens_fields = {
                     "revenue_forecast_rate": "forecast_ingresos",
@@ -472,12 +472,28 @@ async def update_calculation(
                     "forecast_ingresos": "forecast_ingresos",
                     "forecast_fde": "forecast_fde",
                     "crecimiento_perpetuo": "crecimiento_perpetuo",
+                    # Beta desapalancado: cualquier variante dispara sensibilidad y debe llegar a WACC!F24
+                    "beta_desapalancado": "beta_desapalancado",
+                    "beta_desapalancado_custom": "beta_desapalancado",
+                    "beta_unlevered_industry": "beta_unlevered_industry",
+                    "beta_subsector": "beta_subsector",
+                    "beta_subsector_custom": "beta_subsector",
+                    "beta_unlevered": "beta_unlevered",
+                    "beta": "beta",
                 }
                 sensitivity_input = {
                     target: incoming_input_raw[source]
                     for source, target in valora_sens_fields.items()
                     if incoming_input_raw.get(source) not in (None, "")
                 }
+                # Si beta cambió vs histórico, forzar sensibilidad aunque otras tasas no estén
+                if not sensitivity_input:
+                    # Detectar cambio de beta vs current_input_raw aunque no esté en valora_sens_fields por nombre exacto
+                    beta_keys = ["beta_desapalancado","beta_unlevered_industry","beta_subsector","beta_subsector_custom","beta_unlevered","beta"]
+                    current_input_raw = _extract_latest_input_from_history(calculation.data)
+                    for k in beta_keys:
+                        if incoming_input_raw.get(k) not in (None, "") and incoming_input_raw.get(k) != current_input_raw.get(k):
+                            sensitivity_input[k] = incoming_input_raw.get(k)
                 if sensitivity_input:
                     has_valora_sensitivity = True
                     logger.info(
