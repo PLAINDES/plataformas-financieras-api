@@ -1376,6 +1376,25 @@ async def _write_valora_inputs_to_excel(
             skip_empty=True,
         )
 
+    # Beta ponderado -> WACC!F24 (igual que Kapital). Soporta todas las variantes de beta desapalancado.
+    # IMPORTANTE: beta_subsector tiene PRIORIDAD sobre beta_unlevered_industry porque
+    # cuando el usuario selecciona un subsector, el payload contiene AMBOS valores.
+    # El or-chain debe evaluar beta_subsector primero para que no quede atrapado por
+    # beta_unlevered_industry (que es truthy y bloquea el resto).
+    beta_valora = (
+        input_payload.get("beta_subsector")
+        or input_payload.get("beta_subsector_custom")
+        or input_payload.get("beta_unlevered_industry")
+        or input_payload.get("beta_desapalancado")
+        or input_payload.get("beta_desapalancado_custom")
+        or input_payload.get("beta_unlevered")
+        or input_payload.get("beta")
+    )
+    if beta_valora is not None:
+        input_payload["beta_subsector"] = beta_valora
+        input_payload["beta_subsector_alt"] = beta_valora
+    add_valora_write_requests(input_payload, KAPITAL_CUSTOM_INPUT_CELL_MAP, KAPITAL_RESULTS_SHEET)
+
     add_valora_write_requests(input_payload, VALORA_INPUT_CELL_MAP, "Plantilla Usuario")
     add_valora_write_requests(input_payload, KAPITAL_INPUT_WACC, KAPITAL_RESULTS_SHEET)
     add_valora_write_requests(
@@ -1523,6 +1542,15 @@ async def _enrich_payload_with_valora_excel(
     sensibilidad_entry: dict[str, Any] | None = None
 
     try:
+        # Si hay sensibilidad, capturar ORIGINAL antes de sobrescribir con latest_input (para que 1.38 no se pierda)
+        original_resultados = None
+        if sensitivity_input:
+            logger.info("[VALORA] Capturando resultados originales ANTES de escribir nuevo base")
+            await service.force_calculate_excel(item_id, session_id=session_id)
+            t0 = _lap("force_calculate_excel original pre-write", t0)
+            original_resultados = await _build_valora_output_entry(item_id, session_id=session_id)
+            t0 = _lap("_build_valora_output_entry original pre-write", t0)
+
         if latest_input:
             logger.info(
                 f"[VALORA] Escribiendo inputs base en Excel para item {item_id}; "
@@ -1535,18 +1563,6 @@ async def _enrich_payload_with_valora_excel(
             t0 = _lap("_write_valora_inputs_to_excel", t0)
 
         await asyncio.sleep(0.3)
-
-        # Cuando hay sensibilidad, primero capturar resultados ORIGINALES
-        # antes de sobreescribir los parámetros de sensibilidad
-        original_resultados = None
-        if sensitivity_input:
-            logger.info("[VALORA] Forzando recálculo para resultados originales")
-            await service.force_calculate_excel(item_id, session_id=session_id)
-            t0 = _lap("force_calculate_excel original", t0)
-
-            logger.info("[VALORA] Leyendo resultados originales")
-            original_resultados = await _build_valora_output_entry(item_id, session_id=session_id)
-            t0 = _lap("_build_valora_output_entry original", t0)
 
         # --- SENSIBILIDAD VALORA ---
         if sensitivity_input:
@@ -1568,6 +1584,27 @@ async def _enrich_payload_with_valora_excel(
                         final_val,
                         session_id=session_id,
                     )
+            # Beta desapalancado en sensibilidad -> WACC!F24 (y F40). Clave para que 1.38 -> 0.69 cambie en Excel.
+            # IMPORTANTE: beta_subsector tiene PRIORIDAD sobre beta_unlevered_industry.
+            beta_sens = (
+                sensitivity_input.get("beta_subsector")
+                or sensitivity_input.get("beta_subsector_custom")
+                or sensitivity_input.get("beta_unlevered_industry")
+                or sensitivity_input.get("beta_desapalancado")
+                or sensitivity_input.get("beta_desapalancado_custom")
+                or sensitivity_input.get("beta_unlevered")
+                or sensitivity_input.get("beta")
+            )
+            if beta_sens is not None:
+                for cell in (KAPITAL_RESULTS_BOA_CELL, "F40"):
+                    logger.info(f"[VALORA SENSITIVITY] Writing beta_sens={beta_sens} to WACC!{cell}")
+                    await service.update_excel_cell(
+                        item_id,
+                        KAPITAL_RESULTS_SHEET,
+                        cell,
+                        _to_excel_input_value("beta_subsector", beta_sens),
+                        session_id=session_id,
+                    )
             t0 = _lap("write_valora_sensitivity_inputs", t0)
 
         await asyncio.sleep(0.3)
@@ -1576,6 +1613,42 @@ async def _enrich_payload_with_valora_excel(
         logger.info("[VALORA] Forzando recálculo fullRebuild")
         await service.force_calculate_excel(item_id, session_id=session_id)
         t0 = _lap("force_calculate_excel fullRebuild", t0)
+
+        # F24 tiene fórmula (=E18/(1+(1-tax)*D/E)) que se sobreescribe en fullRebuild.
+        # Re-escribir F24/F40 DESPUÉS del recálculo para forzar el beta custom,
+        # y luego recalcular una segunda vez para que WACC use el nuevo F24.
+        # IMPORTANTE: beta_subsector tiene PRIORIDAD sobre beta_unlevered_industry.
+        beta_final = (
+            (sensitivity_input or {}).get("beta_subsector")
+            or (sensitivity_input or {}).get("beta_subsector_custom")
+            or (sensitivity_input or {}).get("beta_unlevered_industry")
+            or (sensitivity_input or {}).get("beta_desapalancado")
+            or (sensitivity_input or {}).get("beta_desapalancado_custom")
+            or (sensitivity_input or {}).get("beta_unlevered")
+            or (sensitivity_input or {}).get("beta")
+            or latest_input.get("beta_subsector")
+            or latest_input.get("beta_subsector_custom")
+            or latest_input.get("beta_unlevered_industry")
+            or latest_input.get("beta_desapalancado")
+            or latest_input.get("beta_desapalancado_custom")
+            or latest_input.get("beta_unlevered")
+            or latest_input.get("beta")
+        )
+        if beta_final is not None:
+            beta_cell_val = _to_excel_input_value("beta_subsector", beta_final)
+            for cell in (KAPITAL_RESULTS_BOA_CELL, "F40"):
+                logger.info(f"[VALORA] Post-recálculo: writing beta_final={beta_final} to WACC!{cell}")
+                await service.update_excel_cell(
+                    item_id,
+                    KAPITAL_RESULTS_SHEET,
+                    cell,
+                    beta_cell_val,
+                    session_id=session_id,
+                )
+            await asyncio.sleep(0.3)
+            logger.info("[VALORA] Segundo recálculo con beta custom en F24")
+            await service.force_calculate_excel(item_id, session_id=session_id)
+            t0 = _lap("force_calculate_excel 2nd pass (beta override)", t0)
 
         logger.info("[VALORA] Leyendo resultados")
         resultados = await _build_valora_output_entry(item_id, session_id=session_id)

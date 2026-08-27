@@ -285,9 +285,10 @@ VALORA_RESULTS_CELL_MAP = {
 
 # Valora sensitivity inputs
 # Estructura: {campo: (hoja, celda)}
-# NOTA: Solo crecimiento_perpetuo tiene celda de entrada real en la plantilla actual.
-# forecast_ingresos y forecast_fde se calculan via LINEST (no hay override directo).
+# Celdas reales de entrada (no las display de "Plantilla Usuario")
 VALORA_SENSITIVITY_INPUT_CELL_MAP = {
+    "forecast_ingresos": ("Proyección", "M91"),
+    "forecast_fde": ("Integrado", "M10"),
     "crecimiento_perpetuo": ("Proyección", "F81"),
 }
 
