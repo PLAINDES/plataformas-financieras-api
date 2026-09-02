@@ -1728,6 +1728,20 @@ async def _enrich_payload_with_valora_excel(
                 "created_at": _now_iso(),
                 "inputs": sensitivity_input,
             }
+            # Incluir subsector en entry para frontend - reusar lógica Kapital
+            subsector_name = (
+                latest_input.get("subsector_sensibilizacion")
+                or latest_input.get("subsector")
+                or latest_input.get("industria")
+                or ""
+            ).strip() if isinstance(latest_input.get("subsector_sensibilizacion") or latest_input.get("subsector") or latest_input.get("industria"), str) else ""
+            if not subsector_name:
+                subsector_name = (sensitivity_input.get("subsector_sensibilizacion") or sensitivity_input.get("subsector") or "").strip() if isinstance(sensitivity_input.get("subsector_sensibilizacion") or sensitivity_input.get("subsector"), str) else ""
+            if subsector_name:
+                sensibilidad_entry["subsector"] = subsector_name
+            else:
+                # Si usuario editó beta manualmente sin seleccionar subsector
+                sensibilidad_entry["subsector"] = "BETA PERSONALIZADO"
             # Copiar resultados relevantes de sensibilidad
             for key in ("wacc", "wacc_emergente", "balance", "conceptos", "conceptos_emergente", "integrado", "integrado_emergente"):
                 if key in resultados:

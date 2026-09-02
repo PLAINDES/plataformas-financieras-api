@@ -212,6 +212,12 @@ class AWSS3Service:
             logger.warning(f"S3 no disponible para eliminar {object_key}: {e}")
             return False
 
+    def download_file_bytes(self, object_key: str) -> bytes:
+        """Download an S3 object into memory."""
+        self._ensure_client()
+        response = self.s3_client.get_object(Bucket=self.bucket_name, Key=object_key)
+        return response["Body"].read()
+
     def generate_presigned_url(self, object_key: str, expiration: int = 3600) -> str:
         """
         Genera una URL firmada (presigned URL) para descargar un archivo privado.

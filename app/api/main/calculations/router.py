@@ -480,6 +480,10 @@ async def update_calculation(
                     "beta_subsector_custom": "beta_subsector",
                     "beta_unlevered": "beta_unlevered",
                     "beta": "beta",
+                    "subsector_sensibilizacion": "subsector_sensibilizacion",
+                    "subsector": "subsector",
+                    "tickers_subsector_sensibilizacion": "tickers_subsector_sensibilizacion",
+                    "tickers_subsector": "tickers_subsector",
                 }
                 sensitivity_input = {
                     target: incoming_input_raw[source]
