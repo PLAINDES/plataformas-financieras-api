@@ -252,9 +252,9 @@ VALORA_RESULTS_CELL_MAP = {
     "conceptos": {
         "activo": ("Conceptos", "Q24"),
         "pasivo": ("Conceptos", "Q26"),
-        "empresa": ("Conceptos", "Q25"),
-        "patrimonio": ("Conceptos", "Q27"),
-        "precio_accion": ("Conceptos", "Q28"),
+        "empresa": ("Conceptos", "Q26"),
+        "patrimonio": ("Conceptos", "Q28"),
+        "precio_accion": ("Conceptos", "Q29"),
         "tasa_forecast": ("Conceptos", "T31"),
         "tasa_perpetua": ("Conceptos", "T32"),
     },

@@ -803,10 +803,11 @@ def _count_missing_fields(companies: list[dict]) -> dict[str, int]:
 
 
 def calcular_boa_ponderado_por_subsector(companies: list[dict]) -> dict:
-    """Calcula BOA Ponderado por subsector: Σ(Wi% × beta_unlevered).
+    """Calcula BOA Ponderado estricto Excel: SUMPRODUCT(Wi, BOA).
 
-    Wi% = total_assets_i / Σ(total_assets) del subsector.
-    Solo se incluyen empresas con total_assets > 0 y beta_unlevered válido.
+    Wi% = activo_mercado_i / Σ(activo_mercado) solo activas.
+    Solo empresas con activo_mercado>0 y beta_unlevered válido. Σ Wi =100%.
+    toFixed solo display, cálculo intermedio sin redondeo.
     """
     subsectores: dict[str, list[dict]] = {}
     for c in companies:
@@ -815,22 +816,32 @@ def calcular_boa_ponderado_por_subsector(companies: list[dict]) -> dict:
 
     result = {}
     for sub, empresas in subsectores.items():
-        activos_total = sum(e.get("total_assets", 0) or 0 for e in empresas)
+        # filtra solo válidas como Excel: activo>0 y beta válido
+        validas = [
+            e for e in empresas
+            if (e.get("total_assets", 0) or 0) > 0
+            and e.get("beta_unlevered") is not None
+            and str(e.get("beta_unlevered")) != ""
+        ]
+        if not validas:
+            # fallback si ninguna válida, usa todas con activo>0
+            validas = [e for e in empresas if (e.get("total_assets", 0) or 0) > 0]
+        activos_total = sum(e.get("total_assets", 0) or 0 for e in validas)
         if activos_total == 0:
             result[sub] = {"boa_ponderado": 0.0, "wi_por_empresa": {}}
             continue
 
         boa_ponderado = 0.0
         wi_map: dict[str, dict] = {}
-        for e in empresas:
+        for e in validas:
             activos = e.get("total_assets", 0) or 0
             boa = e.get("beta_unlevered", 0) or 0
             wi = activos / activos_total if activos_total > 0 else 0
-            boa_ponderado += wi * boa
+            boa_ponderado += wi * float(boa)
             wi_map[e.get("ticker", "")] = {
                 "wi": round(wi, 6),
                 "activo_mercado": activos,
-                "beta_unlevered": boa,
+                "beta_unlevered": float(boa),
             }
         result[sub] = {
             "boa_ponderado": round(boa_ponderado, 6),

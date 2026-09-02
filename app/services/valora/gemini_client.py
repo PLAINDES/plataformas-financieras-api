@@ -16,7 +16,6 @@ GEMINI_API_VERSION = "v1"
 
 FALLBACK_MODELS = [
     (GEMINI_MODEL, GEMINI_API_VERSION),
-    ("gemini-2.5-pro", "v1"),
     ("gemini-3.5-flash-lite", "v1"),
     ("gemini-3.1-flash-lite", "v1beta"),
 ]
@@ -46,7 +45,7 @@ async def call_gemini(payload: dict) -> tuple[str | None, str | None]:
     model_used: str | None = None
     data_json: dict | None = None
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as client:
         for model, version in FALLBACK_MODELS:
             url = GEMINI_API_BASE_URL.format(
                 version=version, model=model, api_key=api_key
@@ -61,6 +60,7 @@ async def call_gemini(payload: dict) -> tuple[str | None, str | None]:
             except httpx.HTTPStatusError as e:
                 status = e.response.status_code
                 last_exception = e
+                logger.error("[GEMINI] Error %s detalle: %s", status, e.response.text[:1000])
                 if status in (503, 429, 404):
                     logger.warning(
                         f"[GEMINI] Modelo {model} error {status}; intentando fallback..."
@@ -78,11 +78,17 @@ async def call_gemini(payload: dict) -> tuple[str | None, str | None]:
             logger.error("[GEMINI] Todos los modelos fallaron.")
             return None, None
 
-    raw_text = (
-        (data_json or {})
-        .get("candidates", [{}])[0]
-        .get("content", {})
-        .get("parts", [{}])[0]
-        .get("text", "")
-    )
+    cand = (data_json or {}).get("candidates", [{}])[0] or {}
+    # Log finishReason si existe
+    finish = cand.get("finishReason")
+    if finish:
+        logger.info(f"[GEMINI] finishReason={finish}")
+    parts = cand.get("content", {}).get("parts", [])
+    raw_text = "".join([p.get("text", "") for p in parts]) if parts else ""
+    # Fallback si viene aggregated
+    if not raw_text:
+        raw_text = (
+            cand.get("content", {}).get("parts", [{}])[0].get("text", "")
+            if cand.get("content") else ""
+        )
     return raw_text, model_used
