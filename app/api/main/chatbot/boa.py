@@ -542,10 +542,10 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
         logger.warning(f"yfinance returned empty info for {ticker}")
         _log_ticker_step(ticker, "info_vacio")
         return None, None, {"reason": "empty_info"}
-    if not info.get("shortName"):
-        logger.warning(f"yfinance info missing shortName for {ticker}: keys={list(info.keys())[:10]}")
-        _log_ticker_step(ticker, "sin_shortName", keys=list(info.keys())[:10])
-        return None, None, {"reason": "missing_shortName"}
+    if not info.get("shortName") and not info.get("longName"):
+        logger.warning(f"yfinance info missing shortName and longName for {ticker}: keys={list(info.keys())[:10]}")
+        _log_ticker_step(ticker, "sin_nombre", keys=list(info.keys())[:10])
+        info["shortName"] = ticker
 
     if cancel_event and cancel_event.is_set():
         return None, None, {"reason": "cancelled"}
@@ -729,7 +729,7 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
 
     api_data = {
         "ticker": ticker,
-        "company_name": info.get("shortName", ticker),
+        "company_name": info.get("shortName") or info.get("longName") or ticker,
         "sector": info.get("sector", "Unknown"),
         "country": country,
         "subsector": info.get("industry", info.get("industryDisp", "Unknown")),
@@ -800,6 +800,55 @@ def _count_missing_fields(companies: list[dict]) -> dict[str, int]:
             if company.get(field) is None:
                 counts[field] += 1
     return counts
+
+
+def calcular_boa_ponderado_por_subsector(companies: list[dict]) -> dict:
+    """Calcula BOA Ponderado estricto Excel: SUMPRODUCT(Wi, BOA).
+
+    Wi% = activo_mercado_i / Σ(activo_mercado) solo activas.
+    Solo empresas con activo_mercado>0 y beta_unlevered válido. Σ Wi =100%.
+    toFixed solo display, cálculo intermedio sin redondeo.
+    """
+    subsectores: dict[str, list[dict]] = {}
+    for c in companies:
+        sub = c.get("subsector") or "Unknown"
+        subsectores.setdefault(sub, []).append(c)
+
+    result = {}
+    for sub, empresas in subsectores.items():
+        # filtra solo válidas como Excel: activo>0 y beta válido
+        validas = [
+            e for e in empresas
+            if (e.get("total_assets", 0) or 0) > 0
+            and e.get("beta_unlevered") is not None
+            and str(e.get("beta_unlevered")) != ""
+        ]
+        if not validas:
+            # fallback si ninguna válida, usa todas con activo>0
+            validas = [e for e in empresas if (e.get("total_assets", 0) or 0) > 0]
+        activos_total = sum(e.get("total_assets", 0) or 0 for e in validas)
+        if activos_total == 0:
+            result[sub] = {"boa_ponderado": 0.0, "wi_por_empresa": {}}
+            continue
+
+        boa_ponderado = 0.0
+        wi_map: dict[str, dict] = {}
+        for e in validas:
+            activos = e.get("total_assets", 0) or 0
+            boa = e.get("beta_unlevered", 0) or 0
+            wi = activos / activos_total if activos_total > 0 else 0
+            boa_ponderado += wi * float(boa)
+            wi_map[e.get("ticker", "")] = {
+                "wi": round(wi, 6),
+                "activo_mercado": activos,
+                "beta_unlevered": float(boa),
+            }
+        result[sub] = {
+            "boa_ponderado": round(boa_ponderado, 6),
+            "activos_total": activos_total,
+            "wi_por_empresa": wi_map,
+        }
+    return result
 
 
 def _build_summary_payload(companies: list[dict], total: int, processed_ok: int, failed_count: int) -> dict:
@@ -1437,6 +1486,7 @@ def calculate_subsectores_boa(
     )
     if stop_reason == "interrumpido" and rate_limit_hits > 0:
         stop_reason = "rate_limit"
+    boa_ponderado_data = calcular_boa_ponderado_por_subsector(companies) if companies else {}
     result = {
         "success": True,
         "valid_companies": [],
@@ -1448,6 +1498,7 @@ def calculate_subsectores_boa(
         "empty_batch_tickers": empty_batch_tickers,
         **_build_summary_payload(companies, len(ticker_rows), processed_ok, failed_count),
         "ticker_rows": ticker_table_rows,
+        "boa_ponderado_por_subsector": boa_ponderado_data,
     }
     _log_summary_block(f"[BOA][RESULTADO FINAL][{job_id}]", result)
     _log_final_status(job_id, result, stop_reason)

@@ -35,6 +35,7 @@ from app.core.constants import (
     VALORA_INTEGRATED_INPUT_CELL_MAP,
     VALORA_PROJECTION_INPUT_CELL_MAP,
     VALORA_RESULTS_CELL_MAP,
+    VALORA_SENSITIVITY_INPUT_CELL_MAP,
 )
 from app.models.main import CalculationType
 from app.services.onedrive.service import get_onedrive_service
@@ -90,7 +91,7 @@ def _build_valora_linest_formulas(years_start_col: str) -> list[dict[str, str]]:
     start_col = years_start_col.upper()
     special_start_col = chr(ord(start_col) + 1)
 
-    return [
+    return [    
         {"sheet": "Proyección", "range": "E95:F95", "formula": f"=LINEST({start_col}89:M89,LN({start_col}87:M87))"},
         {"sheet": "Proyección", "range": "J95:K95", "formula": f"=LINEST({start_col}88:L88,LN({start_col}87:L87))"},
         {"sheet": "Proyección", "range": "E111:F111", "formula": f"=LINEST({start_col}105:M105,LN({start_col}103:M103))"},
@@ -1375,6 +1376,25 @@ async def _write_valora_inputs_to_excel(
             skip_empty=True,
         )
 
+    # Beta ponderado -> WACC!F24 (igual que Kapital). Soporta todas las variantes de beta desapalancado.
+    # IMPORTANTE: beta_subsector tiene PRIORIDAD sobre beta_unlevered_industry porque
+    # cuando el usuario selecciona un subsector, el payload contiene AMBOS valores.
+    # El or-chain debe evaluar beta_subsector primero para que no quede atrapado por
+    # beta_unlevered_industry (que es truthy y bloquea el resto).
+    beta_valora = (
+        input_payload.get("beta_subsector")
+        or input_payload.get("beta_subsector_custom")
+        or input_payload.get("beta_unlevered_industry")
+        or input_payload.get("beta_desapalancado")
+        or input_payload.get("beta_desapalancado_custom")
+        or input_payload.get("beta_unlevered")
+        or input_payload.get("beta")
+    )
+    if beta_valora is not None:
+        input_payload["beta_subsector"] = beta_valora
+        input_payload["beta_subsector_alt"] = beta_valora
+    add_valora_write_requests(input_payload, KAPITAL_CUSTOM_INPUT_CELL_MAP, KAPITAL_RESULTS_SHEET)
+
     add_valora_write_requests(input_payload, VALORA_INPUT_CELL_MAP, "Plantilla Usuario")
     add_valora_write_requests(input_payload, KAPITAL_INPUT_WACC, KAPITAL_RESULTS_SHEET)
     add_valora_write_requests(
@@ -1431,28 +1451,36 @@ async def _build_valora_output_entry(
     mapping = {}
 
     for key, target in VALORA_RESULTS_CELL_MAP.items():
-        if key == "wacc":
+        if key.startswith("wacc"):
             sheet_name, cell = target
-            mapping[str(len(requests) + 1)] = ("wacc", None)
+            mapping[str(len(requests) + 1)] = (key, None)
             requests.append((sheet_name, cell))
             continue
         for field, (sheet_name, cell) in target.items():
             mapping[str(len(requests) + 1)] = (key, field)
             requests.append((sheet_name, cell))
 
-    responses = await service.execute_batch(
-        [
+    BATCH_LIMIT = 20
+    all_responses: list[dict] = []
+    for i in range(0, len(requests), BATCH_LIMIT):
+        chunk = requests[i : i + BATCH_LIMIT]
+        chunk_mapping = {str(idx + 1): mapping[str(i + idx + 1)] for idx in range(len(chunk))}
+        batch_payload = [
             {
-                "id": str(index),
+                "id": str(idx + 1),
                 "method": "GET",
                 "url": _build_excel_range_url(email, item_id, sheet_name, cell),
                 "headers": headers,
             }
-            for index, (sheet_name, cell) in enumerate(requests, start=1)
+            for idx, (sheet_name, cell) in enumerate(chunk)
         ]
-    )
+        chunk_responses = await service.execute_batch(batch_payload)
+        for resp in chunk_responses:
+            original_id = str(i + int(resp.get("id", 0)))
+            resp["id"] = original_id
+            all_responses.append(resp)
 
-    for response in responses:
+    for response in all_responses:
         target = mapping.get(str(response.get("id")))
         body = response.get("body") or {}
         if not target or response.get("status") != 200:
@@ -1478,6 +1506,7 @@ async def _enrich_payload_with_valora_excel(
     payload_data: dict[str, Any],
     item_id: str,
     existing_session_id: str | None = None,
+    sensitivity_input: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from time import perf_counter
 
@@ -1510,10 +1539,21 @@ async def _enrich_payload_with_valora_excel(
 
     logger.info(f"[VALORA] Sesión {session_id} abierta para item {item_id}")
 
+    sensibilidad_entry: dict[str, Any] | None = None
+
     try:
+        # Si hay sensibilidad, capturar ORIGINAL antes de sobrescribir con latest_input (para que 1.38 no se pierda)
+        original_resultados = None
+        if sensitivity_input:
+            logger.info("[VALORA] Capturando resultados originales ANTES de escribir nuevo base")
+            await service.force_calculate_excel(item_id, session_id=session_id)
+            t0 = _lap("force_calculate_excel original pre-write", t0)
+            original_resultados = await _build_valora_output_entry(item_id, session_id=session_id)
+            t0 = _lap("_build_valora_output_entry original pre-write", t0)
+
         if latest_input:
             logger.info(
-                f"[VALORA] Escribiendo inputs en Excel para item {item_id}; "
+                f"[VALORA] Escribiendo inputs base en Excel para item {item_id}; "
                 f"balance_rows={len(latest_input.get('balance_table', {}).get('rows', []))}, "
                 f"results_rows={len(latest_input.get('results_table', {}).get('rows', []))}"
             )
@@ -1523,15 +1563,127 @@ async def _enrich_payload_with_valora_excel(
             t0 = _lap("_write_valora_inputs_to_excel", t0)
 
         await asyncio.sleep(0.3)
+
+        # --- SENSIBILIDAD VALORA ---
+        if sensitivity_input:
+            logger.info(
+                f"[VALORA] Escribiendo inputs de sensibilidad: {sensitivity_input}"
+            )
+            for field, target in VALORA_SENSITIVITY_INPUT_CELL_MAP.items():
+                val = sensitivity_input.get(field)
+                if val is not None:
+                    final_val = _to_excel_input_value(field, val)
+                    sheet_name, cell = target
+                    logger.info(
+                        f"[VALORA SENSITIVITY] Writing {field}={final_val} to {sheet_name}!{cell}"
+                    )
+                    await service.update_excel_cell(
+                        item_id,
+                        sheet_name,
+                        cell,
+                        final_val,
+                        session_id=session_id,
+                    )
+            # Beta desapalancado en sensibilidad -> WACC!F24 (y F40). Clave para que 1.38 -> 0.69 cambie en Excel.
+            # IMPORTANTE: beta_subsector tiene PRIORIDAD sobre beta_unlevered_industry.
+            beta_sens = (
+                sensitivity_input.get("beta_subsector")
+                or sensitivity_input.get("beta_subsector_custom")
+                or sensitivity_input.get("beta_unlevered_industry")
+                or sensitivity_input.get("beta_desapalancado")
+                or sensitivity_input.get("beta_desapalancado_custom")
+                or sensitivity_input.get("beta_unlevered")
+                or sensitivity_input.get("beta")
+            )
+            if beta_sens is not None:
+                for cell in (KAPITAL_RESULTS_BOA_CELL, "F40"):
+                    logger.info(f"[VALORA SENSITIVITY] Writing beta_sens={beta_sens} to WACC!{cell}")
+                    await service.update_excel_cell(
+                        item_id,
+                        KAPITAL_RESULTS_SHEET,
+                        cell,
+                        _to_excel_input_value("beta_subsector", beta_sens),
+                        session_id=session_id,
+                    )
+            t0 = _lap("write_valora_sensitivity_inputs", t0)
+
+        await asyncio.sleep(0.3)
         t0 = _lap("sleep post-escritura", t0)
 
         logger.info("[VALORA] Forzando recálculo fullRebuild")
         await service.force_calculate_excel(item_id, session_id=session_id)
         t0 = _lap("force_calculate_excel fullRebuild", t0)
 
+        # F24 tiene fórmula (=E18/(1+(1-tax)*D/E)) que se sobreescribe en fullRebuild.
+        # Re-escribir F24/F40 DESPUÉS del recálculo para forzar el beta custom,
+        # y luego recalcular una segunda vez para que WACC use el nuevo F24.
+        # IMPORTANTE: beta_subsector tiene PRIORIDAD sobre beta_unlevered_industry.
+        beta_final = (
+            (sensitivity_input or {}).get("beta_subsector")
+            or (sensitivity_input or {}).get("beta_subsector_custom")
+            or (sensitivity_input or {}).get("beta_unlevered_industry")
+            or (sensitivity_input or {}).get("beta_desapalancado")
+            or (sensitivity_input or {}).get("beta_desapalancado_custom")
+            or (sensitivity_input or {}).get("beta_unlevered")
+            or (sensitivity_input or {}).get("beta")
+            or latest_input.get("beta_subsector")
+            or latest_input.get("beta_subsector_custom")
+            or latest_input.get("beta_unlevered_industry")
+            or latest_input.get("beta_desapalancado")
+            or latest_input.get("beta_desapalancado_custom")
+            or latest_input.get("beta_unlevered")
+            or latest_input.get("beta")
+        )
+        if beta_final is not None:
+            beta_cell_val = _to_excel_input_value("beta_subsector", beta_final)
+            for cell in (KAPITAL_RESULTS_BOA_CELL, "F40"):
+                logger.info(f"[VALORA] Post-recálculo: writing beta_final={beta_final} to WACC!{cell}")
+                await service.update_excel_cell(
+                    item_id,
+                    KAPITAL_RESULTS_SHEET,
+                    cell,
+                    beta_cell_val,
+                    session_id=session_id,
+                )
+            await asyncio.sleep(0.3)
+            logger.info("[VALORA] Segundo recálculo con beta custom en F24")
+            await service.force_calculate_excel(item_id, session_id=session_id)
+            t0 = _lap("force_calculate_excel 2nd pass (beta override)", t0)
+
         logger.info("[VALORA] Leyendo resultados")
         resultados = await _build_valora_output_entry(item_id, session_id=session_id)
         t0 = _lap("_build_valora_output_entry", t0)
+
+        # Validación crítica: g debe ser < WACC para evitar valor terminal inválido
+        # Conceptos
+        g_conceptos = resultados.get("conceptos", {}).get("tasa_perpetua")
+        wacc_conceptos = resultados.get("wacc")
+        if g_conceptos is not None and wacc_conceptos is not None:
+            try:
+                g_val = float(g_conceptos)
+                wacc_val = float(wacc_conceptos)
+                if g_val >= wacc_val:
+                    raise ValueError(
+                        f"Tasa de crecimiento perpetuo (g={g_val:.2%}) debe ser menor que WACC ({wacc_val:.2%}) "
+                        f"en método Conceptos. Valor actual produce denominador negativo en valor terminal."
+                    )
+            except (ValueError, TypeError):
+                pass  # Si no se pueden parsear, dejar que Excel maneje el error
+
+        # Integrado
+        g_integrado = resultados.get("integrado", {}).get("tasa_perpetua")
+        wacc_integrado = resultados.get("wacc_emergente") or resultados.get("wacc")
+        if g_integrado is not None and wacc_integrado is not None:
+            try:
+                g_val = float(g_integrado)
+                wacc_val = float(wacc_integrado)
+                if g_val >= wacc_val:
+                    raise ValueError(
+                        f"Tasa de crecimiento perpetuo (g={g_val:.2%}) debe ser menor que WACC ({wacc_val:.2%}) "
+                        f"en método Integrado. Valor actual produce denominador negativo en valor terminal."
+                    )
+            except (ValueError, TypeError):
+                pass
 
         source_currency = str(latest_input.get("moneda") or "USD").upper()
         resultados["source_currency"] = source_currency
@@ -1559,6 +1711,43 @@ async def _enrich_payload_with_valora_excel(
         payload_data["active_session_id"] = session_id
         payload_data["resultados"] = resultados
         payload_data["resultados"]["inputs"] = latest_input
+
+        # Guardar resultados originales (capturados antes de sensibilidad)
+        if original_resultados is not None:
+            original_resultados["source_currency"] = source_currency
+            if source_currency == "USD":
+                original_resultados["fx_to_usd"] = 1.0
+            else:
+                original_resultados["fx_to_usd"] = resultados.get("fx_to_usd")
+            original_resultados["inputs"] = latest_input
+            payload_data["originalResults"] = original_resultados
+            logger.info(f"[VALORA] Resultados originales guardados: {original_resultados}")
+
+        if sensitivity_input:
+            sensibilidad_entry = {
+                "created_at": _now_iso(),
+                "inputs": sensitivity_input,
+            }
+            # Incluir subsector en entry para frontend - reusar lógica Kapital
+            subsector_name = (
+                latest_input.get("subsector_sensibilizacion")
+                or latest_input.get("subsector")
+                or latest_input.get("industria")
+                or ""
+            ).strip() if isinstance(latest_input.get("subsector_sensibilizacion") or latest_input.get("subsector") or latest_input.get("industria"), str) else ""
+            if not subsector_name:
+                subsector_name = (sensitivity_input.get("subsector_sensibilizacion") or sensitivity_input.get("subsector") or "").strip() if isinstance(sensitivity_input.get("subsector_sensibilizacion") or sensitivity_input.get("subsector"), str) else ""
+            if subsector_name:
+                sensibilidad_entry["subsector"] = subsector_name
+            else:
+                # Si usuario editó beta manualmente sin seleccionar subsector
+                sensibilidad_entry["subsector"] = "BETA PERSONALIZADO"
+            # Copiar resultados relevantes de sensibilidad
+            for key in ("wacc", "wacc_emergente", "balance", "conceptos", "conceptos_emergente", "integrado", "integrado_emergente"):
+                if key in resultados:
+                    sensibilidad_entry[key] = resultados[key]
+            logger.info(f"[VALORA] Sensibilidad entry construida: {sensibilidad_entry}")
+            payload_data["sensibilizacion"] = [sensibilidad_entry]
     except Exception as exc:
         logger.exception(f"[VALORA] Error durante enriquecimiento Excel: {exc}")
         raise

@@ -1,5 +1,7 @@
 # app/api/main/router.py
 import io
+import asyncio
+import base64
 import logging
 import os
 import re
@@ -648,6 +650,51 @@ async def upload_bvl_cotizacion(
 
     return {"items": items}
 
+
+@router.post("/valora/pdf-to-template")
+async def valora_pdf_to_template(file: UploadFile = File(...)):
+    """
+    Convierte EEFF PDF a plantilla Valora usando IA (Gemini + Prompt Maestro 51 reglas).
+    Retorna balance_table/results_table listos para hidratar el frontend.
+    """
+    logger.info(f"[VALORA PDF] >>> POST recibido: {file.filename} size={file.size if hasattr(file, 'size') else 'unknown'}")
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="No se proporcionó archivo PDF")
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Solo PDF permitido")
+    content = await file.read()
+    logger.info(f"[VALORA PDF] Bytes leídos: {len(content)} - iniciando extracción")
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="PDF supera 10MB")
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="PDF vacío")
+    try:
+        from app.services.valora.pdf_extractor import pdf_to_template
+        logger.info("[VALORA PDF] Llamando a pdf_to_template (IA)...")
+        result = await pdf_to_template(content)
+        template_key = _get_current_valora_key()
+        if not template_key:
+            raise RuntimeError("No hay una plantilla Valora vigente configurada")
+        template_bytes = s3_service.download_file_bytes(template_key)
+        from app.services.valora.template_filler import fill_valora_template
+
+        filled_bytes = await asyncio.to_thread(
+            fill_valora_template,
+            template_bytes,
+            result,
+        )
+        logger.info(f"[VALORA PDF] <<< Completado status={result.get('status')} model={result.get('model_used')}")
+        filename = f"{result.get('metadata', {}).get('empresa', 'EEFF').replace(' ', '_')}_rellenado.xlsx"
+        return {**result, "xlsx_base64": base64.b64encode(filled_bytes).decode("ascii"), "filename": filename}
+    except ValueError as e:
+        logger.warning(f"[VALORA PDF] ValueError: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        logger.error(f"[VALORA PDF] RuntimeError: {e}")
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.exception(f"[VALORA PDF] Error: {e}")
+        raise HTTPException(status_code=500, detail="Error procesando PDF con IA")
 
 @router.delete("/bvl-cotizacion/empresa", response_model=BvlCotizacionResponse)
 async def delete_bvl_empresa(

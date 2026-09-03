@@ -1,6 +1,8 @@
 # app/api/main/reports/router.py
 
 import asyncio
+import html
+import json
 import logging
 import os
 import re
@@ -22,7 +24,7 @@ from fastapi import (
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse
 from pypdf import PdfReader, PdfWriter
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.main.calculations.router import get_default_or_latest_master_template
@@ -33,6 +35,39 @@ from app.services.onedrive.service import get_onedrive_service
 from app.services.query_service import apply_filters
 
 logger = logging.getLogger(__name__)
+
+
+def _comparables_table_html(payload: dict) -> str:
+    raw = payload.get("comparables_subsector")
+    if not raw:
+        return ""
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        companies = data.get("companies") or []
+    except (TypeError, ValueError):
+        return ""
+    if not companies:
+        return ""
+
+    def value(company, *keys):
+        for key in keys:
+            if company.get(key) is not None:
+                return company[key]
+        return ""
+
+    headers = ("Ticker", "Be", "Deuda Financiera", "Cap. Mercado", "Activo Mercado", "Wi", "D/E", "IR", "Boa")
+    rows = []
+    for company in companies:
+        cells = (
+            value(company, "ticker"), value(company, "beta", "be"),
+            value(company, "deuda_financiera", "financial_debt"), value(company, "cap_mercado", "market_cap"),
+            value(company, "activo_mercado", "market_assets"), value(company, "weight", "wi"),
+            value(company, "de", "de"), value(company, "ir", "tasa_impositiva"), value(company, "boa"),
+        )
+        rows.append("<tr>" + "".join(f"<td>{html.escape(str(cell))}</td>" for cell in cells) + "</tr>")
+    return """<section class="comparables-valora"><h3>DATOS DE EMPRESAS COMPARABLES USD (000)</h3>
+    <table><thead><tr>""" + "".join(f"<th>{header}</th>" for header in headers) + """</tr></thead>
+    <tbody>""" + "".join(rows) + """</tbody></table></section>"""
 from app.api.main.covers.router import _cover_to_dict
 from app.api.main.master_templates import router as master_templates_router
 from app.schemas.main import ReportUpdate
@@ -46,6 +81,13 @@ router = APIRouter(prefix="/main", tags=["Main"])
 def delete_temp_file(path: str):
     if os.path.exists(path):
         os.remove(path)
+
+
+def _build_payment_launcher_url(request: Request, checkout_url: Optional[str]) -> str:
+    if not checkout_url:
+        return "#"
+    origin = request.headers.get("origin", "").rstrip("/") or "http://localhost:5173"
+    return f"{origin}/payment/launcher?checkout={quote(checkout_url, safe='')}"
 
 
 def _build_locked_preview_html(payment_url: Optional[str]) -> str:
@@ -479,7 +521,17 @@ def update_report(report_id: int, data: ReportUpdate, db: Session = Depends(get_
     return _report_to_response(report)
 
 
-STORAGE_DIR = os.path.join(os.path.dirname(__file__), "../../files")
+@router.delete("/reports/{report_id}")
+def delete_report(report_id: int, db: Session = Depends(get_db)):
+    report = db.get(Report, report_id)
+    if not report or report.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    report.deleted_at = func.now()
+    db.commit()
+    return {"message": "Report deleted"}
+
+
+STORAGE_DIR = os.getenv("REPORT_STORAGE_DIR", "/app/files")
 
 
 @router.post("/reports/{report_id}/upload", status_code=status.HTTP_200_OK)
@@ -560,7 +612,14 @@ async def generate_report_pdf(
     html_content = report.contentEditor or ""
 
     calculation_data = calculation.data if isinstance(calculation.data, dict) else {}
-    session_id = calculation_data.get("active_session_id")
+    if not calculation_data.get("comparables_subsector"):
+        for item in calculation_data.get("inputs", []) or []:
+            if isinstance(item, dict) and item.get("name") == "comparables_subsector":
+                calculation_data["comparables_subsector"] = item.get("value")
+                break
+    # La sesión guardada puede haber expirado en Graph. El reporte necesita una
+    # sesión nueva para leer valores y gráficos de forma consistente.
+    session_id = None
     calculation_file = (
         calculation_data.get("file")
         if isinstance(calculation_data.get("file"), dict)
@@ -571,6 +630,16 @@ async def generate_report_pdf(
         if calculation_file and calculation_file.get("onedrive_item_id")
         else report.template.onedrive_item_id
     )
+    if not item_id:
+        raise HTTPException(status_code=500, detail="No se encontró la plantilla Excel del cálculo")
+    try:
+        session_id = await onedrive_service._create_workbook_session(
+            item_id=item_id,
+            persist_changes=False,
+        )
+        logger.info("[REPORT] Nueva sesión Graph %s para item %s", session_id, item_id)
+    except Exception as exc:
+        logger.warning("[REPORT] No se pudo abrir sesión Graph; se leerá sin sesión: %s", exc)
 
     raw_html_codes = sorted(set(re.findall(r"\$\$[^$\s]+\$\$", html_content)))
 
@@ -766,6 +835,9 @@ async def generate_report_pdf(
                         )
 
     html_content = _sanitize_text(html_content)
+    comparables_html = _comparables_table_html(calculation_data)
+    if comparables_html:
+        html_content += comparables_html
     html_content = re.sub(
         r"<(p|div)([^>]*)>(?:\s|&nbsp;|<br[^>]*>|<span[^>]*>\s*</span>)*</\1>",
         r'<\1\2 class="pf-empty-block">&nbsp;</\1>',
@@ -901,6 +973,12 @@ async def generate_report_pdf(
                 break-inside: avoid;
                 page-break-inside: avoid;
             }}
+            .comparables-valora {{ margin-top: 24px; page-break-before: always; font-family: Arial, sans-serif; }}
+            .comparables-valora h3 {{ background: #e7e7e7; border-bottom: 1px solid #111; margin: 0; padding: 10px; text-align: center; font-size: 11px; }}
+            .comparables-valora table {{ width: 100%; border-collapse: collapse; font-size: 8px; }}
+            .comparables-valora th {{ background: #f1f1f1; border-bottom: 1px solid #111; padding: 8px 4px; }}
+            .comparables-valora td {{ border-bottom: 1px solid #bbb; padding: 8px 4px; text-align: right; }}
+            .comparables-valora td:first-child, .comparables-valora th:first-child {{ text-align: left; font-weight: 700; }}
         </style>
     </head>
     <body>
@@ -925,34 +1003,43 @@ async def generate_report_pdf(
         await page.close()
         await context.close()
 
-    if is_preview:
-        reader = PdfReader(temp_path)
-        total_pages = len(reader.pages)
-        if total_pages > 2:
-            lock_fd, lock_path = tempfile.mkstemp(suffix="-lock.pdf")
-            os.close(lock_fd)
-            lock_context = await browser.new_context()
-            lock_page = await lock_context.new_page()
-            try:
-                lock_html = _build_locked_preview_html(report.link_pago)
-                await lock_page.set_content(lock_html, wait_until="networkidle")
-                await lock_page.pdf(
-                    path=lock_path, format="A4", print_background=True
-                )
-            finally:
-                await lock_page.close()
-                await lock_context.close()
-
-            lock_reader = PdfReader(lock_path)
-            writer = PdfWriter()
-            writer.add_page(reader.pages[0])
-            writer.add_page(reader.pages[1])
-            writer.add_page(lock_reader.pages[0])
-            with open(temp_path, "wb") as f:
-                writer.write(f)
-            delete_temp_file(lock_path)
+    # Lock page removed from PDF — overlay now rendered client-side in ReportViewer
+    # if is_preview:
+    #     reader = PdfReader(temp_path)
+    #     total_pages = len(reader.pages)
+    #     if total_pages > 2:
+    #         lock_fd, lock_path = tempfile.mkstemp(suffix="-lock.pdf")
+    #         os.close(lock_fd)
+    #         lock_context = await browser.new_context()
+    #         lock_page = await lock_context.new_page()
+    #         try:
+    #             lock_html = _build_locked_preview_html(
+    #                 _build_payment_launcher_url(request, report.link_pago)
+    #             )
+    #             await lock_page.set_content(lock_html, wait_until="networkidle")
+    #             await lock_page.pdf(
+    #                 path=lock_path, format="A4", print_background=True
+    #             )
+    #         finally:
+    #             await lock_page.close()
+    #             await lock_context.close()
+    #
+    #         lock_reader = PdfReader(lock_path)
+    #         writer = PdfWriter()
+    #         writer.add_page(reader.pages[0])
+    #         writer.add_page(reader.pages[1])
+    #         writer.add_page(lock_reader.pages[0])
+    #         with open(temp_path, "wb") as f:
+    #             writer.write(f)
+    #         delete_temp_file(lock_path)
 
     background_tasks.add_task(delete_temp_file, temp_path)
+    if session_id:
+        background_tasks.add_task(
+            onedrive_service._close_workbook_session,
+            item_id,
+            session_id,
+        )
 
     return FileResponse(
         temp_path,

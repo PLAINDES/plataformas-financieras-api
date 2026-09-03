@@ -243,6 +243,7 @@ VALORA_INTEGRATED_INPUT_CELL_MAP = {
 
 VALORA_RESULTS_CELL_MAP = {
     "wacc": ("Conceptos", "C23"),
+    "wacc_emergente": ("Conceptos", "D23"),
     "balance": {
         "activo": ("Proyección", "L18"),
         "pasivo": ("Proyección", "L29"),
@@ -251,11 +252,11 @@ VALORA_RESULTS_CELL_MAP = {
     "conceptos": {
         "activo": ("Conceptos", "Q24"),
         "pasivo": ("Conceptos", "Q26"),
-        "empresa": ("Conceptos", "Q25"),
-        "patrimonio": ("Conceptos", "Q27"),
-        "precio_accion": ("Conceptos", "Q28"),
-        "tasa_forecast": ("Conceptos", "T30"),
-        "tasa_perpetua": ("Conceptos", "T31"),
+        "empresa": ("Conceptos", "Q26"),
+        "patrimonio": ("Conceptos", "Q28"),
+        "precio_accion": ("Conceptos", "Q29"),
+        "tasa_forecast": ("Conceptos", "T31"),
+        "tasa_perpetua": ("Conceptos", "T32"),
     },
     "integrado": {
         "activo": ("Integrado", "P34"),
@@ -266,4 +267,28 @@ VALORA_RESULTS_CELL_MAP = {
         "tasa_forecast": ("Integrado", "S40"),
         "tasa_perpetua": ("Integrado", "S41"),
     },
+    "conceptos_emergente": {
+        "activo": ("Conceptos", "S25"),
+        "pasivo": ("Conceptos", "S27"),
+        "empresa": ("Conceptos", "S26"),
+        "patrimonio": ("Conceptos", "S28"),
+        "precio_accion": ("Conceptos", "S29"),
+    },
+    "integrado_emergente": {
+        "activo": ("Integrado", "R34"),
+        "pasivo": ("Integrado", "R36"),
+        "empresa": ("Integrado", "R35"),
+        "patrimonio": ("Integrado", "R37"),
+        "precio_accion": ("Integrado", "R38"),
+    },
 }
+
+# Valora sensitivity inputs
+# Estructura: {campo: (hoja, celda)}
+# Celdas reales de entrada (no las display de "Plantilla Usuario")
+VALORA_SENSITIVITY_INPUT_CELL_MAP = {
+    "forecast_ingresos": ("Proyección", "M91"),
+    "forecast_fde": ("Integrado", "M10"),
+    "crecimiento_perpetuo": ("Proyección", "F81"),
+}
+
