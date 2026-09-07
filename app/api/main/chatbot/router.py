@@ -58,7 +58,7 @@ async def start_subsectores_boa(request: AnalyzeCompaniesRequest):
     existing_tickers = get_existing_tickers_with_values()
     
     # Filtrar la lista de tickers para procesar solo los que no existen
-    tickers_to_process = [t for t in request.tickers if t not in existing_tickers]
+    tickers_to_process = list(dict.fromkeys(str(t).strip().upper() for t in request.tickers if str(t).strip()))
     
     # Calcular cuántos se omitieron
     omitted_count = len(request.tickers) - len(tickers_to_process)
@@ -118,17 +118,21 @@ async def start_subsectores_boa_upload(file: UploadFile = File(...)):
     content = await file.read()
     try:
         company_rows = extract_company_rows_from_xlsx(content)
-        tickers_to_process = [
-            str(row["ticker"]).strip().upper()
-            for row in company_rows
-            if row.get("ticker")
-        ]
+        # Keep Excel sector/subsector on each row; bare tickers lose placement.
+        seen_rows: set[tuple[str, str, str]] = set()
+        tickers_to_process = []
+        for row in company_rows:
+            ticker = str(row.get("ticker") or "").strip().upper()
+            key = (ticker, str(row.get("sector") or "").casefold(), str(row.get("subsector") or "").casefold())
+            if ticker and ticker not in {"NAN", "NONE", "NULL", "N/A", "NA", "-"} and key not in seen_rows:
+                seen_rows.add(key)
+                tickers_to_process.append({**row, "ticker": ticker})
         logger.info(
             "[BOA][UPLOAD] Total de empresas en Excel: %s, a procesar: %s",
             len(company_rows),
             len(tickers_to_process),
         )
-        # Merge aditivo en main_template_complements subsectores (preserva histórico, fija mojibake)
+        # Excel is source of truth for current membership.
         try:
             from collections import defaultdict
             from app.db.database import SessionLocal
@@ -158,18 +162,23 @@ async def start_subsectores_boa_upload(file: UploadFile = File(...)):
             try:
                 old = db.query(TemplateComplement).filter(TemplateComplement.nombre=="subsectores", TemplateComplement.deleted_at.is_(None)).order_by(TemplateComplement.created_at.desc()).first()
                 if old and isinstance(old.data, list):
-                    merged: dict[tuple[str,str], dict] = {}
+                    old_by_key: dict[tuple[str,str], dict] = {}
                     for it in old.data:
                         s = _fix((it.get("sector") or "").strip())
                         ss = _fix((it.get("subsector") or "").strip())
                         if s and ss:
                             it["sector"]=s; it["subsector"]=ss
-                            merged[(s.lower(), ss.lower())] = dict(it)
+                            old_by_key[(s.casefold(), ss.casefold())] = dict(it)
+                    merged: dict[tuple[str,str], dict] = {}
                     for it in new_items:
-                        k=(it["sector"].lower(), it["subsector"].lower())
-                        if k in merged:
-                            ex=merged[k]
-                            ex["empresas"]=list(dict.fromkeys([*(e.strip() for e in (ex.get("empresas") or []) if e), *(e.strip() for e in (it.get("empresas") or []) if e)]))
+                        k=(it["sector"].casefold(), it["subsector"].casefold())
+                        if k in old_by_key:
+                            ex = old_by_key[k]
+                            keep = set(it.get("empresas") or [])
+                            ex["empresas"] = list(dict.fromkeys(it.get("empresas") or []))
+                            ex["empresas_boa"] = {t: v for t, v in (ex.get("empresas_boa") or {}).items() if t in keep}
+                            ex["ticker_info"] = {t: v for t, v in (ex.get("ticker_info") or {}).items() if t in keep}
+                            merged[k] = ex
                         else:
                             merged[k]=it
                     new_items=list(merged.values())

@@ -24,29 +24,16 @@ def _fix_text(s: Any) -> Any:
 def _clean_mojibake(s: str | None) -> str | None:
     if not s or not isinstance(s, str):
         return s
-    # Fix APP artefact from corrupted file
-    s = s.replace("AgencAPP", "Agencias").replace("TerapAPP", "Terapias").replace("memorAPP", "memorias")
-    # Remove soft hyphens
-    s = s.replace("\xad", "")
-    # Remove garbled check marks
-    s = s.replace("\u00c5\u00a1", "\u00a1")  # Å¡ -> ¡
-    # Direct double-encoded pairs (Ã + latin1 byte)
-    s = s.replace("\u00c3\u00b3", "\u00f3")  # Ã³ -> ó
-    s = s.replace("\u00c3\u00a1", "\u00e1")  # Ã¡ -> á
-    s = s.replace("\u00c3\u00a9", "\u00e9")  # Ã© -> é
-    s = s.replace("\u00c3\u00ad", "\u00ed")  # Ã­ -> í
-    s = s.replace("\u00c3\u00ba", "\u00fa")  # Ãº -> ú
-    s = s.replace("\u00c3\u00b1", "\u00f1")  # Ã± -> ñ
-    s = s.replace("\u00c3\u00bc", "\u00fc")  # Ã¼ -> ü
-    s = s.replace("\u00c3\u00b0", "\u00f0")  # Ã° -> ð
-    # Triple-encoded: ÃÂ -> í
-    s = s.replace("\u00c3\u00c2", "\u00ed")
-    # Remaining latin1->utf8 pass
-    if "\u00c3" in s or "\u00c2" in s:
+    for _ in range(3):
+        if not any(marker in s for marker in ("Ã", "Â", "â")):
+            break
         try:
-            s = s.encode("latin1").decode("utf-8")
+            repaired = s.encode("latin1").decode("utf-8")
         except Exception:
-            pass
+            break
+        if repaired == s:
+            break
+        s = repaired
     return s
 
 def _fix_subsectores_data(data: Any) -> Any:
