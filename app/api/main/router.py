@@ -6,11 +6,61 @@ import logging
 import os
 import re
 import uuid
+import httpx
 from datetime import datetime
 from typing import Any, List, Optional
 
+def _fix_text(s: Any) -> Any:
+    if not isinstance(s, str) or not s:
+        return s
+    s = s.replace("AgencAPP", "Agencias").replace("TerapAPP", "Terapias").replace("memorAPP", "memorias")
+    if "Ã" not in s and "Â" not in s:
+        return s
+    try:
+        return s.encode("latin1").decode("utf-8")
+    except Exception:
+        return s
+
+def _clean_mojibake(s: str | None) -> str | None:
+    if not s or not isinstance(s, str):
+        return s
+    # Fix APP artefact from corrupted file
+    s = s.replace("AgencAPP", "Agencias").replace("TerapAPP", "Terapias").replace("memorAPP", "memorias")
+    # Remove soft hyphens
+    s = s.replace("\xad", "")
+    # Remove garbled check marks
+    s = s.replace("\u00c5\u00a1", "\u00a1")  # Å¡ -> ¡
+    # Direct double-encoded pairs (Ã + latin1 byte)
+    s = s.replace("\u00c3\u00b3", "\u00f3")  # Ã³ -> ó
+    s = s.replace("\u00c3\u00a1", "\u00e1")  # Ã¡ -> á
+    s = s.replace("\u00c3\u00a9", "\u00e9")  # Ã© -> é
+    s = s.replace("\u00c3\u00ad", "\u00ed")  # Ã­ -> í
+    s = s.replace("\u00c3\u00ba", "\u00fa")  # Ãº -> ú
+    s = s.replace("\u00c3\u00b1", "\u00f1")  # Ã± -> ñ
+    s = s.replace("\u00c3\u00bc", "\u00fc")  # Ã¼ -> ü
+    s = s.replace("\u00c3\u00b0", "\u00f0")  # Ã° -> ð
+    # Triple-encoded: ÃÂ -> í
+    s = s.replace("\u00c3\u00c2", "\u00ed")
+    # Remaining latin1->utf8 pass
+    if "\u00c3" in s or "\u00c2" in s:
+        try:
+            s = s.encode("latin1").decode("utf-8")
+        except Exception:
+            pass
+    return s
+
+def _fix_subsectores_data(data: Any) -> Any:
+    if not isinstance(data, list):
+        return data
+    for item in data:
+        if isinstance(item, dict):
+            if item.get("sector"): item["sector"] = _clean_mojibake(item["sector"])
+            if item.get("subsector"): item["subsector"] = _clean_mojibake(item["subsector"])
+            # empresas are tickers, no fix
+    return data
+
 import pandas as pd
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -24,6 +74,7 @@ from app.models.main import (
     TemplateComplement,
 )
 from app.models.user import User
+from app.api.main.calculations.macros_service import get_default_or_latest_master_template
 from app.schemas.main import (
     AppConfigurationUpdate,
     TemplateComplementCreate,
@@ -40,6 +91,104 @@ BVL_MARKER_KEY = f"{AWS_BASE_PREFIX}{BVL_S3_FOLDER}/current.json"
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/main", tags=["Main"])
+
+
+@router.post("/valora/calculate-excel")
+async def calculate_valora_with_excel(payload: dict):
+    """Proxy seguro al servicio Windows que ejecuta Excel COM."""
+    input_data = dict(payload.get("input") or payload)
+    aliases = {
+        "date": "fecha", "country": "pais", "currency": "moneda",
+        "industry": "sector", "kd": "costo_deuda", "debt": "porcentaje_deuda",
+        "capital": "porcentaje_capital", "equity": "porcentaje_capital",
+        "beta_unlevered_industry": "beta_desapalancado", "beta_subsector": "beta_desapalancado",
+        "beta_subsector_custom": "beta_desapalancado", "beta_unlevered_sensitivity": "beta_desapalancado",
+        "beta": "beta_desapalancado", "beta_unlevered": "beta_desapalancado",
+        "bono": "anio_bono", "instrument": "tasa_libre_riesgo",
+    }
+    for source, target in aliases.items():
+        if input_data.get(target) in (None, "") and input_data.get(source) not in (None, ""):
+            input_data[target] = input_data[source]
+    # sanitizar "" -> None y strings numericos -> float
+    for key in ["costo_deuda","porcentaje_deuda","porcentaje_capital","beta_desapalancado","revenue_forecast_rate","fdc_forecast_rate","perpetual_growth_rate","tasa_libre_riesgo"]:
+        v = input_data.get(key)
+        if v == "":
+            input_data[key] = None
+        elif isinstance(v, str) and v.strip() not in ("", None):
+            try:
+                cleaned = v.replace(",", ".").replace("%", "").strip()
+                # solo convierte si es numerico puro
+                float(cleaned)
+                input_data[key] = float(cleaned)
+            except:
+                pass
+    # fecha 31/12/2024 -> 2024
+    if isinstance(input_data.get("fecha"), str) and "/" in input_data["fecha"]:
+        try:
+            input_data["fecha"] = input_data["fecha"].strip().split("/")[-1]
+        except:
+            pass
+    # sanitizar shares también
+    for key in ["shares"]:
+        v = input_data.get(key)
+        if v == "":
+            input_data[key] = None
+        elif isinstance(v, str) and v.strip() not in ("", None):
+            try:
+                cleaned = v.replace(",", "").replace(" ", "").strip()
+                input_data[key] = int(float(cleaned))
+            except:
+                pass
+    # no filtrar agresivo: enviar todo lo no vacío, el web-service ignora extra con extra="ignore"
+    # solo elimina "" y None para evitar 422, pero conserva tablas y todos los campos útiles
+    input_data = {k: v for k, v in input_data.items() if v not in ("", None)}
+    # preservar tablas aunque esten vacias pero con estructura (por si fueron filtradas por ser dict vacío)
+    for tbl in ["balance_table","results_table"]:
+        if tbl in (payload.get("input") or payload) and tbl not in input_data:
+            # si viene del payload original, conservarlo
+            orig = (payload.get("input") or payload).get(tbl)
+            if orig is not None:
+                input_data[tbl] = orig
+    request_payload = {"input": input_data, "forecast_method": "ETS", "use_template": True, "return_details": True}
+    url = f"{settings.WEB_SERVICE_URL.rstrip('/')}/api/v1/valora/calculate"
+    headers = {"X-API-Key": settings.WEB_SERVICE_API_KEY} if settings.WEB_SERVICE_API_KEY else {}
+    import json as _json
+    logger.info(f"[PROXY] -> {url} payload_keys={list(input_data.keys())} payload={_json.dumps(request_payload)[:2000]}")
+    try:
+        async with httpx.AsyncClient(timeout=300) as client:
+            response = await client.post(url, json=request_payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:2000]
+        logger.error(
+            f"[PROXY] upstream_status={exc.response.status_code} "
+            f"from web-service: {detail} | payload_keys={list(input_data.keys())}"
+        )
+        raise HTTPException(status_code=502, detail=f"Excel service error: {detail}") from exc
+    except httpx.HTTPError as exc:
+        logger.error(f"[PROXY] HTTPError to web-service: {exc}")
+        raise HTTPException(status_code=502, detail=f"Excel service unavailable: {exc}") from exc
+
+
+@router.get("/internal/active-master-template")
+def get_active_master_template(
+    db: Session = Depends(get_db),
+    api_key: str | None = Header(default=None, alias="X-API-Key"),
+):
+    """Returns the admin-selected master workbook to the Windows Excel service."""
+    configured_key = settings.WEB_SERVICE_API_KEY.strip()
+    if not configured_key or api_key != configured_key:
+        raise HTTPException(status_code=403, detail="Invalid internal service key")
+    template = get_default_or_latest_master_template(db)
+    if not template or not template.onedrive_item_id:
+        raise HTTPException(status_code=404, detail="No active master template is available")
+    return {
+        "id": template.id,
+        "name": template.nombre,
+        "onedrive_item_id": template.onedrive_item_id,
+        "filename": template.original_filename or template.onedrive_filename or "Valora_Template.xlsx",
+    }
 
 
 def _get_latest_calculation_by_user_and_type(
@@ -117,7 +266,7 @@ def get_template_complement(
     if not complement:
         return []
 
-    data_list = complement.data if isinstance(complement.data, list) else []
+    data_list = _fix_subsectores_data(complement.data) if complement_name == "subsectores" and isinstance(complement.data, list) else (complement.data if isinstance(complement.data, list) else [])
 
     # ==========================================
     # Extracción exacta de valor
@@ -220,30 +369,56 @@ def create_template_complement(
         .all()
     )
 
+    # Fix mojibake en payload antes de merge
+    if payload.nombre == "subsectores" and isinstance(payload.data, list):
+        payload.data = _fix_subsectores_data(payload.data)
     merged_data = payload.data
 
     # Lógica de Merge si ya existe historial
     if old_records and payload.nombre in ["damodaran", "riesgo", "tax", "subsectores"]:
         old_record = old_records[0]  # El activo más reciente
-        old_data = old_record.data if isinstance(old_record.data, list) else []
+        old_data = _fix_subsectores_data(old_record.data) if payload.nombre == "subsectores" and isinstance(old_record.data, list) else (old_record.data if isinstance(old_record.data, list) else [])
         new_data = payload.data if isinstance(payload.data, list) else []
 
         if payload.nombre == "subsectores":
-            # Para subsectores, fusionar por sector y subsector, sin duplicados
-            # La estructura de cada elemento es {"sector": "...", "subsector": "...", "empresas": [...], "empresas_boa": {...}}
-            merged_dict = {}
+            # Merge aditivo: añade empresas nuevas, actualiza BOA/ticker_info si ticker ya existe
+            merged_dict: dict[tuple[str, str], dict] = {}
             for item in old_data:
-                # Normalizar claves
-                sector = item.get("sector", "").strip() if item.get("sector") else ""
-                subsector = item.get("subsector", "").strip() if item.get("subsector") else ""
+                sector = _clean_mojibake(item.get("sector", "")).strip() if item.get("sector") else ""
+                subsector = _clean_mojibake(item.get("subsector", "")).strip() if item.get("subsector") else ""
                 if sector and subsector:
-                    merged_dict[(sector.lower(), subsector.lower())] = item
+                    # clone to avoid mutating old
+                    merged_dict[(sector.lower(), subsector.lower())] = dict(item)
+                    merged_dict[(sector.lower(), subsector.lower())]["sector"] = sector
+                    merged_dict[(sector.lower(), subsector.lower())]["subsector"] = subsector
             for item in new_data:
-                sector = item.get("sector", "").strip() if item.get("sector") else ""
-                subsector = item.get("subsector", "").strip() if item.get("subsector") else ""
-                if sector and subsector:
-                    # Sobrescribir con nuevos datos si coincide sector y subsector
-                    merged_dict[(sector.lower(), subsector.lower())] = item
+                sector = _clean_mojibake(item.get("sector", "")).strip() if item.get("sector") else ""
+                subsector = _clean_mojibake(item.get("subsector", "")).strip() if item.get("subsector") else ""
+                if not (sector and subsector):
+                    continue
+                key = (sector.lower(), subsector.lower())
+                if key in merged_dict:
+                    existing = merged_dict[key]
+                    # Une empresas sin duplicar
+                    old_emps = existing.get("empresas") or []
+                    new_emps = item.get("empresas") or []
+                    merged_emps = list(dict.fromkeys([*(e.strip() for e in old_emps if e), *(e.strip() for e in new_emps if e)]))
+                    existing["empresas"] = merged_emps
+                    # Actualiza BOA/ticker_info si vienen
+                    if item.get("empresas_boa"):
+                        existing["empresas_boa"] = {**(existing.get("empresas_boa") or {}), **item["empresas_boa"]}
+                    if item.get("ticker_info"):
+                        existing["ticker_info"] = {**(existing.get("ticker_info") or {}), **item["ticker_info"]}
+                    # otros campos del nuevo pisan
+                    for k, v in item.items():
+                        if k not in ("empresas", "empresas_boa", "ticker_info"):
+                            existing[k] = v
+                    existing["sector"] = sector
+                    existing["subsector"] = subsector
+                else:
+                    merged_dict[key] = dict(item)
+                    merged_dict[key]["sector"] = sector
+                    merged_dict[key]["subsector"] = subsector
             merged_data = list(merged_dict.values())
         else:
             # Extraer los años que vienen en el nuevo Excel para no duplicarlos
@@ -259,6 +434,10 @@ def create_template_complement(
 
             # Combinar el historial retenido con la nueva carga
             merged_data = retained_data + new_data
+
+    # Guard: si el merge produce vacío, NO borrar lo que ya existe
+    if not merged_data and old_records and payload.nombre == "subsectores":
+        return TemplateComplementResponse.model_validate(old_records[0])
 
     # Marcar como eliminados lógicamente los registros anteriores
     for old in old_records:
@@ -399,8 +578,6 @@ def _get_current_valora_key() -> str | None:
 def _set_current_valora_key(object_key: str) -> bool:
     """Escribe el marker JSON con el archivo actual."""
     return s3_service.put_json_object(VALORA_CURRENT_MARKER_KEY, {"current_object_key": object_key})
-
-
 def _list_valora_templates() -> list[dict]:
     """Lista las plantillas de Valora desde S3, ordenadas por fecha (más reciente primero)."""
     prefix = f"{AWS_BASE_PREFIX}/{VALORA_S3_FOLDER}/"
