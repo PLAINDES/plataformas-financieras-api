@@ -1028,6 +1028,144 @@ def _upsert_companies_to_db(companies: list[dict], job_id: str = "", batch_idx: 
         db.close()
 
 
+_SUBSECTORES_BACKUP_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "subsectores_backup.json",
+)
+
+
+def _merge_boa_to_subsectores_master(companies: list[dict], job_id: str = "") -> None:
+    """Merge BOA results into the master subsectores record after each batch.
+
+    - Adds new empresas to each subsector group
+    - Updates ticker_info and empresas_boa for each empresa
+    - Retries 3 times on DB failure
+    - Falls back to a JSON backup file if all retries fail
+    """
+    if not companies:
+        return
+
+    for attempt in range(3):
+        db = SessionLocal()
+        try:
+            old = (
+                db.query(TemplateComplement)
+                .filter(
+                    TemplateComplement.nombre == "subsectores",
+                    TemplateComplement.deleted_at.is_(None),
+                )
+                .order_by(TemplateComplement.created_at.desc())
+                .first()
+            )
+            if not old or not isinstance(old.data, list):
+                logger.warning("[BOA][MERGE] No master subsectores record found, skip merge")
+                return
+
+            groups: dict[tuple[str, str], dict] = {}
+            for item in old.data:
+                if not isinstance(item, dict):
+                    continue
+                sec = (item.get("sector") or "").strip()
+                sub = (item.get("subsector") or "").strip()
+                if sec and sub:
+                    groups[(sec.lower(), sub.lower())] = item
+
+            merged_count = 0
+            for c in companies:
+                sector = (c.get("sector") or "").strip()
+                subsector = (c.get("subsector") or "").strip()
+                ticker = str(c.get("ticker") or "").strip().upper()
+                if not (sector and subsector and ticker):
+                    continue
+                key = (sector.lower(), subsector.lower())
+                if key not in groups:
+                    continue
+                g = groups[key]
+
+                empresas = g.get("empresas") or []
+                if ticker not in empresas:
+                    empresas.append(ticker)
+                    g["empresas"] = empresas
+
+                ti = g.get("ticker_info") or {}
+                ti[ticker] = {
+                    "name": c.get("company_name") or ticker,
+                    "beta_desapalancado": c.get("beta_unlevered"),
+                    "market_cap": c.get("market_cap"),
+                    "beta_apalancado": c.get("beta_levered"),
+                    "total_activos": c.get("total_assets"),
+                    "fx": c.get("fx_rate"),
+                    "sector": sector,
+                    "subsector": subsector,
+                    "country": c.get("country"),
+                    "listing_currency": c.get("listing_currency"),
+                    "reporting_currency": c.get("reporting_currency"),
+                    "debt_lt": c.get("debt_lt"),
+                    "debt_st": c.get("debt_st"),
+                    "debt_value": c.get("debt_value"),
+                    "equity_value": c.get("equity_value"),
+                    "dc_ratio": c.get("dc_ratio"),
+                    "effective_tax_rate": c.get("effective_tax_rate"),
+                    "pct_debt": c.get("pct_debt"),
+                    "pct_equity": c.get("pct_equity"),
+                }
+                g["ticker_info"] = ti
+
+                eb = g.get("empresas_boa") or {}
+                eb[ticker] = c.get("beta_unlevered")
+                g["empresas_boa"] = eb
+
+                merged_count += 1
+
+            new_data = list(groups.values())
+            if not new_data:
+                logger.warning("[BOA][MERGE] groups empty after processing, skip write")
+                return
+
+            old.deleted_at = datetime.datetime.utcnow()
+            db.commit()
+
+            db.add(
+                TemplateComplement(
+                    nombre="subsectores",
+                    fecha=datetime.datetime.utcnow(),
+                    data=new_data,
+                )
+            )
+            db.commit()
+            logger.info(
+                "[BOA][MERGE] %d companies merged into master subsectores (job=%s, batch merged=%d)",
+                merged_count, job_id, merged_count,
+            )
+            return
+
+        except Exception as exc:
+            db.rollback()
+            logger.warning("[BOA][MERGE] attempt %d/3 failed: %s", attempt + 1, exc)
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+        finally:
+            db.close()
+
+    # All retries failed -> backup to file
+    logger.error("[BOA][MERGE] all 3 retries failed, writing backup to %s", _SUBSECTORES_BACKUP_PATH)
+    try:
+        backup = {
+            "job_id": job_id,
+            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "companies_count": len(companies),
+            "companies": [
+                {k: v for k, v in c.items() if k in ("ticker", "sector", "subsector", "beta_unlevered", "company_name", "total_assets", "market_cap", "beta_levered", "country", "fx_rate")}
+                for c in companies
+            ],
+        }
+        with open(_SUBSECTORES_BACKUP_PATH, "w", encoding="utf-8") as f:
+            json.dump(backup, f, ensure_ascii=False, indent=2)
+        logger.info("[BOA][MERGE] backup saved (%d companies)", len(companies))
+    except Exception as bexc:
+        logger.error("[BOA][MERGE] backup write also failed: %s", bexc)
+
+
 def _rate_limit_delay(attempt: int, base: float = 2.0) -> None:
     delay = base * (2 ** attempt) + random.uniform(0, 1)
     logger.info(f"  Rate limiting detectado, esperando {delay:.1f}s (intento {attempt + 1})...")
@@ -1471,6 +1609,7 @@ def calculate_subsectores_boa(
 
         if save_to_db and batch_companies:
             _upsert_companies_to_db(batch_companies, job_id=job_id or "", batch_idx=batch_idx)
+            _merge_boa_to_subsectores_master(batch_companies, job_id=job_id or "")
         elif batch_tickers and not batch_companies:
             empty_batch_tickers.extend(
                 [

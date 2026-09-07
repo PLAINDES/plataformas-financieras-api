@@ -255,18 +255,31 @@ def get_template_complement(
             detail="El query parameter 'only-date' es exclusivo para el complemento 'rf'.",
         )
 
-    result = db.execute(
-        select(TemplateComplement)
-        .where(TemplateComplement.nombre == complement_name)
-        .where(TemplateComplement.deleted_at.is_(None))
-        .order_by(TemplateComplement.created_at.desc())
-    )
-    complement = result.scalars().first()
+    try:
+        result = db.execute(
+            select(TemplateComplement)
+            .where(TemplateComplement.nombre == complement_name)
+            .where(TemplateComplement.deleted_at.is_(None))
+            .order_by(TemplateComplement.created_at.desc())
+        )
+        complement = result.scalars().first()
+    except Exception as exc:
+        logger.exception("[GET] Error querying complement '%s': %s", complement_name, exc)
+        if complement_name == "subsectores":
+            return []
+        raise HTTPException(status_code=500, detail="Error al consultar la base de datos.")
 
     if not complement:
         return []
 
-    data_list = _fix_subsectores_data(complement.data) if complement_name == "subsectores" and isinstance(complement.data, list) else (complement.data if isinstance(complement.data, list) else [])
+    try:
+        data_list = _fix_subsectores_data(complement.data) if complement_name == "subsectores" and isinstance(complement.data, list) else (complement.data if isinstance(complement.data, list) else [])
+    except Exception as exc:
+        logger.exception("[GET] Error fixing data for '%s': %s", complement_name, exc)
+        if complement_name == "subsectores":
+            data_list = complement.data if isinstance(complement.data, list) else []
+        else:
+            raise HTTPException(status_code=500, detail="Error al procesar los datos del complemento.")
 
     # ==========================================
     # Extracción exacta de valor
@@ -293,7 +306,6 @@ def get_template_complement(
                 db_periodo = str(item.get("periodo", "")).strip().upper()
 
                 if db_fecha == search_year and db_periodo == search_period:
-                    # Buscar la llave del país ignorando mayúsculas y espacios
                     country_key = next(
                         (
                             k
@@ -305,20 +317,17 @@ def get_template_complement(
                     if country_key:
                         return {"valor": item.get(country_key)}
 
-            # Si termina el bucle y no hay match
             return {"valor": None}
 
     # =====================
     # Lógica Existente
     # =====================
     if only_name:
-        # 1. Extraer y limpiar espacios en blanco a los lados
         industrias_crudas = [
             str(item.get("industria")).strip()
             for item in data_list
             if isinstance(item, dict) and item.get("industria")
         ]
-        # 2. Eliminar los duplicados (por los años) y ordenar alfabéticamente
         return sorted(list(set(industrias_crudas)))
 
     if only_date:
@@ -342,7 +351,13 @@ def get_template_complement(
         fechas_unicas.sort(key=parse_date_for_sort, reverse=True)
         return fechas_unicas
 
-    return [TemplateComplementResponse.model_validate(complement)]
+    try:
+        return [TemplateComplementResponse.model_validate(complement)]
+    except Exception as exc:
+        logger.exception("[GET] Error validating response for '%s': %s", complement_name, exc)
+        if complement_name == "subsectores":
+            return []
+        raise HTTPException(status_code=500, detail="Error al serializar los datos.")
 
 
 @router.post(
