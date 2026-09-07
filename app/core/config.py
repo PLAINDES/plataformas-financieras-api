@@ -58,7 +58,7 @@ class Settings(BaseSettings):
             f"{self.DATABASE_PASSWORD}@"
             f"{self.DATABASE_HOST}:"
             f"{self.DATABASE_PORT}/"
-            f"{self.DATABASE_NAME}"
+            f"{self.DATABASE_NAME}?charset=utf8mb4"
         )
 
 
@@ -91,10 +91,13 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_REGION_NAME: str = "us-east-1"
     AWS_BUCKET_NAME: str = "plaindes"
+    MASTER_TEMPLATE_FOLDER: str = "templates/masters"
 
     GEMINI_API_KEY: str = ""
 
     BOT_API_KEY: str = ""
+    WEB_SERVICE_API_KEY: str = ""
+    WEB_SERVICE_URL: str = "http://host.docker.internal:8080"
 
     # Certprox / Culqi. The API key must never be exposed to the frontend.
     CULQI_INTEGRATION_BASE_URL: str = ""

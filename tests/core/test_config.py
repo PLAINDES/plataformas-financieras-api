@@ -75,7 +75,7 @@ def test_database_url_property():
         DATABASE_NAME="finanzas_prod"
     )
 
-    expected_url = "mysql+pymysql://admin_db:super_password@db.miempresa.com:3306/finanzas_prod"
+    expected_url = "mysql+pymysql://admin_db:super_password@db.miempresa.com:3306/finanzas_prod?charset=utf8mb4"
     assert settings.DATABASE_URL == expected_url
 
 def test_get_settings_is_cached():
