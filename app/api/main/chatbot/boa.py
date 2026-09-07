@@ -1139,6 +1139,34 @@ def get_beta(ticker_symbol: str, info: dict) -> tuple[float | None, str]:
     return None, "no disponible"
 
 
+def _fix_mojibake(s: str | None) -> str | None:
+    if not s or not isinstance(s, str):
+        return s
+    # Fix APP artefact from corrupted file
+    s = s.replace("AgencAPP", "Agencias").replace("TerapAPP", "Terapias").replace("memorAPP", "memorias")
+    # Remove soft hyphens
+    s = s.replace("\xad", "")
+    # Remove garbled check marks
+    s = s.replace("\u00c5\u00a1", "\u00a1")
+    # Direct double-encoded pairs
+    s = s.replace("\u00c3\u00b3", "\u00f3")
+    s = s.replace("\u00c3\u00a1", "\u00e1")
+    s = s.replace("\u00c3\u00a9", "\u00e9")
+    s = s.replace("\u00c3\u00ad", "\u00ed")
+    s = s.replace("\u00c3\u00ba", "\u00fa")
+    s = s.replace("\u00c3\u00b1", "\u00f1")
+    s = s.replace("\u00c3\u00bc", "\u00fc")
+    s = s.replace("\u00c3\u00b0", "\u00f0")
+    # Triple-encoded: ÃÂ -> í
+    s = s.replace("\u00c3\u00c2", "\u00ed")
+    # Remaining latin1->utf8 pass
+    if "\u00c3" in s or "\u00c2" in s:
+        try:
+            s = s.encode("latin1").decode("utf-8")
+        except Exception:
+            pass
+    return s
+
 def extract_company_rows_from_xlsx(file_content: bytes) -> list[dict]:
     if not file_content:
         return []
@@ -1168,9 +1196,9 @@ def extract_company_rows_from_xlsx(file_content: bytes) -> list[dict]:
             continue
         rows.append({
             "ticker": ticker,
-            "sector": str(row.get(sector_col)).strip() if sector_col and not pd.isna(row.get(sector_col)) else None,
-            "subsector": str(row.get(subsector_col)).strip() if subsector_col and not pd.isna(row.get(subsector_col)) else None,
-            "company_name": str(row.get(company_name_col)).strip() if company_name_col and not pd.isna(row.get(company_name_col)) else None,
+            "sector": _fix_mojibake(str(row.get(sector_col)).strip()) if sector_col and not pd.isna(row.get(sector_col)) else None,
+            "subsector": _fix_mojibake(str(row.get(subsector_col)).strip()) if subsector_col and not pd.isna(row.get(subsector_col)) else None,
+            "company_name": _fix_mojibake(str(row.get(company_name_col)).strip()) if company_name_col and not pd.isna(row.get(company_name_col)) else None,
         })
     return rows
 

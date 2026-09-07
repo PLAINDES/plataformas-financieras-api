@@ -118,7 +118,6 @@ async def start_subsectores_boa_upload(file: UploadFile = File(...)):
     content = await file.read()
     try:
         company_rows = extract_company_rows_from_xlsx(content)
-        # Procesar TODAS las empresas del Excel, no solo las 185 anteriores
         tickers_to_process = [
             str(row["ticker"]).strip().upper()
             for row in company_rows
@@ -129,6 +128,60 @@ async def start_subsectores_boa_upload(file: UploadFile = File(...)):
             len(company_rows),
             len(tickers_to_process),
         )
+        # Merge aditivo en main_template_complements subsectores (preserva histórico, fija mojibake)
+        try:
+            from collections import defaultdict
+            from app.db.database import SessionLocal
+            from app.models.main import TemplateComplement
+            import datetime
+            def _fix(s):
+                if not isinstance(s, str) or not s: return s
+                s = s.replace("AgencAPP","Agencias").replace("TerapAPP","Terapias").replace("memorAPP","memorias")
+                if "Ã" in s or "Â" in s:
+                    try: return s.encode("latin1").decode("utf-8")
+                    except: pass
+                return s
+            groups: dict[tuple[str,str], dict] = {}
+            for r in company_rows:
+                sec = _fix((r.get("sector") or "").strip())
+                sub = _fix((r.get("subsector") or "").strip())
+                tic = (r.get("ticker") or "").strip().upper()
+                if not sub or not tic: continue
+                key = (sec.lower(), sub.lower())
+                if key not in groups:
+                    groups[key] = {"sector": sec, "subsector": sub, "empresas": []}
+                if tic not in groups[key]["empresas"]:
+                    groups[key]["empresas"].append(tic)
+            new_items = list(groups.values())
+            # merge con existente
+            db = SessionLocal()
+            try:
+                old = db.query(TemplateComplement).filter(TemplateComplement.nombre=="subsectores", TemplateComplement.deleted_at.is_(None)).order_by(TemplateComplement.created_at.desc()).first()
+                if old and isinstance(old.data, list):
+                    merged: dict[tuple[str,str], dict] = {}
+                    for it in old.data:
+                        s = _fix((it.get("sector") or "").strip())
+                        ss = _fix((it.get("subsector") or "").strip())
+                        if s and ss:
+                            it["sector"]=s; it["subsector"]=ss
+                            merged[(s.lower(), ss.lower())] = dict(it)
+                    for it in new_items:
+                        k=(it["sector"].lower(), it["subsector"].lower())
+                        if k in merged:
+                            ex=merged[k]
+                            ex["empresas"]=list(dict.fromkeys([*(e.strip() for e in (ex.get("empresas") or []) if e), *(e.strip() for e in (it.get("empresas") or []) if e)]))
+                        else:
+                            merged[k]=it
+                    new_items=list(merged.values())
+                    old.deleted_at=datetime.datetime.utcnow()
+                    db.commit()
+                db.add(TemplateComplement(nombre="subsectores", fecha=datetime.datetime.utcnow(), data=new_items))
+                db.commit()
+                logger.info(f"[BOA][UPLOAD] Subsectores mergeado: {len(new_items)} grupos")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"[BOA][UPLOAD] Merge subsectores no crítico: {e}")
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"No se pudo leer el Excel: {exc}") from exc
 
