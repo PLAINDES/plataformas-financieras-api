@@ -8,6 +8,7 @@ import re
 import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import requests
@@ -20,6 +21,53 @@ _YF_SESSION.headers.update({
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
 })
+
+_YF_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yfinance_ticker_cache.json")
+_YF_CACHE_TTL = 24 * 3600
+_YF_CACHE_LOCK = threading.Lock()
+_YF_GATE_LOCK = threading.Lock()
+_YF_LAST_REQUEST = 0.0
+_YF_MIN_INTERVAL = 0.35
+
+def _yf_cache_read(ticker: str):
+    try:
+        with _YF_CACHE_LOCK:
+            if not os.path.exists(_YF_CACHE_PATH):
+                return None
+            with open(_YF_CACHE_PATH, encoding="utf-8") as f:
+                entry = json.load(f).get(ticker)
+            if entry and time.time() - entry.get("cached_at", 0) < _YF_CACHE_TTL:
+                return entry.get("data")
+    except Exception as exc:
+        logger.debug("Cache yfinance no disponible: %s", exc)
+    return None
+
+def _yf_cache_write(ticker: str, data: dict):
+    # Never cache incomplete responses: a later refresh must be able to clear
+    # only this company's stale fields instead of replaying old complete data.
+    if data.get("missing_fields"):
+        return
+    try:
+        with _YF_CACHE_LOCK:
+            cache = {}
+            if os.path.exists(_YF_CACHE_PATH):
+                with open(_YF_CACHE_PATH, encoding="utf-8") as f:
+                    cache = json.load(f)
+            cache[ticker] = {"cached_at": time.time(), "data": data}
+            tmp = _YF_CACHE_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(cache, f, ensure_ascii=False)
+            os.replace(tmp, _YF_CACHE_PATH)
+    except Exception as exc:
+        logger.debug("No se pudo guardar cache yfinance: %s", exc)
+
+def _yf_gate():
+    global _YF_LAST_REQUEST
+    with _YF_GATE_LOCK:
+        wait = _YF_MIN_INTERVAL - (time.monotonic() - _YF_LAST_REQUEST)
+        if wait > 0:
+            time.sleep(wait)
+        _YF_LAST_REQUEST = time.monotonic()
 
 import yfinance as yf
 yf.set_tz_cache_location("/tmp/yfinance_cache")
@@ -528,8 +576,11 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
     if cancel_event and cancel_event.is_set():
         return None, None, {"reason": "cancelled"}
 
+    cached = _yf_cache_read(ticker)
+    if cached:
+        return None, dict(cached), {"reason": "cache"}
     _log_ticker_step(ticker, "inicio")
-    _delay(1.5)
+    _yf_gate()
     try:
         stock = yf.Ticker(ticker, session=_YF_SESSION)
         info = stock.info
@@ -753,6 +804,8 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
         "diagnostic_reason": "ok" if not missing_fields else "datos_incompletos",
         **source_diagnostics,
     }
+
+    _yf_cache_write(ticker, api_data)
 
     _log_ticker_step(
         ticker,
@@ -1062,6 +1115,7 @@ def _merge_boa_to_subsectores_master(companies: list[dict], job_id: str = "") ->
                 return
 
             groups: dict[tuple[str, str], dict] = {}
+            ticker_to_group: dict[str, dict] = {}
             for item in old.data:
                 if not isinstance(item, dict):
                     continue
@@ -1069,18 +1123,32 @@ def _merge_boa_to_subsectores_master(companies: list[dict], job_id: str = "") ->
                 sub = (item.get("subsector") or "").strip()
                 if sec and sub:
                     groups[(sec.lower(), sub.lower())] = item
+                for emp in (item.get("empresas") or []):
+                    t = str(emp or "").strip().upper()
+                    if t and t not in ticker_to_group:
+                        ticker_to_group[t] = item
 
             merged_count = 0
+            unmatched: list[str] = []
             for c in companies:
                 sector = (c.get("sector") or "").strip()
                 subsector = (c.get("subsector") or "").strip()
                 ticker = str(c.get("ticker") or "").strip().upper()
-                if not (sector and subsector and ticker):
+                if not ticker:
                     continue
-                key = (sector.lower(), subsector.lower())
-                if key not in groups:
-                    continue
-                g = groups[key]
+                # Excel placement wins. Ticker fallback only covers rows without
+                # Excel classification (legacy/manual jobs).
+                source = c.get("placement_source")
+                g = groups.get((sector.casefold(), subsector.casefold())) if source == "excel" and sector and subsector else None
+                if g is None:
+                    g = ticker_to_group.get(ticker)
+                if g is None:
+                    if sector and subsector:
+                        g = {"sector": sector, "subsector": subsector, "empresas": []}
+                        groups[(sector.casefold(), subsector.casefold())] = g
+                    else:
+                        unmatched.append(ticker)
+                        continue
 
                 empresas = g.get("empresas") or []
                 if ticker not in empresas:
@@ -1134,8 +1202,8 @@ def _merge_boa_to_subsectores_master(companies: list[dict], job_id: str = "") ->
             )
             db.commit()
             logger.info(
-                "[BOA][MERGE] %d companies merged into master subsectores (job=%s, batch merged=%d)",
-                merged_count, job_id, merged_count,
+                "[BOA][MERGE] %d companies merged into master subsectores (job=%s), unmatched=%d %s",
+                merged_count, job_id, len(unmatched), unmatched[:10],
             )
             return
 
@@ -1166,7 +1234,7 @@ def _merge_boa_to_subsectores_master(companies: list[dict], job_id: str = "") ->
         logger.error("[BOA][MERGE] backup write also failed: %s", bexc)
 
 
-def _rate_limit_delay(attempt: int, base: float = 2.0) -> None:
+def _rate_limit_delay(attempt: int, base: float = 30.0) -> None:
     delay = base * (2 ** attempt) + random.uniform(0, 1)
     logger.info(f"  Rate limiting detectado, esperando {delay:.1f}s (intento {attempt + 1})...")
     time.sleep(delay)
@@ -1280,29 +1348,16 @@ def get_beta(ticker_symbol: str, info: dict) -> tuple[float | None, str]:
 def _fix_mojibake(s: str | None) -> str | None:
     if not s or not isinstance(s, str):
         return s
-    # Fix APP artefact from corrupted file
-    s = s.replace("AgencAPP", "Agencias").replace("TerapAPP", "Terapias").replace("memorAPP", "memorias")
-    # Remove soft hyphens
-    s = s.replace("\xad", "")
-    # Remove garbled check marks
-    s = s.replace("\u00c5\u00a1", "\u00a1")
-    # Direct double-encoded pairs
-    s = s.replace("\u00c3\u00b3", "\u00f3")
-    s = s.replace("\u00c3\u00a1", "\u00e1")
-    s = s.replace("\u00c3\u00a9", "\u00e9")
-    s = s.replace("\u00c3\u00ad", "\u00ed")
-    s = s.replace("\u00c3\u00ba", "\u00fa")
-    s = s.replace("\u00c3\u00b1", "\u00f1")
-    s = s.replace("\u00c3\u00bc", "\u00fc")
-    s = s.replace("\u00c3\u00b0", "\u00f0")
-    # Triple-encoded: ÃÂ -> í
-    s = s.replace("\u00c3\u00c2", "\u00ed")
-    # Remaining latin1->utf8 pass
-    if "\u00c3" in s or "\u00c2" in s:
+    for _ in range(3):
+        if not any(marker in s for marker in ("Ã", "Â", "â")):
+            break
         try:
-            s = s.encode("latin1").decode("utf-8")
+            repaired = s.encode("latin1").decode("utf-8")
         except Exception:
-            pass
+            break
+        if repaired == s:
+            break
+        s = repaired
     return s
 
 def extract_company_rows_from_xlsx(file_content: bytes) -> list[dict]:
@@ -1330,7 +1385,7 @@ def extract_company_rows_from_xlsx(file_content: bytes) -> list[dict]:
         if pd.isna(raw_ticker):
             continue
         ticker = str(raw_ticker).strip().upper()
-        if not ticker:
+        if not ticker or ticker in {"NAN", "NONE", "NULL", "N/A", "NA", "-"}:
             continue
         rows.append({
             "ticker": ticker,
@@ -1389,7 +1444,13 @@ def calculate_subsectores_boa(
     global BOA_LOG_TICKER_STEPS
     if tickers and isinstance(tickers[0], dict):
         ticker_rows = tickers  # type: ignore[assignment]
-        ticker_symbols = [str(item.get("ticker", "")).strip().upper() for item in ticker_rows if item.get("ticker")]
+        invalid_tickers = {"NAN", "NONE", "NULL", "N/A", "NA", "-"}
+        ticker_symbols = [
+            symbol
+            for item in ticker_rows
+            for symbol in [str(item.get("ticker", "")).strip().upper()]
+            if symbol and symbol not in invalid_tickers
+        ]
     else:
         ticker_rows = [{"ticker": t, "sector": None, "subsector": None} for t in tickers]  # type: ignore[list-item]
         ticker_symbols = [str(t).strip().upper() for t in tickers]  # type: ignore[list-item]
@@ -1399,6 +1460,7 @@ def calculate_subsectores_boa(
     processed_ok = 0
     failed_count = 0
     rate_limit_hits = 0
+    cache_hits = 0
     last_error_reason = None
     empty_batch_tickers: list[str] = []
     cancel_event = threading.Event()
@@ -1445,8 +1507,23 @@ def calculate_subsectores_boa(
 
         logger.info(f"Lote {batch_idx + 1}/{total_batches} (tickers {batch_start + 1}-{batch_end})")
 
+        # Bounded parallelism; _yf_gate remains global, preventing bursts.
+        prefetched = {}
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures = {
+                i: pool.submit(_process_single_ticker, row["ticker"], cancel_event)
+                for i, row in enumerate(batch_tickers)
+            }
+            for i, future in futures.items():
+                try:
+                    prefetched[i] = future.result()
+                except Exception as exc:
+                    prefetched[i] = (None, None, {"reason": _classify_error(exc), "error": str(exc)})
+
         for i, ticker_row in enumerate(batch_tickers):
             ticker = ticker_row["ticker"]
+            if not ticker or str(ticker).strip().upper() in {"NAN", "NONE", "NULL", "N/A", "NA", "-"}:
+                continue
             company_name_hint = ticker_row.get("company_name") or ticker_row.get("nombre_empresa")
             ticker_resolution = resolve_ticker_symbol(
                 ticker,
@@ -1476,9 +1553,11 @@ def calculate_subsectores_boa(
                     break
 
                 try:
-                    res = _process_single_ticker(processing_ticker, cancel_event)
+                    res = prefetched.pop(i, None) if attempt == 0 else _process_single_ticker(processing_ticker, cancel_event)
                     if res is not None:
                         _, api_data, diag = res
+                        if isinstance(diag, dict) and diag.get("reason") == "cache":
+                            cache_hits += 1
                         last_error_reason = diag.get("reason") if isinstance(diag, dict) else None
                         if api_data is not None:
                             api_data["ticker"] = ticker
@@ -1556,6 +1635,13 @@ def calculate_subsectores_boa(
                 **ticker_resolution,
             }
             if api_data:
+                # Excel classification wins; yfinance fills only missing fields.
+                if ticker_row.get("sector") and ticker_row.get("subsector"):
+                    api_data["sector"] = ticker_row["sector"]
+                    api_data["subsector"] = ticker_row["subsector"]
+                    api_data["placement_source"] = "excel"
+                else:
+                    api_data["placement_source"] = "yfinance_fallback"
                 row_payload.update(api_data)
                 companies.append(api_data)
                 batch_companies.append(api_data)
@@ -1602,9 +1688,9 @@ def calculate_subsectores_boa(
 
             if api_data or last_error:
                 requests_since_pause += 1
-                if requests_since_pause >= 25 and batch_idx < total_batches - 1 and not cancel_event.is_set():
-                    logger.info("Pausa preventiva: 25 solicitudes completadas. Esperando 15s antes de continuar...")
-                    time.sleep(15)
+                # Global gate controls request cadence. Fixed 15 s pauses after
+                # every 25 tickers caused unnecessary idle time.
+                if requests_since_pause >= 25:
                     requests_since_pause = 0
 
         if save_to_db and batch_companies:
@@ -1635,10 +1721,7 @@ def calculate_subsectores_boa(
                 _log_summary_block(f"[BOA][RESUMEN 5MIN][{job_id}]", progress_summary)
                 last_summary_log = now
 
-        if batch_idx < total_batches - 1 and not cancel_event.is_set() and requests_since_pause < 25:
-            batch_delay = 5
-            logger.info(f"Esperando {batch_delay}s antes del siguiente lote...")
-            time.sleep(batch_delay)
+        # No fixed inter-batch sleep; _yf_gate throttles every request globally.
 
     t_end = time.perf_counter()
     logger.info(f"BOA completado en {t_end - t_start:.2f}s (job={job_id}) - {processed_ok} ok, {failed_count} failed")
@@ -1666,6 +1749,10 @@ def calculate_subsectores_boa(
         **_build_summary_payload(companies, len(ticker_rows), processed_ok, failed_count),
         "ticker_rows": ticker_table_rows,
         "boa_ponderado_por_subsector": boa_ponderado_data,
+        "elapsed_seconds": round(t_end - t_start, 2),
+        "cache_hits": cache_hits,
+        "rate_limit_hits": rate_limit_hits,
+        "tickers_per_minute": round(processed_ok / max((t_end - t_start) / 60, 1 / 60), 2),
     }
     _log_summary_block(f"[BOA][RESULTADO FINAL][{job_id}]", result)
     _log_final_status(job_id, result, stop_reason)
