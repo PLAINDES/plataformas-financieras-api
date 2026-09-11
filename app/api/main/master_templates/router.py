@@ -1,6 +1,6 @@
 # app/api/main/master_templates_router.py
 """
-CRUD de Plantillas Maestras + integración OneDrive + Extracción nativa de gráficos vía Microsoft Graph.
+CRUD de Plantillas Maestras almacenadas en S3 y procesadas con Excel COM.
 """
 
 import asyncio
@@ -10,7 +10,6 @@ import time
 from datetime import datetime
 from typing import Literal, Optional
 
-import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
@@ -22,7 +21,7 @@ from app.api.main.master_templates.services import (
     _chart_candidate_dirs,
     _clear_user_default_templates,
     _ensure_user_has_default_template,
-    _extract_and_save_charts_via_graph,
+    _extract_and_save_charts_via_com,
     _process_and_save_cell_codes,
 )
 from app.core.config import settings
@@ -39,7 +38,6 @@ from app.schemas.templates import (
     TemplateCodeResponse,
 )
 from app.services.aws_service import s3_service
-from app.services.onedrive.service import OneDriveConfig, get_onedrive_service
 from app.services.template_code_extractor import get_template_code_extractor
 
 logger = logging.getLogger(__name__)
@@ -49,9 +47,11 @@ router = APIRouter(
     tags=["Master Templates"],
     dependencies=[Depends(get_current_admin)],
 )
+public_media_router = APIRouter(prefix="/main/master-templates/media", tags=["Media"])
 
 Environment = Literal["development", "production", "test"]
 Folder = Literal["plantillas_maestras", "kapital", "valora"]
+MASTER_TEMPLATE_S3_FOLDER = settings.MASTER_TEMPLATE_FOLDER
 
 # =============================
 # RESTO DE RUTAS GENERALES
@@ -84,87 +84,113 @@ async def list_valora_copies(
 ):
     """
     Lista las copias de trabajo de cálculos Valora (y opcionalmente Kapital)
-    que existen en OneDrive. Permite depurar los cambios persistidos
-    cuando persist_changes=True.
+    que existen en S3 bajo templates/tmps/. Solo muestra lo generado
+    desde la versión actual basada en S3.
     """
-    service = get_onedrive_service()
-    if not service.config.is_configured():
-        raise HTTPException(status_code=503, detail="OneDrive no está configurado")
-
     target_env = env or settings.ENVIRONMENT or "development"
     folders_to_list = ["valora"]
     if include_kapital:
         folders_to_list.append("kapital")
 
+    base_prefix = s3_service.base_prefix  # ej: plataformas_financieras
     enriched = []
     for folder in folders_to_list:
-        path = service.build_path(target_env, folder)
-        logger.info(f"[VALORA COPIES] Listando folder={folder} path={path}")
+        prefix = f"{base_prefix}/templates/tmps/{folder}/"
+        logger.info(f"[VALORA COPIES S3] Listando prefix={prefix}")
         try:
-            files = await service.list_files(path=path)
+            files = await asyncio.to_thread(s3_service.list_files, prefix)
         except Exception as exc:
-            logger.exception(f"Error listando copias {folder} en OneDrive")
+            logger.exception(f"Error listando copias {folder} en S3")
             raise HTTPException(
                 status_code=502,
                 detail=f"No se pudo listar copias de {folder}: {exc}",
             ) from exc
 
-        logger.info(f"[VALORA COPIES] Folder={folder} files={len(files)}")
+        logger.info(f"[VALORA COPIES S3] Folder={folder} files={len(files)}")
         for f in files:
+            object_key = f.get("object_key") or ""
+            filename = object_key.rsplit("/", 1)[-1] if object_key else ""
+            last_modified = f.get("last_modified")
+            if hasattr(last_modified, "isoformat"):
+                modified_at = last_modified.isoformat()
+            else:
+                modified_at = str(last_modified) if last_modified else None
             download_url = ""
             try:
-                download_url = await service.get_download_url(f["id"])
+                download_url = await asyncio.to_thread(
+                    s3_service.generate_presigned_url, object_key
+                )
             except Exception:
-                logger.warning(f"No se pudo obtener download_url para {f.get('id')}")
+                logger.warning(f"No se pudo generar download_url para {object_key}")
 
             enriched.append(
                 {
-                    "id": f["id"],
-                    "name": f"[{folder.upper()}] {f['name']}",
+                    "id": object_key,
+                    "name": f"[{folder.upper()}] {filename}",
                     "size": f.get("size"),
-                    "created_at": f.get("created_at"),
-                    "modified_at": f.get("modified_at"),
-                    "web_url": f.get("web_url"),
+                    "created_at": modified_at,
+                    "modified_at": modified_at,
+                    "web_url": download_url,
                     "download_url": download_url,
                     "env": target_env,
                     "folder": folder,
                 }
             )
 
+    def _sort_key(x):
+        try:
+            if x.get("modified_at"):
+                return datetime.fromisoformat(
+                    x["modified_at"].replace("Z", "+00:00")
+                )
+        except Exception:
+            pass
+        return datetime.min.replace(tzinfo=None)
+
     # Ordenar: más reciente primero, fallback por nombre si no hay fecha
-    enriched.sort(
-        key=lambda x: (
-            datetime.fromisoformat(x["modified_at"].replace("Z", "+00:00"))
-            if x.get("modified_at")
-            else datetime.min.replace(tzinfo=None)
-        ),
-        reverse=True,
-    )
+    enriched.sort(key=_sort_key, reverse=True)
 
     return {"items": enriched, "env": target_env}
 
 
-@router.delete("/valora-copies/{item_id}")
+def _validate_tmps_key(object_key: str) -> str:
+    """Solo permite borrar/descargar copias de templates/tmps/valora|kapital."""
+    base_prefix = s3_service.base_prefix
+    allowed = (
+        f"{base_prefix}/templates/tmps/valora/",
+        f"{base_prefix}/templates/tmps/kapital/",
+    )
+    if not object_key or not object_key.startswith(allowed):
+        raise HTTPException(status_code=400, detail="Object key no permitido")
+    if ".." in object_key or object_key.endswith("/"):
+        raise HTTPException(status_code=400, detail="Object key no válido")
+    return object_key
+
+
+@router.delete("/valora-copies/{item_id:path}")
 async def delete_valora_copy(
     item_id: str,
     env: Optional[Environment] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin),
 ):
-    """Elimina una copia de trabajo Valora de OneDrive."""
-    service = get_onedrive_service()
-    if not service.config.is_configured():
-        raise HTTPException(status_code=503, detail="OneDrive no está configurado")
+    """Elimina una copia de trabajo Valora/Kapital de S3."""
+    from urllib.parse import unquote
+
+    object_key = _validate_tmps_key(unquote(item_id))
 
     try:
-        await service.delete_file(item_id)
+        ok = await asyncio.to_thread(s3_service.delete_file, object_key)
     except Exception as exc:
-        logger.exception(f"Error eliminando copia Valora {item_id}")
+        logger.exception(f"Error eliminando copia S3 {object_key}")
         raise HTTPException(
             status_code=502, detail=f"No se pudo eliminar la copia: {exc}"
         ) from exc
 
-    return {"success": True, "deleted_id": item_id}
+    if not ok:
+        raise HTTPException(status_code=502, detail="No se pudo eliminar la copia en S3")
+
+    return {"success": True, "deleted_id": object_key}
 
 
 @router.post("/valora-copies/delete-batch")
@@ -174,51 +200,54 @@ async def delete_valora_copies_batch(
     current_user: User = Depends(get_current_admin),
 ):
     """
-    Elimina múltiples copias de trabajo Valora de OneDrive.
-    Body: {"ids": ["item_id_1", "item_id_2", ...]}
+    Elimina múltiples copias de trabajo Valora/Kapital de S3.
+    Body: {"ids": ["object_key_1", "object_key_2", ...]}
     """
+    from urllib.parse import unquote
+
     ids = payload.get("ids") or []
     if not ids:
         raise HTTPException(status_code=400, detail="No se enviaron IDs")
 
-    service = get_onedrive_service()
-    if not service.config.is_configured():
-        raise HTTPException(status_code=503, detail="OneDrive no está configurado")
-
     deleted = []
     failed = []
 
-    for item_id in ids:
+    for raw_id in ids:
         try:
-            await service.delete_file(item_id)
-            deleted.append(item_id)
+            object_key = _validate_tmps_key(unquote(str(raw_id)))
+            ok = await asyncio.to_thread(s3_service.delete_file, object_key)
+            if not ok:
+                raise RuntimeError("S3 devolvió False al eliminar")
+            deleted.append(object_key)
+        except HTTPException as exc:
+            failed.append({"id": str(raw_id), "error": exc.detail})
         except Exception as exc:
-            logger.warning(f"Error eliminando copia {item_id}: {exc}")
-            failed.append({"id": item_id, "error": str(exc)})
+            logger.warning(f"Error eliminando copia {raw_id}: {exc}")
+            failed.append({"id": str(raw_id), "error": str(exc)})
 
     return {"success": len(failed) == 0, "deleted": deleted, "failed": failed}
 
 
-@router.get("/valora-copies/{item_id}/download-url")
+@router.get("/valora-copies/{item_id:path}/download-url")
 async def get_valora_copy_download_url(
     item_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin),
 ):
-    """Devuelve una URL temporal para previsualizar/descargar una copia Valora."""
-    service = get_onedrive_service()
-    if not service.config.is_configured():
-        raise HTTPException(status_code=503, detail="OneDrive no está configurado")
+    """Devuelve una URL temporal (presigned S3) para descargar una copia."""
+    from urllib.parse import unquote
+
+    object_key = _validate_tmps_key(unquote(item_id))
 
     try:
-        url = await service.get_download_url(item_id)
+        url = await asyncio.to_thread(s3_service.generate_presigned_url, object_key)
     except Exception as exc:
-        logger.exception(f"Error obteniendo URL de copia Valora {item_id}")
+        logger.exception(f"Error obteniendo URL de copia S3 {object_key}")
         raise HTTPException(
             status_code=502, detail=f"No se pudo obtener URL: {exc}"
         ) from exc
 
-    return {"download_url": url, "item_id": item_id}
+    return {"download_url": url, "item_id": object_key}
 
 
 @router.get("/chart-file/{chart_filename}")
@@ -258,6 +287,28 @@ async def get_chart_image(chart_filename: str):
         media_type="image/png" if chart_path.suffix.lower() == ".png" else "image/jpeg",
         headers={"Content-Disposition": f'inline; filename="{chart_path.name}"'},
     )
+
+
+@router.get("/media/{media_id}")
+def get_template_media(media_id: int, db: Session = Depends(get_db)):
+    """Serve a template image through the API so browsers need no S3 CORS."""
+    media = db.get(Media, media_id)
+    if not media or media.deleted_at or not media.storage_path:
+        raise HTTPException(status_code=404, detail="Media not found")
+    try:
+        content = s3_service.download_file_bytes(media.storage_path)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Media unavailable") from exc
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type=media.mime_type or "application/octet-stream",
+        headers={"Content-Disposition": f'inline; filename="{media.filename}"'},
+    )
+
+
+@public_media_router.get("/{media_id}")
+def get_public_template_media(media_id: int, db: Session = Depends(get_db)):
+    return get_template_media(media_id, db)
 
 
 @router.post(
@@ -420,6 +471,11 @@ def delete_master_template(
     if not obj or obj.deleted_at:
         raise HTTPException(404, "Not found")
 
+    _name = getattr(obj, "nombre", f"id={template_id}")
+    _s3_key = getattr(obj, "s3_object_key", None)
+    logger.info('[S3 MASTER TEMPLATE] 🗑️ Solicitud borrar plantilla "%s" template_id=%s s3_key=%s', _name, template_id, _s3_key)
+    print(f'[S3 MASTER TEMPLATE] 🗑️ Solicitud borrar plantilla "{_name}" template_id={template_id} s3_key={_s3_key}', flush=True)
+
     media_rows = (
         db.execute(
             select(Media).where(
@@ -455,6 +511,24 @@ def delete_master_template(
     obj.deleted_at = datetime.utcnow()
     obj.is_default = False
     _ensure_user_has_default_template(db, current_user.id)
+
+    # Eliminar archivo principal de S3 si existe (Templates/masters)
+    if _s3_key:
+        try:
+            ok = s3_service.delete_file(_s3_key)
+            if ok:
+                logger.info('[S3 MASTER TEMPLATE] 🗑️ S3 eliminó el archivo "%s" template_id=%s key=%s', _name, template_id, _s3_key)
+                print(f'[S3 MASTER TEMPLATE] 🗑️ S3 eliminó el archivo "{_name}" template_id={template_id} key={_s3_key}', flush=True)
+            else:
+                logger.warning('[S3 MASTER TEMPLATE] ⚠️ S3 no pudo eliminar "%s" key=%s', _name, _s3_key)
+                print(f'[S3 MASTER TEMPLATE] ⚠️ S3 no pudo eliminar "{_name}" key={_s3_key}', flush=True)
+        except Exception as exc:
+            logger.warning('[S3 MASTER TEMPLATE] ⚠️ Error borrando S3 "%s" key=%s: %s', _name, _s3_key, exc)
+            print(f'[S3 MASTER TEMPLATE] ⚠️ Error borrando S3 "{_name}" key={_s3_key}: {exc}', flush=True)
+    else:
+        logger.info('[S3 MASTER TEMPLATE] 🗑️ Plantilla "%s" template_id=%s borrada (sin archivo S3 asociado)', _name, template_id)
+        print(f'[S3 MASTER TEMPLATE] 🗑️ Plantilla "{_name}" template_id={template_id} borrada (sin archivo S3 asociado)', flush=True)
+
     db.commit()
     return None
 
@@ -550,30 +624,25 @@ async def upload_and_extract_codes(
 
     db.commit()
 
-    service = get_onedrive_service()
-    if not OneDriveConfig().is_configured():
-        raise HTTPException(503, "OneDrive no configurado")
-
-    # 1. SUBIR A ONEDRIVE
+    # S3 is the canonical storage for new master templates.
     original_name = file.filename or f"plantilla_{template_id}.xlsx"
-    unique_onedrive_name = f"{template_id}-{original_name}"
-
-    try:
-        item = await service.upload_file(
-            content=content, filename=unique_onedrive_name, env=env, folder=folder
-        )
-    except Exception as e:
-        raise HTTPException(502, f"Error OneDrive: {e}")
-
-    obj.onedrive_env, obj.onedrive_folder, obj.onedrive_item_id = (
-        env,
-        folder,
-        item.get("id"),
-    )
-
-    obj.onedrive_filename = unique_onedrive_name
+    storage_name = f"{template_id}-{original_name}"
     obj.original_filename = original_name
-    obj.onedrive_path = service.build_path(env, folder, unique_onedrive_name)
+    try:
+        s3_result = await asyncio.to_thread(
+            s3_service.upload_bytes,
+            content,
+            storage_name,
+            f"{MASTER_TEMPLATE_S3_FOLDER}/{template_id}",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        obj.s3_object_key = s3_result["object_key"]
+        logger.info('[S3 MASTER TEMPLATE] ✅ S3 recibió el archivo "%s" template_id=%s key=%s bytes=%s', obj.nombre, template_id, obj.s3_object_key, len(content))
+        print(f'[S3 MASTER TEMPLATE] ✅ S3 recibió el archivo "{obj.nombre}" template_id={template_id} key={obj.s3_object_key} bytes={len(content)}', flush=True)
+    except Exception as exc:
+        logger.exception('[S3 MASTER TEMPLATE] ❌ Error S3 al recibir "%s" template_id=%s: %s', obj.nombre, template_id, exc)
+        print(f'[S3 MASTER TEMPLATE] ❌ Error S3 al recibir "{obj.nombre}" template_id={template_id}: {exc}', flush=True)
+        raise HTTPException(502, f"Error S3: {exc}") from exc
 
     db.commit()
     db.refresh(obj)
@@ -591,7 +660,7 @@ async def upload_and_extract_codes(
         extracted_chart_images,
         total_charts,
         chart_errors,
-    ) = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
+    ) = await _extract_and_save_charts_via_com(db, template_id, obj, content)
     new_images = {"valora": [], "kapital": []}
 
     for template_type, charts in extracted_chart_images.items():
@@ -729,43 +798,36 @@ async def re_upload_and_extract_codes(
     print(
         f"[TIMER] 2. Hard-Delete (BD + S3 asincrono): {time.perf_counter() - t0:.2f}s"
     )
-    # ====== 3. Reemplazar archivo en OneDrive ======
+    # ====== 3. Reemplazar archivo en S3 ======
     t0 = time.perf_counter()
-    service = get_onedrive_service()
-    if obj.onedrive_item_id:
-        try:
-            await service.delete_file(obj.onedrive_item_id)
-        except Exception:
-            pass
+    if obj.s3_object_key:
+        _old_key = obj.s3_object_key
+        logger.info('[S3 MASTER TEMPLATE] 🔄 Reemplazando archivo "%s" template_id=%s old_key=%s', obj.nombre, template_id, _old_key)
+        print(f'[S3 MASTER TEMPLATE] 🔄 Reemplazando archivo "{obj.nombre}" template_id={template_id} old_key={_old_key}', flush=True)
+        await asyncio.to_thread(s3_service.delete_file, _old_key)
 
     original_name = file.filename or f"plantilla_{template_id}.xlsx"
-    unique_onedrive_name = f"{template_id}-{original_name}"
-
-    env: Environment = settings.ENVIRONMENT
-    try:
-        item = await service.upload_file(
-            content=content,
-            filename=unique_onedrive_name,
-            env=env,
-            folder=obj.onedrive_folder or "plantillas_maestras",
-        )
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 423:
-            raise HTTPException(
-                status_code=400,
-                detail="La plantilla está actualmente en uso por un cálculo activo. Espere a que las sesiones expiren e intente de nuevo.",
-            )
-        raise HTTPException(status_code=e.response.status_code, detail=str(e))
-
-    obj.onedrive_item_id = item.get("id")
-    obj.onedrive_filename = unique_onedrive_name
+    storage_name = f"{template_id}-{original_name}"
     obj.original_filename = original_name
-    obj.onedrive_path = service.build_path(
-        env, obj.onedrive_folder or "plantillas_maestras", unique_onedrive_name
-    )
+
+    try:
+        s3_result = await asyncio.to_thread(
+            s3_service.upload_bytes,
+            content,
+            storage_name,
+            f"{MASTER_TEMPLATE_S3_FOLDER}/{template_id}",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        obj.s3_object_key = s3_result["object_key"]
+        logger.info('[S3 MASTER TEMPLATE] ✅ S3 recibió el archivo "%s" template_id=%s key=%s bytes=%s (re-upload)', obj.nombre, template_id, obj.s3_object_key, len(content))
+        print(f'[S3 MASTER TEMPLATE] ✅ S3 recibió el archivo "{obj.nombre}" template_id={template_id} key={obj.s3_object_key} bytes={len(content)} (re-upload)', flush=True)
+    except Exception as exc:
+        logger.exception('[S3 MASTER TEMPLATE] ❌ Error S3 al recibir "%s" template_id=%s (re-upload): %s', obj.nombre, template_id, exc)
+        print(f'[S3 MASTER TEMPLATE] ❌ Error S3 al recibir "{obj.nombre}" template_id={template_id} (re-upload): {exc}', flush=True)
+        raise HTTPException(502, f"Error S3: {exc}") from exc
 
     db.commit()
-    print(f"[TIMER] 3. Upload a OneDrive: {time.perf_counter() - t0:.2f}s")
+    print(f"[TIMER] 3. Upload a S3: {time.perf_counter() - t0:.2f}s")
 
     # ====== 4. Extraer e insertar NUEVOS códigos de celdas ======
     t0 = time.perf_counter()
@@ -779,10 +841,10 @@ async def re_upload_and_extract_codes(
         f"[TIMER] 4. Extracción Celdas (Openpyxl + BD): {time.perf_counter() - t0:.2f}s"
     )
 
-    # ====== 5. Extraer e insertar gráficos (Motor Graph API) ======
+    # ====== 5. Extraer e insertar gráficos (Excel COM + S3) ======
     t0 = time.perf_counter()
-    extracted_charts, _, chart_errors = await _extract_and_save_charts_via_graph(
-        db, template_id, obj, service
+    extracted_charts, _, chart_errors = await _extract_and_save_charts_via_com(
+        db, template_id, obj, content
     )
     new_images = {"valora": [], "kapital": []}
 
@@ -792,7 +854,7 @@ async def re_upload_and_extract_codes(
                 new_images[template_type].append(chart["filename"])
 
     print(
-        f"[TIMER] 5. Extracción Gráficos (Graph API + S3): {time.perf_counter() - t0:.2f}s"
+        f"[TIMER] 5. Extracción Gráficos (Excel COM + S3): {time.perf_counter() - t0:.2f}s"
     )
     print(f"[TIMER] TOTAL RE-UPLOAD: {time.perf_counter() - start_total:.2f}s")
     return {
@@ -816,26 +878,20 @@ async def extract_template_codes(template_id: int, db: Session = Depends(get_db)
             status_code=status.HTTP_404_NOT_FOUND, detail="Master template not found"
         )
 
-    if not obj.onedrive_item_id:
+    if not obj.s3_object_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Esta plantilla no tiene archivo subido a OneDrive. Use POST /upload primero.",
-        )
-
-    service = get_onedrive_service()
-    config = OneDriveConfig()
-    if not config.is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OneDrive no está configurado.",
+            detail="Esta plantilla no tiene archivo subido a S3. Use POST /upload primero.",
         )
 
     try:
-        content = await service.download_file(obj.onedrive_item_id)
+        content = await asyncio.to_thread(
+            s3_service.download_file_bytes, obj.s3_object_key
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Error al descargar de OneDrive: {e}",
+            detail=f"Error al descargar de S3: {e}",
         )
 
     extractor = get_template_code_extractor()
@@ -843,22 +899,16 @@ async def extract_template_codes(template_id: int, db: Session = Depends(get_db)
 
     created_codes, _ = _process_and_save_cell_codes(db, obj, extraction_result)
 
-    (
-        extracted_charts,
-        total_charts,
-        chart_errors,
-    ) = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
-
     return {
         "template_id": template_id,
         "template_name": obj.nombre,
-        "template_version": obj.onedrive_filename,
+        "template_version": obj.original_filename,
         "codes": created_codes,
         "chart_stats": {
-            "total": total_charts,
-            "valora": len(extracted_charts.get("valora", [])),
-            "kapital": len(extracted_charts.get("kapital", [])),
-            "errors": chart_errors,
+            "total": 0,
+            "valora": 0,
+            "kapital": 0,
+            "errors": ["La extracción de gráficos requiere migración a S3/COM."],
         },
         "statistics": extractor.get_statistics(extraction_result),
         "success": True,
@@ -872,25 +922,14 @@ async def extract_template_charts(template_id: int, db: Session = Depends(get_db
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Master template not found"
         )
-    if not obj.onedrive_item_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Esta plantilla no tiene archivo subido a OneDrive. Use POST /upload primero.",
-        )
-
-    service = get_onedrive_service()
-    config = OneDriveConfig()
-    if not config.is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OneDrive no está configurado.",
-        )
-
+    if not obj.s3_object_key:
+        raise HTTPException(400, "Esta plantilla no tiene archivo disponible en S3.")
+    content = await asyncio.to_thread(s3_service.download_file_bytes, obj.s3_object_key)
     (
         extracted_charts,
         total_charts,
         chart_errors,
-    ) = await _extract_and_save_charts_via_graph(db, template_id, obj, service)
+    ) = await _extract_and_save_charts_via_com(db, template_id, obj, content)
 
     return {
         "template_id": template_id,
@@ -937,24 +976,23 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
                 allowed_codes.add(f"$${raw_code.replace('$$', '').upper()}$$")
 
         try:
-            if obj.onedrive_item_id:
-                service = get_onedrive_service()
-                config = OneDriveConfig()
-                if config.is_configured():
-                    content = await service.download_file(obj.onedrive_item_id)
-                    extractor = get_template_code_extractor()
-                    extraction_result = extractor.extract_from_bytes(content)
+            if obj.s3_object_key:
+                content = await asyncio.to_thread(
+                    s3_service.download_file_bytes, obj.s3_object_key
+                )
+                extractor = get_template_code_extractor()
+                extraction_result = extractor.extract_from_bytes(content)
 
-                    for t in ["valora", "kapital"]:
-                        for item in extraction_result.get(t, []):
-                            raw_code = item.get("code", "")
-                            if raw_code:
-                                allowed_codes.add(
-                                    f"$${raw_code.replace('$$', '').upper()}$$"
-                                )
+                for t in ["valora", "kapital"]:
+                    for item in extraction_result.get(t, []):
+                        raw_code = item.get("code", "")
+                        if raw_code:
+                            allowed_codes.add(
+                                f"$${raw_code.replace('$$', '').upper()}$$"
+                            )
         except Exception as exc:
             logger.warning(
-                "[Codes] Could not extract fallback codes from OneDrive file for template %s: %s",
+                "[Codes] Could not extract fallback codes from S3 file for template %s: %s",
                 template_id,
                 exc,
             )
@@ -986,7 +1024,9 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
         normalized_code = f"$${str(code.code).replace('$$', '').upper()}$$"
         image_url = None
         if code.template_code_image:
-            image_url = code.template_code_image.url
+            image_url = (
+                f"/api/v1/main/master-templates/media/{code.template_code_image.id}"
+            )
             if not image_url and code.template_code_image.filename:
                 image_stem = code.template_code_image.filename.replace(
                     ".jpg", ""
@@ -1003,6 +1043,8 @@ async def get_template_codes(template_id: int, db: Session = Depends(get_db)):
             "code": normalized_code,
             "value": code.value,
             "coordinate": code.coordinate,
+            "source_path": code.source_path,
+            "source_format": code.source_format,
             "template_ids": [t.id for t in code.master_templates]
             if hasattr(code, "master_templates")
             else [],
@@ -1072,7 +1114,7 @@ def get_template_chart_images(template_id: int, db: Session = Depends(get_db)):
             "code": chart_code,
             "filename": media.filename,
             "original_name": media.original_name,
-            "url": media.url,
+            "url": f"/api/v1/main/master-templates/media/{media.id}",
             "size": media.size or 0,
             "created_at": media.created_at.isoformat() if media.created_at else None,
             "meta": meta,
@@ -1106,35 +1148,22 @@ def get_template_chart_images(template_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{template_id}/download")
-async def download_from_onedrive(template_id: int, db: Session = Depends(get_db)):
+async def download_master_template(template_id: int, db: Session = Depends(get_db)):
     obj = db.get(MasterTemplate, template_id)
     if not obj or obj.deleted_at:
         raise HTTPException(404, "Master template not found")
-    if not obj.onedrive_item_id:
-        raise HTTPException(404, "Esta plantilla no tiene archivo subido a OneDrive.")
+    if obj.s3_object_key:
+        try:
+            content = await asyncio.to_thread(
+                s3_service.download_file_bytes, obj.s3_object_key
+            )
+            filename = obj.original_filename or f"plantilla_{obj.id}.xlsx"
+            return StreamingResponse(
+                io.BytesIO(content),
+                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+        except Exception as exc:
+            logger.warning("S3 no disponible para plantilla %s: %s", template_id, exc)
 
-    service = get_onedrive_service()
-    config = OneDriveConfig()
-    if not config.is_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="OneDrive no está configurado.",
-        )
-
-    try:
-        content = await service.download_file(obj.onedrive_item_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Error al descargar de OneDrive: {e}",
-        )
-
-    filename = (
-        obj.original_filename or obj.onedrive_filename or f"plantilla_{obj.id}.xlsx"
-    )
-
-    return StreamingResponse(
-        io.BytesIO(content),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    raise HTTPException(404, "Esta plantilla no tiene archivo disponible en S3.")

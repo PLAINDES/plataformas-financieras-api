@@ -1,7 +1,9 @@
 # app/api/main/calculations_router.py
 import logging
+import re
 import time
 import traceback
+from uuid import uuid4
 from typing import Optional
 
 import httpx
@@ -27,30 +29,111 @@ from app.schemas.main import (
     CalculationUpdate,
     PaginatedCalculationResponse,
 )
-from app.services.onedrive.service import get_onedrive_service
-
-from .excel_engine import (
-    _enrich_payload_with_excel_outputs,
-    _enrich_payload_with_valora_excel,
-    _extract_input_payload,
-)
 from .graphs import _generate_calculation_images
 from .macros_service import (
-    _clone_default_template_for_calculation,
-    _enrich_input_with_macros,
-    _inject_macro_data_into_payload,
     get_default_or_latest_master_template,
 )
 from .payload_manager import (
-    _extract_latest_input_from_history,
     _normalize_calculation_data,
-    _sanitize_input_for_history,
     _to_calc_type,
 )
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/main", tags=["Calculations"])
+
+
+def _normalize_native_template_values(data):
+    """Keep explicit report values under canonical $$CODE$$ keys."""
+    if not isinstance(data, dict):
+        return data
+    values = data.get("template_values")
+    if not isinstance(values, dict):
+        return data
+    normalized = {}
+    for raw_code, value in values.items():
+        code = f"$${str(raw_code or '').replace('$$', '').replace(' ', '').upper()}$$"
+        if code != "$$$$":
+            normalized[code] = value
+    data["template_values"] = normalized
+    return data
+
+
+def _native_data_values(data):
+    """Flatten native JSON into comparable field names without code maps."""
+    values = {}
+
+    def visit(node):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if isinstance(value, (str, int, float, bool)) or value is None:
+                    normalized = re.sub(r"[^a-z0-9]", "", str(key).lower())
+                    if normalized:
+                        values.setdefault(normalized, value)
+                else:
+                    visit(value)
+        elif isinstance(node, list):
+            for item in node:
+                visit(item)
+
+    visit(data)
+    return values
+
+
+def _template_value_candidates(label):
+    """Generate generic candidates from a template label, not business codes."""
+    words = re.findall(r"[a-z0-9]+", str(label or "").lower())
+    compact = "".join(words)
+    suffixes = ("".join(words[i:]) for i in range(1, len(words)))
+    return tuple(dict.fromkeys((compact, *words, *suffixes)))
+
+
+def _populate_native_template_values(data, calculation_type, db):
+    """Attach only exact semantic matches from active template metadata."""
+    if not isinstance(data, dict):
+        return data
+    data = _normalize_native_template_values(data)
+    existing = data.get("template_values") or {}
+    if not isinstance(existing, dict):
+        existing = {}
+    source = _native_data_values(data)
+    template = get_default_or_latest_master_template(db)
+    if not template:
+        return data
+    for code in template.template_codes:
+        if not code or code.deleted_at is not None or code.type != calculation_type:
+            continue
+        normalized_code = f"$${str(code.code).replace('$$', '').replace(' ', '').upper()}$$"
+        if normalized_code in existing or code.template_code_image_id:
+            continue
+        matched = False
+        for candidate in _template_value_candidates(code.nombre):
+            if candidate in source:
+                existing[normalized_code] = source[candidate]
+                matched = True
+                logger.info(
+                    "[NATIVE TEMPLATE MAP] code=%s label=%s source_key=%s value=%r",
+                    normalized_code,
+                    code.nombre,
+                    candidate,
+                    source[candidate],
+                )
+                break
+        if code.source_path and not matched:
+            logger.warning(
+                "Native template source_path has no matching value: code=%s path=%s",
+                normalized_code,
+                code.source_path,
+            )
+        elif not matched:
+            logger.info(
+                "[NATIVE TEMPLATE UNMAPPED] code=%s label=%s candidates=%s",
+                normalized_code,
+                code.nombre,
+                _template_value_candidates(code.nombre),
+            )
+    data["template_values"] = existing
+    return data
 
 # ==================== ENDPOINTS ====================
 
@@ -195,106 +278,67 @@ async def create_calculation(payload: CalculationCreate, db: Session = Depends(g
     payload_data = dict(payload.data) if isinstance(payload.data, dict) else {}
     prewarmed_session_id = payload_data.pop("prewarmed_session_id", None)
 
-    t_macro = time.perf_counter()
-    _inject_macro_data_into_payload(db, payload_data)
-    print(f"[TIMER] POST macro injection: {time.perf_counter() - t_macro:.3f} seg", flush=True)
-
-    # 1. OBTENER LA PLANTILLA MAESTRA DIRECTAMENTE
-    t_template = time.perf_counter()
-    source_template = get_default_or_latest_master_template(db)
-    print(f"[TIMER] POST get template: {time.perf_counter() - t_template:.3f} seg", flush=True)
-    if not source_template or not source_template.onedrive_item_id:
-        raise HTTPException(status_code=400, detail="Master template no configurada.")
-
-    master_item_id = source_template.onedrive_item_id
-    calculation_file_meta = None
+    # Frontends migrated to financiera-web-service already send calculated
+    # results. Persist them directly and avoid creating an Excel Online file.
+    has_native_results = bool(
+        payload_data.get("resultados")
+        or payload_data.get("resultados_base")
+        or payload_data.get("results")
+    )
+    if has_native_results and calc_type in (CalculationType.VALORA, CalculationType.KAPITAL):
+        calculation = Calculation(
+            user_id=payload.user_id,
+            code=payload.code,
+            type=calc_type,
+            calculation_file_id=None,
+            data=_normalize_calculation_data(payload_data=payload_data, file_meta=None),
+        )
+        db.add(calculation)
+        db.commit()
+        db.refresh(calculation)
+        return CalculationResponse.model_validate(calculation)
 
     if calc_type in (CalculationType.VALORA, CalculationType.KAPITAL):
-        try:
-            calculation_file_meta = await _clone_default_template_for_calculation(
-                db, calc_type
-            )
-            master_item_id = calculation_file_meta["onedrive_item_id"]
-        except HTTPException:
-            raise
-        except Exception as exc:
-            logger.exception(f"No se pudo crear la copia de trabajo de {calc_type.value}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"No se pudo crear la copia de trabajo de {calc_type.value}",
-            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Este endpoint legacy fue migrado. Calcula usando financiera-web-service y persiste mediante la ruta nativa.",
+        )
 
-    # 2. CALCULAR EN RAM
-    if calc_type == CalculationType.KAPITAL:
-        latest_input = _extract_input_payload(payload_data)
-        
-        # Preparar input de sensibilización
-        sensitivity_input = None
-        has_beta = latest_input.get("beta_desapalancado") is not None
-        has_sens_subsector = bool(latest_input.get("subsector_sensibilizacion"))
-        has_sens_industry = bool(latest_input.get("industria_sensibilizacion"))
 
-        if has_beta or has_sens_subsector or has_sens_industry:
-            sensitivity_input = dict(latest_input)
-            if has_sens_industry:
-                sensitivity_input["industria"] = latest_input.get("industria_sensibilizacion")
-            if has_sens_subsector:
-                sensitivity_input["subsector"] = latest_input.get("subsector_sensibilizacion")
-            
-            t_sens_macro = time.perf_counter()
-            _enrich_input_with_macros(db, sensitivity_input)
-            print(f"[TIMER] POST sensitivity macro enrichment: {time.perf_counter() - t_sens_macro:.3f} seg", flush=True)
-
-        include_sensibilizacion = sensitivity_input is not None
-        t_excel = time.perf_counter()
-        try:
-            payload_data = await _enrich_payload_with_excel_outputs(
-                payload_data,
-                master_item_id,
-                include_resultados=True,
-                include_sensibilizacion=include_sensibilizacion,
-                existing_session_id=None,
-                sensitivity_input=sensitivity_input
-            )
-        except Exception as exc:
-            logger.warning(f"Error procesando en RAM: {exc}")
-        print(f"[TIMER] POST Excel enrichment total: {time.perf_counter() - t_excel:.3f} seg", flush=True)
-
-    elif calc_type == CalculationType.VALORA:
-        t_excel = time.perf_counter()
-        try:
-            payload_data = await _enrich_payload_with_valora_excel(
-                payload_data,
-                master_item_id,
-                existing_session_id=None,
-            )
-        except Exception as exc:
-            logger.exception(f"Error procesando Valora en RAM: {exc}")
-        print(f"[TIMER] POST Excel Valora enrichment total: {time.perf_counter() - t_excel:.3f} seg", flush=True)
-
-    # GUARDAR EN BD
-    t_db = time.perf_counter()
+@router.post("/calculations/native", response_model=CalculationResponse, status_code=status.HTTP_201_CREATED)
+async def create_native_calculation(payload: CalculationCreate, db: Session = Depends(get_db)):
+    """Persiste resultados producidos por financiera-web-service en el flujo nativo."""
     calculation = Calculation(
-        user_id=payload.user_id,
-        code=payload.code,
-        type=calc_type,
+        user_id=payload.user_id, code=payload.code, type=_to_calc_type(payload.type),
         calculation_file_id=None,
-        data=_normalize_calculation_data(
-            payload_data=payload_data,
-            file_meta=calculation_file_meta,
+        data=_populate_native_template_values(
+            dict(payload.data) if isinstance(payload.data, dict) else {},
+            _to_calc_type(payload.type),
+            db,
         ),
     )
-
     db.add(calculation)
     db.commit()
     db.refresh(calculation)
-    print(f"[TIMER] POST DB save: {time.perf_counter() - t_db:.3f} seg", flush=True)
+    return CalculationResponse.model_validate(calculation)
 
-    print(
-        f"[TIMER] TIEMPO TOTAL DEL ENDPOINT POST: {time.perf_counter() - t_post:.2f} seg",
-        flush=True,
-    )
 
+@router.put("/calculations/{calculation_id}/native", response_model=CalculationResponse)
+async def update_native_calculation(calculation_id: int, payload: CalculationUpdate, db: Session = Depends(get_db)):
+    """Actualiza resultados nativos sin recalcular en Excel Online."""
+    calculation = db.get(Calculation, calculation_id)
+    if not calculation:
+        raise HTTPException(status_code=404, detail="Calculation not found")
+    update_data = payload.model_dump(exclude_unset=True)
+    for field in ("calculation_file_id", "user_id", "type"):
+        if field in update_data:
+            setattr(calculation, field, update_data[field])
+    if "data" in update_data:
+        calculation.data = _populate_native_template_values(
+            update_data["data"], calculation.type, db
+        )
+    db.commit()
+    db.refresh(calculation)
     return CalculationResponse.model_validate(calculation)
 
 
@@ -308,258 +352,27 @@ async def update_calculation(
     update_data = payload.model_dump(exclude_unset=True)
 
     if "data" in update_data:
-        include_input_history = True
-        include_resultados_history = True
-        include_sensibilizacion_history = True
-        base_changed = True
-        enriched_sensibilizacion = None
-        has_beta_for_sensitivity = False
-        has_valora_sensitivity = False
-        calculation_file_meta = None
-        existing_session = None
-
-        t_macro = time.perf_counter()
-        _inject_macro_data_into_payload(db, update_data["data"])
-        print(f"[TIMER] PUT macro injection: {time.perf_counter() - t_macro:.3f} seg", flush=True)
-
-        if calculation.type == CalculationType.KAPITAL:
-            # 1. Obtenemos el ID de la plantilla maestra
-            t_template = time.perf_counter()
-            source_template = get_default_or_latest_master_template(db)
-            print(f"[TIMER] PUT get template: {time.perf_counter() - t_template:.3f} seg", flush=True)
-            if not source_template or not source_template.onedrive_item_id:
-                raise HTTPException(
-                    status_code=400, detail="Master template no configurada."
-                )
-
-            master_item_id = source_template.onedrive_item_id
-
-            incoming_input_raw = _extract_input_payload(update_data["data"])
-            current_input_raw = _extract_latest_input_from_history(calculation.data)
-            
-            incoming_input_base = _sanitize_input_for_history(incoming_input_raw)
-            current_input_base = _sanitize_input_for_history(current_input_raw)
-
-            # Detectar si cambió el sector/subsector principal
-            main_sector_changed = (
-                incoming_input_raw.get("industria") != current_input_raw.get("industria") or
-                incoming_input_raw.get("subsector") != current_input_raw.get("subsector")
-            )
-
-            # Preparar input de sensibilidad si existen los campos o si el sector principal cambió
-            sensitivity_input = None
-            has_beta = incoming_input_raw.get("beta_desapalancado") is not None
-            has_sens_subsector = bool(incoming_input_raw.get("subsector_sensibilizacion"))
-            has_sens_industry = bool(incoming_input_raw.get("industria_sensibilizacion"))
-
-            if has_beta or has_sens_subsector or has_sens_industry or main_sector_changed:
-                sensitivity_input = dict(incoming_input_raw)
-                
-                # Si el cambio viene por industria/subsector principal, lo usamos para la sensibilidad
-                if main_sector_changed and not has_sens_industry:
-                    sensitivity_input["industria"] = incoming_input_raw.get("industria")
-                elif has_sens_industry:
-                    sensitivity_input["industria"] = incoming_input_raw.get("industria_sensibilizacion")
-
-                if main_sector_changed and not has_sens_subsector:
-                    sensitivity_input["subsector"] = incoming_input_raw.get("subsector")
-                elif has_sens_subsector:
-                    sensitivity_input["subsector"] = incoming_input_raw.get("subsector_sensibilizacion")
-                
-                # Enriquecer con macros
-                t_sens_macro = time.perf_counter()
-                _enrich_input_with_macros(db, sensitivity_input)
-                print(f"[TIMER] PUT sensitivity macro enrichment: {time.perf_counter() - t_sens_macro:.3f} seg", flush=True)
-
-            has_beta_for_sensitivity = sensitivity_input is not None
-
-            # Un cambio base solo ocurre si los parámetros financieros cambian Y el sector sigue siendo el mismo.
-            # Si el sector cambió, forzamos que se trate como una sensibilización y no como un cambio en el cálculo principal.
-            base_changed = (
-                bool(incoming_input_base) and 
-                incoming_input_base != current_input_base and 
-                not main_sector_changed
-            )
-            
-            include_input_history = base_changed
-            include_resultados_history = base_changed
-            include_sensibilizacion_history = has_beta_for_sensitivity
-
-            existing_session = None
-
-            #  Prioridad: La sesión que acaba de mandar el frontend
-            if isinstance(update_data["data"], dict) and update_data["data"].get(
-                "active_session_id"
-            ):
-                existing_session = update_data["data"].get("active_session_id")
-
-            # Si el frontend no mandó nada, intentamos usar la de la BD
-            elif isinstance(calculation.data, dict) and calculation.data.get(
-                "active_session_id"
-            ):
-                existing_session = calculation.data.get("active_session_id")
-            try:
-                t_put = time.perf_counter()
-                t_excel = time.perf_counter()
-                update_data["data"] = await _enrich_payload_with_excel_outputs(
-                    update_data["data"],
-                    master_item_id,
-                    include_resultados=base_changed,
-                    include_sensibilizacion=has_beta_for_sensitivity,
-                    existing_session_id=existing_session,
-                    sensitivity_input=sensitivity_input
-                )
-                print(f"[TIMER] PUT Excel enrichment total: {time.perf_counter() - t_excel:.3f} seg", flush=True)
-                if isinstance(update_data["data"], dict):
-                    enriched_sensibilizacion = update_data["data"].get(
-                        "sensibilizacion"
-                    )
-                print(
-                    f"[TIMER] TIEMPO TOTAL DEL ENDPOINT PUT: {time.perf_counter() - t_put:.2f} seg",
-                    flush=True,
-                )
-            except (
-                HTTPException,
-                ValueError,
-                TypeError,
-                RuntimeError,
-                httpx.TimeoutException,
-                httpx.HTTPError,
-            ) as exc:
-                logger.warning(
-                    "Could not enrich kapital update payload from Excel: %s", exc
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="No se pudo recalcular el cálculo Kapital en Excel",
-                ) from exc
-
-        elif calculation.type == CalculationType.VALORA:
-            source_template = get_default_or_latest_master_template(db)
-            if source_template and source_template.onedrive_item_id:
-                current_file = (
-                    calculation.data.get("file")
-                    if isinstance(calculation.data, dict)
-                    and isinstance(calculation.data.get("file"), dict)
-                    else None
-                )
-                workbook_item_id = (
-                    current_file.get("onedrive_item_id") if current_file else None
-                )
-
-                if not workbook_item_id:
-                    calculation_file_meta = (
-                        await _clone_default_template_for_calculation(
-                            db, CalculationType.VALORA
-                        )
-                    )
-                    workbook_item_id = calculation_file_meta["onedrive_item_id"]
-                elif isinstance(update_data["data"], dict) and update_data["data"].get(
-                    "active_session_id"
-                ):
-                    existing_session = update_data["data"].get("active_session_id")
-                elif isinstance(calculation.data, dict) and calculation.data.get(
-                    "active_session_id"
-                ):
-                    existing_session = calculation.data.get("active_session_id")
-
-                # Detectar inputs de sensibilidad de Valora (3 tasas + beta desapalancado)
-                incoming_input_raw = _extract_input_payload(update_data["data"])
-                valora_sens_fields = {
-                    "revenue_forecast_rate": "forecast_ingresos",
-                    "fdc_forecast_rate": "forecast_fde",
-                    "perpetual_growth_rate": "crecimiento_perpetuo",
-                    "forecast_ingresos": "forecast_ingresos",
-                    "forecast_fde": "forecast_fde",
-                    "crecimiento_perpetuo": "crecimiento_perpetuo",
-                    # Beta desapalancado: cualquier variante dispara sensibilidad y debe llegar a WACC!F24
-                    "beta_desapalancado": "beta_desapalancado",
-                    "beta_desapalancado_custom": "beta_desapalancado",
-                    "beta_unlevered_industry": "beta_unlevered_industry",
-                    "beta_subsector": "beta_subsector",
-                    "beta_subsector_custom": "beta_subsector",
-                    "beta_unlevered": "beta_unlevered",
-                    "beta": "beta",
-                    "subsector_sensibilizacion": "subsector_sensibilizacion",
-                    "subsector": "subsector",
-                    "tickers_subsector_sensibilizacion": "tickers_subsector_sensibilizacion",
-                    "tickers_subsector": "tickers_subsector",
-                }
-                sensitivity_input = {
-                    target: incoming_input_raw[source]
-                    for source, target in valora_sens_fields.items()
-                    if incoming_input_raw.get(source) not in (None, "")
-                }
-                # Si beta cambió vs histórico, forzar sensibilidad aunque otras tasas no estén
-                if not sensitivity_input:
-                    # Detectar cambio de beta vs current_input_raw aunque no esté en valora_sens_fields por nombre exacto
-                    beta_keys = ["beta_desapalancado","beta_unlevered_industry","beta_subsector","beta_subsector_custom","beta_unlevered","beta"]
-                    current_input_raw = _extract_latest_input_from_history(calculation.data)
-                    for k in beta_keys:
-                        if incoming_input_raw.get(k) not in (None, "") and incoming_input_raw.get(k) != current_input_raw.get(k):
-                            sensitivity_input[k] = incoming_input_raw.get(k)
-                if sensitivity_input:
-                    has_valora_sensitivity = True
-                    logger.info(
-                        f"[VALORA PUT] Sensibilidad detectada: {sensitivity_input}"
-                    )
-                else:
-                    sensitivity_input = None
-                    logger.info("[VALORA PUT] No se detectaron campos de sensibilidad.")
-
-                # El recálculo se guarda en sensibilizacion; resultados conserva el cálculo base.
-                include_resultados_history = not has_valora_sensitivity
-                include_sensibilizacion_history = has_valora_sensitivity
-
-                try:
-                    update_data["data"] = await _enrich_payload_with_valora_excel(
-                        update_data["data"],
-                        workbook_item_id,
-                        existing_session_id=existing_session,
-                        sensitivity_input=sensitivity_input,
-                    )
-                    if isinstance(update_data["data"], dict):
-                        enriched_sensibilizacion = update_data["data"].get(
-                            "sensibilizacion"
-                        )
-                        logger.info(
-                            f"[VALORA PUT] enriched_sensibilizacion presente={enriched_sensibilizacion is not None}"
-                        )
-                except Exception as exc:
-                    logger.exception(
-                        "Could not enrich valora update payload from Excel"
-                    )
-                    raise HTTPException(
-                        status_code=status.HTTP_502_BAD_GATEWAY,
-                        detail="No se pudo recalcular Valora en su copia de trabajo",
-                    ) from exc
-
-        update_data["data"] = _normalize_calculation_data(
-            payload_data=update_data["data"],
-            existing_data=calculation.data,
-            file_meta=calculation_file_meta,
-            include_input_history=include_input_history,
-            include_resultados_history=include_resultados_history,
-            include_sensibilizacion_history=include_sensibilizacion_history,
+        native_data = update_data["data"]
+        has_native_results = isinstance(native_data, dict) and bool(
+            native_data.get("resultados")
+            or native_data.get("resultados_base")
+            or native_data.get("results")
         )
-
-        if (has_beta_for_sensitivity or has_valora_sensitivity) and isinstance(
-            update_data["data"], dict
+        if has_native_results and calculation.type in (
+            CalculationType.VALORA,
+            CalculationType.KAPITAL,
         ):
-            if not update_data["data"].get("sensibilizacion") and isinstance(
-                enriched_sensibilizacion, list
-            ):
-                update_data["data"]["sensibilizacion"] = enriched_sensibilizacion
-                logger.info(
-                    f"[PUT] Inyectando enriched_sensibilizacion fallback. "
-                    f"has_beta={has_beta_for_sensitivity}, has_valora={has_valora_sensitivity}"
-                )
+            calculation.data = _populate_native_template_values(
+                native_data, calculation.type, db
+            )
+            db.commit()
+            db.refresh(calculation)
+            return CalculationResponse.model_validate(calculation)
 
-        if (
-            isinstance(update_data["data"], dict)
-            and "active_session_id" not in update_data["data"]
-        ):
-            update_data["data"]["active_session_id"] = existing_session
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Este endpoint legacy fue migrado. Usa /calculations/{id}/native para cálculos nativos.",
+        )
 
     for key, value in update_data.items():
         setattr(calculation, key, value)
@@ -574,10 +387,7 @@ async def update_calculation(
 async def refresh_calculation(
     calculation_id: int, payload: dict = Body({}), db: Session = Depends(get_db)
 ):
-    """
-    Sincroniza y recalcula el estado de la hoja de cálculo en OneDrive.
-    Acepta un prewarmed_session_id para optimizar recursos de Microsoft Graph.
-    """
+    """Refresh a calculation while preserving native calculations without Graph."""
     calculation = db.get(Calculation, calculation_id)
     if not calculation:
         raise HTTPException(status_code=404, detail="Calculation not found")
@@ -585,92 +395,41 @@ async def refresh_calculation(
     if calculation.type != CalculationType.KAPITAL:
         return CalculationResponse.model_validate(calculation)
 
-    latest_input = _extract_latest_input_from_history(calculation.data)
-    if not latest_input:
+    native_data = calculation.data if isinstance(calculation.data, dict) else {}
+    if not native_data.get("resultados"):
         raise HTTPException(
-            status_code=400, detail="No se encontraron inputs históricos"
+            status_code=status.HTTP_410_GONE,
+            detail="El refresh legacy fue eliminado. Este cálculo debe recrearse mediante el flujo nativo.",
         )
 
-    # Recuperar el ID precalentado enviado por el cliente frontend
-    prewarmed_session_id = payload.get("prewarmed_session_id")
-
-    refresh_payload = {"inputs": [latest_input]}
-    _inject_macro_data_into_payload(db, refresh_payload)
-
-    source_template = get_default_or_latest_master_template(db)
-    if not source_template or not source_template.onedrive_item_id:
-        raise HTTPException(status_code=400, detail="Plantilla maestra no configurada")
-
-    current_file = (
-        calculation.data.get("file")
-        if isinstance(calculation.data, dict)
-        and isinstance(calculation.data.get("file"), dict)
-        else None
-    )
-    workbook_item_id = (
-        current_file.get("onedrive_item_id") if current_file else None
-    )
-
-    calculation_file_meta = current_file
-
-    if not workbook_item_id:
-        calculation_file_meta = await _clone_default_template_for_calculation(
-            db, CalculationType.KAPITAL
-        )
-        workbook_item_id = calculation_file_meta["onedrive_item_id"]
-
-    # Preparar input de sensibilidad si existen los campos
-    sensitivity_input = None
-    has_beta = latest_input.get("beta_desapalancado") is not None
-    has_sens_subsector = bool(latest_input.get("subsector_sensibilizacion"))
-    has_sens_industry = bool(latest_input.get("industria_sensibilizacion"))
-
-    if has_beta or has_sens_subsector or has_sens_industry:
-        sensitivity_input = dict(latest_input)
-        if has_sens_industry:
-            sensitivity_input["industria"] = latest_input.get("industria_sensibilizacion")
-        if has_sens_subsector:
-            sensitivity_input["subsector"] = latest_input.get("subsector_sensibilizacion")
-        
-        # Enriquecer con macros
-        _enrich_input_with_macros(db, sensitivity_input)
-
+    latest_input = (native_data.get("inputs") or [{}])[-1]
+    headers = {"X-API-Key": settings.WEB_SERVICE_API_KEY} if settings.WEB_SERVICE_API_KEY else {}
     try:
-        # Enriquecer y forzar recálculo usando la sesión existente o creando una nueva
-        enriched_data = await _enrich_payload_with_excel_outputs(
-            payload_data=refresh_payload,
-            item_id=workbook_item_id,
-            include_resultados=True,
-            include_sensibilizacion=sensitivity_input is not None,
-            existing_session_id=prewarmed_session_id,
-            sensitivity_input=sensitivity_input
-        )
-    except Exception as exc:
-        logger.error(f"Fallo durante la ejecución de actualización del Excel: {exc}")
-        raise HTTPException(
-            status_code=500, detail="Error de sincronización con el motor de cálculo"
-        )
-
-    # Mantener e inyectar el session id activo resultante para que lo herede el PDF posterior
-    session_id_to_persist = (
-        enriched_data.get("active_session_id") or prewarmed_session_id
-    )
-
-    calculation.data = _normalize_calculation_data(
-        payload_data=enriched_data,
-        existing_data=calculation.data,
-        file_meta=calculation_file_meta,
-        include_resultados_history=True,
-        include_sensibilizacion_history=False,
-    )
-
-    if isinstance(calculation.data, dict):
-        calculation.data["active_session_id"] = session_id_to_persist
-
-    db.commit()
-    db.refresh(calculation)
-
-    return CalculationResponse.model_validate(calculation)
+        async with httpx.AsyncClient(timeout=300) as client:
+            response = await client.post(
+                f"{settings.WEB_SERVICE_URL.rstrip('/')}/api/v1/kapital/calculate",
+                json={"input": latest_input},
+                headers=headers,
+            )
+            response.raise_for_status()
+            native_result = response.json()
+        base = native_result.get("base_results") or {}
+        sensitivity = native_result.get("sensitivity_results") or []
+        calculation.data = {
+            **native_data,
+            "inputs": [latest_input],
+            "resultados": [{**(base.get("resultados") or {}), "inputs": latest_input}],
+            "sensibilizacion": [
+                {**(item.get("resultados") or {}), "inputs": item.get("inputs")}
+                for item in sensitivity
+            ],
+        }
+        db.commit()
+        db.refresh(calculation)
+        return CalculationResponse.model_validate(calculation)
+    except httpx.HTTPError as exc:
+        logger.exception("Native Kapital refresh failed: %s", exc)
+        raise HTTPException(status_code=502, detail="Error recalculando Kapital en el servicio nativo") from exc
 
 
 @router.delete("/calculations/{calculation_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -681,42 +440,3 @@ def delete_calculation(calculation_id: int, db: Session = Depends(get_db)):
     db.delete(calculation)
     db.commit()
     return None
-
-
-@router.post("/calculations/prewarm", status_code=status.HTTP_200_OK)
-async def prewarm_excel_session(db: Session = Depends(get_db)):
-    """
-    Abre una sesión volátil en RAM con la plantilla maestra de Excel.
-    Devuelve el session_id para que el frontend lo use al hacer el cálculo real.
-    """
-    source_template = get_default_or_latest_master_template(db)
-    if not source_template or not source_template.onedrive_item_id:
-        raise HTTPException(status_code=400, detail="Master template no configurada.")
-
-    service = get_onedrive_service()
-    try:
-        session_id = await service._create_workbook_session(
-            source_template.onedrive_item_id, persist_changes=True
-        )
-        return {"session_id": session_id}
-    except Exception as e:
-        logger.error(f"Error en pre-warm: {e}")
-        raise HTTPException(
-            status_code=500, detail="No se pudo pre-calentar la sesión de Excel"
-        )
-
-
-@router.post("/calculations/prewarm/keep-alive", status_code=status.HTTP_200_OK)
-async def keep_alive_excel_session(
-    session_id: str = Body(..., embed=True), db: Session = Depends(get_db)
-):
-    """Mantiene viva una sesión de Excel previamente pre-calentada."""
-    source_template = get_default_or_latest_master_template(db)
-    if not source_template or not source_template.onedrive_item_id:
-        return {"status": "ignored"}
-
-    service = get_onedrive_service()
-    await service._refresh_workbook_session(
-        source_template.onedrive_item_id, session_id
-    )
-    return {"status": "refreshed"}

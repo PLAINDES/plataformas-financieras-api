@@ -5,13 +5,12 @@ import logging
 import re
 from pathlib import Path
 from typing import Optional
-from urllib.parse import quote
-
 import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import TEMPLATE_SHEET_TO_TYPE
+from app.core.config import settings
 from app.models.cms import Media
 from app.models.main import CalculationType, TemplateCode
 from app.models.templates import MasterTemplate
@@ -192,267 +191,65 @@ def _process_and_save_cell_codes(
 # === HELPER NATIVO PARA GRÁFICOS (GRAPH API) ==================================
 
 
-async def _extract_and_save_charts_via_graph(
-    db: Session, template_id: int, obj: MasterTemplate, service
+async def _extract_and_save_charts_via_com(
+    db: Session, template_id: int, obj: MasterTemplate, content: bytes
 ):
-    """
-    1. Llama a Graph API para extraer los gráficos de Excel Online.
-    2. Sube a AWS S3.
-    3. Guarda los registros en BD (Media y TemplateCode).
-    """
-    extracted_charts = {"valora": [], "kapital": []}
+    """Export charts through the native COM service and persist them in S3."""
+    try:
+        response = await _request_com_charts(content)
+    except Exception as exc:
+        return {"valora": [], "kapital": []}, 0, [str(exc)]
+
+    extracted = {"valora": [], "kapital": []}
     errors = []
-    total_charts = 0
-
-    token = await service._get_token()
-    base_url = f"https://graph.microsoft.com/v1.0/users/{service.config.user_email}/drive/items/{obj.onedrive_item_id}/workbook"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-
-    target_sheets = TEMPLATE_SHEET_TO_TYPE
     template_prefix = _normalize_template_name(obj.nombre)
-
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    for chart in response.get("charts", []):
+        sheet = chart.get("sheet", "")
+        template_type = TEMPLATE_SHEET_TO_TYPE.get(sheet)
+        if not template_type:
+            continue
+        title = chart.get("name") or "chart"
+        normalized_code = normalize_code(title)
+        if not normalized_code:
+            continue
         try:
-            # 1. Crear sesión de trabajo en Excel Online (RAM)
-            session_resp = await client.post(
-                f"{base_url}/createSession",
-                headers=headers,
-                json={"persistChanges": False},
+            image_bytes = base64.b64decode(chart["image_base64"])
+            filename = f"{template_prefix}-{template_type.upper()}-{normalized_code.replace('$$', '')}.png"
+            uploaded = await _upload_to_s3_async(filename, image_bytes, f"graphs/{template_prefix}")
+            media = Media(
+                filename=filename,
+                original_name=title,
+                mime_type="image/png",
+                size=len(image_bytes),
+                url=uploaded.get("file_url") or f"/api/v1/main/master-templates/chart-file/{filename[:-4]}",
+                storage_path=uploaded.get("object_key") or f"graphs/{template_prefix}/{filename}",
+                folder=f"master-templates/{template_id}/{template_type}",
+                meta={"chart_code": normalized_code, "chart_title": title, "template_id": template_id, "template_type": template_type, "template_name": obj.nombre, "size": len(image_bytes)},
             )
-            session_resp.raise_for_status()
-            headers["workbook-session-id"] = session_resp.json()["id"]
-
-            download_tasks_meta = []  # Para saber qué gráfico es cada uno
-            batch_requests = []
-            req_id = 1
-
-            for sheet_name, template_type in target_sheets.items():
-                encoded_sheet = quote(sheet_name)
-                charts_url = f"{base_url}/worksheets('{encoded_sheet}')/charts"
-                charts_resp = await client.get(charts_url, headers=headers)
-
-                if charts_resp.status_code != 200:
-                    errors.append(f"No se pudo acceder a la hoja '{sheet_name}'")
-                    continue
-
-                for chart in charts_resp.json().get("value", []):
-                    chart_title = chart.get("name")
-                    if not chart_title:
-                        continue
-                    # total_charts += 1
-                    encoded_chart = quote(chart_title)
-
-                    relative_url = f"/users/{service.config.user_email}/drive/items/{obj.onedrive_item_id}/workbook/worksheets('{encoded_sheet}')/charts('{encoded_chart}')/image"
-
-                    batch_requests.append(
-                        {
-                            "id": str(req_id),
-                            "method": "GET",
-                            "url": relative_url,
-                            "headers": {
-                                "workbook-session-id": headers["workbook-session-id"]
-                            },
-                        }
-                    )
-
-                    download_tasks_meta.append(
-                        {
-                            "id": str(req_id),
-                            "title": chart_title,
-                            "type": template_type,
-                            "sheet": sheet_name,
-                        }
-                    )
-                    req_id += 1
-
-            total_charts = len(batch_requests)
-
-            # 2. EJECUTAR DESCARGAS CONCURRENTES
-            responses_map = {}
-            if batch_requests:
-                chunks = []
-                for i in range(0, len(batch_requests), 20):
-                    chunks.append(batch_requests[i : i + 20])
-
-                # Ejecutamos los lotes concurrentemente, empaquetados
-                batch_tasks = [service.execute_batch(chunk) for chunk in chunks]
-                batch_results_list = await asyncio.gather(
-                    *batch_tasks, return_exceptions=True
-                )
-
-                # Desempaquetar los resultados en un diccionario { "req_id": response_body }
-                for batch_res in batch_results_list:
-                    if isinstance(batch_res, Exception):
-                        continue
-                    for single_response in batch_res:
-                        # single_response tiene el formato {"id": "1", "status": 200, "body": {...}}
-                        responses_map[single_response.get("id")] = single_response
-
-            # 3. PREPARAR SUBIDAS A S3
-            s3_upload_tasks = []
-            valid_charts_metadata = []
-
-            for meta in download_tasks_meta:
-                req_id_str = meta["id"]
-                res = responses_map.get(req_id_str)
-
-                if not res or res.get("status") != 200:
-                    errors.append(
-                        f"Error descargando gráfico '{meta['title']}'. Status: {res.get('status') if res else 'Timeout'}"
-                    )
-                    continue
-
-                body = res.get("body", {})
-                b64_str = body.get("value")
-                if not b64_str:
-                    continue
-                image_bytes = base64.b64decode(b64_str)
-
-                normalized_code = normalize_code(meta["title"])
-                if not normalized_code:
-                    continue
-
-                code_without_dollars = normalized_code.replace("$$", "")
-                prefixed_filename = f"{template_prefix}-{meta['type'].upper()}-{code_without_dollars}.png"
-                dynamic_folder = f"graphs/{template_prefix}"
-
-                # Guardamos metadata para procesar BD después
-                valid_charts_metadata.append(
-                    {
-                        "meta": meta,
-                        "normalized_code": normalized_code,
-                        "prefixed_filename": prefixed_filename,
-                        "size": len(image_bytes),
-                    }
-                )
-
-                # Añadimos la tarea de S3
-                s3_upload_tasks.append(
-                    _upload_to_s3_async(prefixed_filename, image_bytes, dynamic_folder)
-                )
-
-            # 4. EJECUTAR SUBIDAS A S3 DE FORMA CONCURRENTE
-            s3_results = (
-                await asyncio.gather(*s3_upload_tasks, return_exceptions=True)
-                if s3_upload_tasks
-                else []
-            )
-
-            # 5. GUARDADO EN BD Optimizado
-            for idx, s3_res in enumerate(s3_results):
-                chart_data = valid_charts_metadata[idx]
-
-                if isinstance(s3_res, Exception):
-                    errors.append(
-                        f"Error S3 '{chart_data['prefixed_filename']}': {s3_res}"
-                    )
-                    continue
-
-                file_url = s3_res.get("file_url")
-                object_key = s3_res.get("object_key")
-
-                resolved_url, resolved_storage_path = _resolve_media_fields(
-                    template_id,
-                    chart_data["prefixed_filename"].replace(".png", ""),
-                    chart_data["prefixed_filename"],
-                    file_url,
-                    object_key,
-                )
-
-                media_meta = {
-                    "chart_code": chart_data["normalized_code"],
-                    "chart_title": chart_data["meta"]["title"],
-                    "template_id": template_id,
-                    "template_type": chart_data["meta"]["type"],
-                    "template_name": obj.nombre,
-                    "size": chart_data["size"],
-                }
-
-                # Crear/Actualizar Media
-                existing_media = (
-                    db.execute(
-                        select(Media).where(
-                            (Media.filename == chart_data["prefixed_filename"])
-                            & (Media.folder.like(f"%master-templates/{template_id}%"))
-                            & (Media.deleted_at.is_(None))
-                        )
-                    )
-                    .scalars()
-                    .first()
-                )
-
-                if existing_media:
-                    media_obj = existing_media
-                    media_obj.url = resolved_url
-                    media_obj.storage_path = resolved_storage_path
-                    media_obj.meta = media_meta
-                else:
-                    media_obj = Media(
-                        filename=chart_data["prefixed_filename"],
-                        original_name=chart_data["meta"]["title"],
-                        mime_type="image/png",
-                        size=chart_data["size"],
-                        url=resolved_url,
-                        storage_path=resolved_storage_path,
-                        folder=f"master-templates/{template_id}/{chart_data['meta']['type']}",
-                        meta=media_meta,
-                    )
-                    db.add(media_obj)
-
+            db.add(media)
+            db.flush()
+            code = db.execute(select(TemplateCode).where((TemplateCode.code == normalized_code) & (TemplateCode.type == CalculationType(template_type)) & (TemplateCode.deleted_at.is_(None)))).scalars().first()
+            if not code:
+                code = TemplateCode(code=normalized_code, nombre=title, type=CalculationType(template_type), hoja=sheet)
+                db.add(code)
                 db.flush()
+            code.template_code_image_id = media.id
+            _link_code_to_master_template(obj, code)
+            extracted[template_type].append({"code": normalized_code, "filename": filename, "original_name": title, "url": media.url, "size": len(image_bytes), "type": template_type, "error": None})
+        except Exception as exc:
+            errors.append(f"{title}: {exc}")
+    db.commit()
+    return extracted, len(response.get("charts", [])), errors
 
-                # Crear/Actualizar TemplateCode
-                code_enum = CalculationType(chart_data["meta"]["type"])
-                existing_tc = (
-                    db.execute(
-                        select(TemplateCode).where(
-                            (TemplateCode.code == chart_data["normalized_code"])
-                            & (TemplateCode.type == code_enum)
-                            & (TemplateCode.deleted_at.is_(None))
-                        )
-                    )
-                    .scalars()
-                    .first()
-                )
 
-                if existing_tc:
-                    tc = existing_tc
-                    tc.nombre = chart_data["meta"]["title"]
-                    tc.hoja = chart_data["meta"]["sheet"]
-                else:
-                    tc = TemplateCode(
-                        code=chart_data["normalized_code"],
-                        nombre=chart_data["meta"]["title"],
-                        type=code_enum,
-                        hoja=chart_data["meta"]["sheet"],
-                    )
-                    db.add(tc)
-
-                _link_code_to_master_template(obj, tc)
-                tc.template_code_image_id = media_obj.id
-
-                extracted_charts[chart_data["meta"]["type"]].append(
-                    {
-                        "code": chart_data["normalized_code"],
-                        "filename": chart_data["prefixed_filename"],
-                        "original_name": chart_data["meta"]["title"],
-                        "url": resolved_url,
-                        "size": chart_data["size"],
-                        "type": chart_data["meta"]["type"],
-                        "error": None,
-                    }
-                )
-
-            db.commit()
-
-        except Exception as e:
-            logger.error(f"[GraphAPI] Error general en extracción: {e}", exc_info=True)
-            errors.append(str(e))
-        finally:
-            if "workbook-session-id" in headers:
-                try:
-                    await client.post(f"{base_url}/closeSession", headers=headers)
-                except Exception:
-                    pass
-
-    return extracted_charts, total_charts, errors
+async def _request_com_charts(content: bytes) -> dict:
+    encoded = base64.b64encode(content).decode("ascii")
+    headers = {"X-API-Key": settings.WEB_SERVICE_API_KEY} if settings.WEB_SERVICE_API_KEY else {}
+    async with httpx.AsyncClient(timeout=300) as client:
+        response = await client.post(
+            f"{settings.WEB_SERVICE_URL.rstrip('/')}/api/v1/templates/extract-charts",
+            json={"template_base64": encoded},
+            headers=headers,
+        )
+        response.raise_for_status()
+        return response.json()

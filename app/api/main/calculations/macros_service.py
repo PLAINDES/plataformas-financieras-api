@@ -1,21 +1,15 @@
 # app/api/main/calculations_router.py
-import os
 import re
 import time
 
-from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import (
     KAPITAL_DAMODARAN_CELL_MAP,
 )
-from app.models.main import CalculationType, TemplateComplement
+from app.models.main import TemplateComplement
 from app.models.templates import MasterTemplate
-from app.services.onedrive.config import ROOT_FOLDER
-from app.services.onedrive.service import OneDriveConfig, get_onedrive_service
-
-from .excel_engine import _build_template_copy_name
 
 
 VALORA_INPUT_ALIASES = {
@@ -71,63 +65,6 @@ def get_default_or_latest_master_template(db: Session) -> MasterTemplate | None:
     )
     print(f"[DB] get_default_or_latest_master_template (fallback): {time.perf_counter() - t0:.3f} seg", flush=True)
     return template
-
-
-async def _clone_default_template_for_calculation(
-    db: Session,
-    calc_type: CalculationType,
-) -> dict:
-    source_template = get_default_or_latest_master_template(db)
-    if not source_template or source_template.deleted_at is not None:
-        raise HTTPException(
-            status_code=400, detail="No master template available to clone"
-        )
-
-    if not source_template.onedrive_item_id:
-        raise HTTPException(
-            status_code=400, detail="Default master template has no OneDrive file"
-        )
-
-    one_drive_cfg = OneDriveConfig()
-    if not one_drive_cfg.is_configured():
-        raise HTTPException(status_code=503, detail="OneDrive is not configured")
-
-    source_filename = (
-        source_template.onedrive_filename or f"template-{source_template.id}.xlsx"
-    )
-    suffix = os.path.splitext(source_filename)[1] or ".xlsx"
-    base_name = _build_template_copy_name(calc_type)
-    copied_filename = f"{base_name}{suffix}"
-    target_env = source_template.onedrive_env or "development"
-    target_folder = calc_type.value
-
-    service = get_onedrive_service()
-    folder_result = await service.ensure_folder_structure(
-        {ROOT_FOLDER: {target_env: [target_folder]}}
-    )
-    if not folder_result.get("success"):
-        raise HTTPException(
-            status_code=502,
-            detail="No se pudo preparar la carpeta de trabajo en OneDrive",
-        )
-
-    copied_item = await service.copy_file(
-        source_item_id=source_template.onedrive_item_id,
-        new_filename=copied_filename,
-        env=target_env,
-        folder=target_folder,
-    )
-    copied_item_id = copied_item.get("id")
-    if not copied_item_id:
-        raise HTTPException(
-            status_code=502, detail="OneDrive no devolvió el ID de la copia"
-        )
-
-    return {
-        "onedrive_item_id": copied_item_id,
-        "original_name": source_filename,
-        "copied_name": copied_filename,
-    }
 
 
 def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
