@@ -3,6 +3,7 @@ name: Deploy Backend Test - New Financieras
 on:
   push:
     branches: ["dev"]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -14,6 +15,9 @@ jobs:
 
       - name: Create .env.test
         run: echo "${{ secrets.ENV_TEST }}" > .env.test
+
+      - name: Debug - Show .env.test contents
+        run: cat .env.test
 
       - name: Sync project to server folder
         run: |
