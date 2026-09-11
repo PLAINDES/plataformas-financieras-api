@@ -1,9 +1,11 @@
 # app/api/main/covers/router.py
 import logging
+import io
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
@@ -20,6 +22,7 @@ router = APIRouter(
     tags=["Covers"],
     dependencies=[Depends(get_current_admin)],
 )
+public_media_router = APIRouter(prefix="/main/media", tags=["Media"])
 
 
 def _media_to_dict(media: Media | None) -> dict | None:
@@ -27,7 +30,7 @@ def _media_to_dict(media: Media | None) -> dict | None:
         return None
     return {
         "id": media.id,
-        "url": media.url,
+        "url": f"/api/v1/main/media/{media.id}",
         "filename": media.filename,
         "original_name": media.original_name,
         "mime_type": media.mime_type,
@@ -50,6 +53,23 @@ def _cover_to_dict(cover: Cover | None) -> dict | None:
         "logo_inferior": _media_to_dict(cover.logo_inferior),
         "imagen_fondo": _media_to_dict(cover.imagen_fondo),
     }
+
+
+@router.get("/media/{media_id}")
+def get_cover_media(media_id: int, db: Session = Depends(get_db)):
+    media = db.get(Media, media_id)
+    if not media or media.deleted_at or not media.storage_path:
+        raise HTTPException(status_code=404, detail="Media not found")
+    try:
+        content = s3_service.download_file_bytes(media.storage_path)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Media unavailable") from exc
+    return StreamingResponse(io.BytesIO(content), media_type=media.mime_type or "application/octet-stream")
+
+
+@public_media_router.get("/{media_id}")
+def get_public_cover_media(media_id: int, db: Session = Depends(get_db)):
+    return get_cover_media(media_id, db)
 
 
 @router.get("/covers/{cover_id}")

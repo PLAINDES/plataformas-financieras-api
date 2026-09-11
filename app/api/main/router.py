@@ -158,26 +158,6 @@ async def calculate_valora_with_excel(payload: dict):
         raise HTTPException(status_code=502, detail=f"Excel service unavailable: {exc}") from exc
 
 
-@router.get("/internal/active-master-template")
-def get_active_master_template(
-    db: Session = Depends(get_db),
-    api_key: str | None = Header(default=None, alias="X-API-Key"),
-):
-    """Returns the admin-selected master workbook to the Windows Excel service."""
-    configured_key = settings.WEB_SERVICE_API_KEY.strip()
-    if not configured_key or api_key != configured_key:
-        raise HTTPException(status_code=403, detail="Invalid internal service key")
-    template = get_default_or_latest_master_template(db)
-    if not template or not template.onedrive_item_id:
-        raise HTTPException(status_code=404, detail="No active master template is available")
-    return {
-        "id": template.id,
-        "name": template.nombre,
-        "onedrive_item_id": template.onedrive_item_id,
-        "filename": template.original_filename or template.onedrive_filename or "Valora_Template.xlsx",
-    }
-
-
 def _get_latest_calculation_by_user_and_type(
     db: Session, user_id: int, calc_type: CalculationType
 ) -> Calculation | None:

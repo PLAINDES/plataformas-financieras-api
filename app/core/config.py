@@ -81,10 +81,6 @@ class Settings(BaseSettings):
     # External APIs (from original code)
     API_URL_FINANCE: str = ""
     API_URL_MARGARITA: str = ""
-    AZURE_CLIENT_ID: str = ""
-    AZURE_CLIENT_SECRET: str = ""
-    AZURE_TENANT_ID: str = ""
-    ONEDRIVE_USER_EMAIL: str = ""
 
     # AWS S3 Settings
     AWS_ACCESS_KEY_ID: str = ""

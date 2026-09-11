@@ -25,12 +25,8 @@ class MasterTemplateUpdate(BaseModel):
 class MasterTemplateResponse(MasterTemplateBase):
     """Schema de respuesta para plantilla maestra."""
     id: int
-    onedrive_env: Optional[str] = None
-    onedrive_folder: Optional[str] = None
-    onedrive_item_id: Optional[str] = None
-    onedrive_filename: Optional[str] = None
     original_filename: Optional[str] = None
-    onedrive_path: Optional[str] = None
+    s3_object_key: Optional[str] = None
     created_by_user_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
@@ -56,6 +52,8 @@ class TemplateCodeBase(BaseModel):
     code: str = Field(..., max_length=255)
     value: Optional[str] = Field(None, max_length=255)
     coordinate: Optional[str] = Field(None, max_length=15)
+    source_path: Optional[str] = Field(None, max_length=255)
+    source_format: Optional[str] = Field(None, max_length=32)
 
 class TemplateCodeCreate(TemplateCodeBase):
     """Schema para crear un código de plantilla."""
@@ -70,6 +68,8 @@ class TemplateCodeUpdate(BaseModel):
     nombre: Optional[str] = Field(None, max_length=255)
     code: Optional[str] = Field(None, max_length=255)
     coordinate: Optional[str] = Field(None, max_length=15)
+    source_path: Optional[str] = Field(None, max_length=255)
+    source_format: Optional[str] = Field(None, max_length=32)
     template_ids: Optional[List[int]] = None
 
 
@@ -77,6 +77,8 @@ class TemplateCodeResponse(TemplateCodeBase):
     """Schema de respuesta para código de plantilla."""
     id: int
     template_code_image_url: Optional[str] = None
+    source_path: Optional[str] = None
+    source_format: Optional[str] = None
     template_ids: List[int] = []
     created_at: datetime
     updated_at: datetime

@@ -39,6 +39,7 @@ class Calculation(Base):
 
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     calculation_file_id = Column(String(36), nullable=True)
+    s3_object_key = Column(String(1024), nullable=True)  # Clave S3 para el archivo de cálculo
     user_id = Column(MySQLBigInt(unsigned=True), ForeignKey("sys_users.id"), nullable=True)
     code = Column(String(64), nullable=False, unique=True)
     type = Column(
@@ -83,6 +84,8 @@ class TemplateCode(Base):
     code = Column(String(255), nullable=False)
     value = Column(String(255), nullable=True)
     coordinate = Column(String(15), nullable=True)
+    source_path = Column(String(255), nullable=True)
+    source_format = Column(String(32), nullable=True)
 
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
