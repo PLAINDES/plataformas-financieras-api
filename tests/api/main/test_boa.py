@@ -140,6 +140,7 @@ class BoaHelperTests(unittest.TestCase):
             patch.object(boa.yf, "Ticker", lambda *args, **kwargs: stock),
             patch.object(boa, "get_fx_rate", lambda *args, **kwargs: 1.0),
             patch.object(boa, "_delay", lambda *args, **kwargs: None),
+            patch.object(boa, "_yf_cache_read", lambda *args, **kwargs: None),
         ):
             _, result, diagnostic = boa._process_single_ticker("TEST")
 
@@ -157,6 +158,7 @@ class BoaHelperTests(unittest.TestCase):
             patch.object(boa.yf, "Ticker", lambda *args, **kwargs: stock),
             patch.object(boa, "get_fx_rate", lambda *args, **kwargs: 1.0),
             patch.object(boa, "_delay", lambda *args, **kwargs: None),
+            patch.object(boa, "_yf_cache_read", lambda *args, **kwargs: None),
         ):
             _, result, diagnostic = boa._process_single_ticker("TEST")
 
@@ -201,6 +203,8 @@ class BoaHelperTests(unittest.TestCase):
 
         def fake_ticker(symbol, *args, **kwargs):
             requested_symbols.append(symbol)
+            if symbol == "VSCO":
+                raise Exception("Ticker not found")
             return stock
 
         with (
