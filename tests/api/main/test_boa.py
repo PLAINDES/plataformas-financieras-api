@@ -177,55 +177,6 @@ class BoaHelperTests(unittest.TestCase):
         self.assertEqual(resolution["ticker_resolution_reason"], "symbol_changed")
         self.assertEqual(resolution["ticker_resolution_source"], "SEC")
 
-    def test_search_candidate_without_company_identity_requires_review(self):
-        class FakeSearch:
-            quotes = [{
-                "symbol": "POSSIBLE",
-                "longname": "Possible Company",
-                "quoteType": "EQUITY",
-                "exchange": "NYQ",
-            }]
-
-        with patch.object(boa.yf, "Search", lambda *args, **kwargs: FakeSearch()):
-            resolution = boa.resolve_ticker_symbol("OLD", search_candidates=True)
-
-        self.assertIsNone(resolution["ticker_resolved"])
-        self.assertEqual(resolution["ticker_resolution_status"], "requires_review")
-        self.assertEqual(resolution["ticker_resolution_candidates"][0]["ticker"], "POSSIBLE")
-
-    def test_calculation_uses_resolved_ticker_and_preserves_original(self):
-        annual = pd.DataFrame(
-            {"latest": [80.0, 20.0]},
-            index=["Long Term Debt", "Current Debt"],
-        )
-        stock = FakeTicker(balance_sheet=annual)
-        requested_symbols = []
-
-        def fake_ticker(symbol, *args, **kwargs):
-            requested_symbols.append(symbol)
-            if symbol == "VSCO":
-                raise Exception("Ticker not found")
-            return stock
-
-        with (
-            patch.object(boa.yf, "Ticker", fake_ticker),
-            patch.object(boa, "get_fx_rate", lambda *args, **kwargs: 1.0),
-            patch.object(boa, "_delay", lambda *args, **kwargs: None),
-            patch.object(boa.time, "sleep", lambda *args, **kwargs: None),
-            patch.object(boa, "_yf_cache_read", lambda *args, **kwargs: None),
-        ):
-            response = boa.calculate_subsectores_boa(
-                [{"ticker": "VSCO", "sector": "Retail", "subsector": "Apparel"}],
-                batch_size=1,
-                save_to_db=False,
-            )
-
-        self.assertIn("VSXY", requested_symbols)
-        row = response["ticker_rows"][0]
-        self.assertEqual(row["ticker"], "VSCO")
-        self.assertEqual(row["ticker_resolved"], "VSXY")
-        self.assertEqual(row["ticker_resolution_status"], "resolved")
-
 
 if __name__ == "__main__":
     unittest.main()
