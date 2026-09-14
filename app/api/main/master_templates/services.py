@@ -9,7 +9,12 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.constants import TEMPLATE_SHEET_TO_TYPE
+from app.core.constants import (
+    TEMPLATE_SHEET_KAPITAL,
+    TEMPLATE_SHEET_REPORTE,
+    TEMPLATE_SHEET_TO_TYPE,
+    TEMPLATE_SHEET_VALORA,
+)
 from app.core.config import settings
 from app.models.cms import Media
 from app.models.main import CalculationType, TemplateCode

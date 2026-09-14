@@ -1088,7 +1088,11 @@ def get_template_chart_images(template_id: int, db: Session = Depends(get_db)):
 
     valora_images = []
     kapital_images = []
+    seen_filenames: set[str] = set()
     for media in media_files:
+        if media.filename in seen_filenames:
+            continue
+        seen_filenames.add(media.filename)
         chart_code = (
             media.meta.get(
                 "chart_code", media.filename.replace(".jpg", "").replace(".png", "")
