@@ -47,7 +47,7 @@ def _fix_subsectores_data(data: Any) -> Any:
     return data
 
 import pandas as pd
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
