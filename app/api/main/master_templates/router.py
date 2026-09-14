@@ -47,7 +47,6 @@ router = APIRouter(
     tags=["Master Templates"],
     dependencies=[Depends(get_current_admin)],
 )
-public_media_router = APIRouter(prefix="/main/master-templates/media", tags=["Media"])
 
 Environment = Literal["development", "production", "test"]
 Folder = Literal["plantillas_maestras", "kapital", "valora"]
@@ -95,7 +94,7 @@ async def list_valora_copies(
     base_prefix = s3_service.base_prefix  # ej: plataformas_financieras
     enriched = []
     for folder in folders_to_list:
-        prefix = f"{base_prefix}/templates/tmps/{folder}/"
+        prefix = f"{base_prefix}/templates/tmps/{target_env}/{folder}/"
         logger.info(f"[VALORA COPIES S3] Listando prefix={prefix}")
         try:
             files = await asyncio.to_thread(s3_service.list_files, prefix)
@@ -157,8 +156,8 @@ def _validate_tmps_key(object_key: str) -> str:
     """Solo permite borrar/descargar copias de templates/tmps/valora|kapital."""
     base_prefix = s3_service.base_prefix
     allowed = (
-        f"{base_prefix}/templates/tmps/valora/",
-        f"{base_prefix}/templates/tmps/kapital/",
+        f"{base_prefix}/templates/tmps/{settings.ENVIRONMENT}/valora/",
+        f"{base_prefix}/templates/tmps/{settings.ENVIRONMENT}/kapital/",
     )
     if not object_key or not object_key.startswith(allowed):
         raise HTTPException(status_code=400, detail="Object key no permitido")
@@ -304,11 +303,6 @@ def get_template_media(media_id: int, db: Session = Depends(get_db)):
         media_type=media.mime_type or "application/octet-stream",
         headers={"Content-Disposition": f'inline; filename="{media.filename}"'},
     )
-
-
-@public_media_router.get("/{media_id}")
-def get_public_template_media(media_id: int, db: Session = Depends(get_db)):
-    return get_template_media(media_id, db)
 
 
 @router.post(
@@ -1078,7 +1072,7 @@ def get_template_chart_images(template_id: int, db: Session = Depends(get_db)):
     obj = db.get(MasterTemplate, template_id)
     if not obj or obj.deleted_at:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUNDt, detail="Master template not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Master template not found"
         )
 
     query = (

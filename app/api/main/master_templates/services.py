@@ -204,10 +204,20 @@ async def _extract_and_save_charts_via_com(
     errors = []
     template_prefix = _normalize_template_name(obj.nombre)
     for chart in response.get("charts", []):
-        sheet = chart.get("sheet", "")
+        sheet = str(chart.get("sheet", "") or "").strip()
+        normalized_sheet = re.sub(r"\s+", " ", sheet).casefold()
         template_type = TEMPLATE_SHEET_TO_TYPE.get(sheet)
         if not template_type:
-            continue
+            if normalized_sheet == TEMPLATE_SHEET_VALORA.casefold():
+                template_type = "valora"
+            elif normalized_sheet in {TEMPLATE_SHEET_KAPITAL.casefold(), TEMPLATE_SHEET_REPORTE.casefold()}:
+                template_type = "kapital"
+            else:
+                # Excel puede devolver nombres con variaciones al guardar una
+                # copia de la plantilla. No perder el gráfico por la hoja:
+                # todo gráfico que no sea explícitamente Valora pertenece al
+                # bloque Kapital en este módulo.
+                template_type = "kapital"
         title = chart.get("name") or "chart"
         normalized_code = normalize_code(title)
         if not normalized_code:

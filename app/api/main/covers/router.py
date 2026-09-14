@@ -22,7 +22,6 @@ router = APIRouter(
     tags=["Covers"],
     dependencies=[Depends(get_current_admin)],
 )
-public_media_router = APIRouter(prefix="/main/media", tags=["Media"])
 
 
 def _media_to_dict(media: Media | None) -> dict | None:
@@ -65,11 +64,6 @@ def get_cover_media(media_id: int, db: Session = Depends(get_db)):
     except Exception as exc:
         raise HTTPException(status_code=404, detail="Media unavailable") from exc
     return StreamingResponse(io.BytesIO(content), media_type=media.mime_type or "application/octet-stream")
-
-
-@public_media_router.get("/{media_id}")
-def get_public_cover_media(media_id: int, db: Session = Depends(get_db)):
-    return get_cover_media(media_id, db)
 
 
 @router.get("/covers/{cover_id}")
