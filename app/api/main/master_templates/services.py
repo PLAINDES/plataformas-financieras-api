@@ -22,7 +22,7 @@ from app.models.templates import MasterTemplate
 from app.services.aws_service import s3_service
 from app.services.template_code_extractor import normalize_code
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 # === UTILIDADES GENERALES =====================================================
@@ -203,13 +203,30 @@ async def _extract_and_save_charts_via_com(
     try:
         response = await _request_com_charts(content)
     except Exception as exc:
+        logger.exception("[CHARTS] Falló la llamada al extractor COM: %s", exc)
         return {"valora": [], "kapital": []}, 0, [str(exc)]
+
+    logger.info(
+        "[CHARTS] Respuesta COM recibida: charts=%s total=%s",
+        len(response.get("charts", [])),
+        response.get("total"),
+    )
 
     extracted = {"valora": [], "kapital": []}
     errors = []
     template_prefix = _normalize_template_name(obj.nombre)
     for chart in response.get("charts", []):
         sheet = str(chart.get("sheet", "") or "").strip()
+        logger.info(
+            "[CHARTS] Gráfico recibido hoja=%s indice=%s nombre=%s bytes_base64=%s",
+            sheet,
+            chart.get("index"),
+            chart.get("name"),
+            len(chart.get("image_base64", "") or ""),
+        )
+        if sheet.casefold() != TEMPLATE_SHEET_REPORTE.casefold():
+            logger.warning("[CHARTS] Gráfico ignorado fuera de %s: hoja=%s", TEMPLATE_SHEET_REPORTE, sheet)
+            continue
         normalized_sheet = re.sub(r"\s+", " ", sheet).casefold()
         template_type = TEMPLATE_SHEET_TO_TYPE.get(sheet)
         if not template_type:

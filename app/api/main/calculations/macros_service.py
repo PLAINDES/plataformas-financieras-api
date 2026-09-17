@@ -1,6 +1,7 @@
 # app/api/main/calculations_router.py
 import re
 import time
+import unicodedata
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -65,6 +66,86 @@ def get_default_or_latest_master_template(db: Session) -> MasterTemplate | None:
     )
     print(f"[DB] get_default_or_latest_master_template (fallback): {time.perf_counter() - t0:.3f} seg", flush=True)
     return template
+
+
+def _strip_accents(text: str) -> str:
+    return "".join(
+        c for c in unicodedata.normalize("NFD", str(text)) if unicodedata.category(c) != "Mn"
+    )
+
+
+def _parse_es_date(value: object) -> tuple | None:
+    """Parsea '31/12/2025' (tolerante a días imposibles como 31/09) a (año, mes, día)."""
+    match = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(value or ""))
+    if not match:
+        return None
+    day, month, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
+    if not 1 <= month <= 12:
+        return None
+    return (year, month, max(1, min(day, 28)))
+
+
+def _latest_embi_on_or_before(embi_data: list, date: str) -> dict | None:
+    """Fila EMBI más reciente con fecha <= la del cálculo (cubre trimestres
+    faltantes, p. ej. cálculo 31/12/2025 sin fila Q4 -> usa 31/09/2025)."""
+    target = _parse_es_date(date)
+    if not target:
+        return None
+    best: dict | None = None
+    best_key: tuple | None = None
+    for item in embi_data:
+        if not isinstance(item, dict):
+            continue
+        key = _parse_es_date(item.get("fecha"))
+        if key is None or key > target:
+            continue
+        if best_key is None or key > best_key:
+            best, best_key = item, key
+    return best
+
+
+def get_default_master_template_key(db: Session, user_id=None) -> str | None:
+    """S3 key de la plantilla maestra predeterminada.
+
+    1) la marcada por el usuario que calcula; 2) la predeterminada global más
+    reciente; 3) None (el web-service usa su fallback histórico: la última
+    subida). Sin esto el web-service siempre elegía la última subida e
+    ignoraba la selección PREDETERMINADA del admin.
+    """
+    from app.models.templates import MasterTemplate
+
+    base = select(MasterTemplate).where(
+        MasterTemplate.deleted_at.is_(None),
+        MasterTemplate.s3_object_key.isnot(None),
+    )
+    if user_id is not None:
+        try:
+            own_id = int(user_id)
+        except (TypeError, ValueError):
+            own_id = None
+        if own_id is not None:
+            own = (
+                db.execute(
+                    base.where(
+                        MasterTemplate.created_by_user_id == own_id,
+                        MasterTemplate.is_default.is_(True),
+                    ).order_by(MasterTemplate.updated_at.desc())
+                )
+                .scalars()
+                .first()
+            )
+            if own is not None and own.s3_object_key:
+                return own.s3_object_key
+    glob = (
+        db.execute(
+            base.where(MasterTemplate.is_default.is_(True)).order_by(
+                MasterTemplate.updated_at.desc()
+            )
+        )
+        .scalars()
+        .first()
+    )
+    return glob.s3_object_key if glob is not None else None
 
 
 def _inject_macro_data_into_payload(db: Session, payload_data: dict) -> None:
@@ -137,18 +218,42 @@ def _enrich_input_with_macros(db: Session, input_dict: dict) -> None:
         else:
             input_dict["rf"] = {}
 
-        # EMBI: Extraemos solo la fecha y el país seleccionado
+        # EMBI: Extraemos solo la fecha y el país seleccionado.
+        # La tabla es trimestral y puede no tener la fecha exacta del cálculo
+        # (p. ej. 31/12/2025 sin fila Q4): se usa la fila más reciente
+        # anterior o igual. Sin esto F11 conservaba el valor por defecto.
         embi_data = _fetch_complement_data("embi")
         embi_match = next(
             (item for item in embi_data if item.get("fecha") == date), None
         )
+        if embi_match is None:
+            embi_match = _latest_embi_on_or_before(embi_data, date)
+        if embi_match is None and year:
+            embi_match = next(
+                (item for item in embi_data if str(item.get("fecha")) == year),
+                None,
+            )
         if embi_match and country:
             filtered_embi = {"fecha": embi_match.get("fecha")}
+            country_norm = _strip_accents(country).lower()
             country_key = next(
-                (k for k in embi_match.keys() if k.lower() == country.lower()), None
+                (
+                    k
+                    for k in embi_match.keys()
+                    if _strip_accents(k).lower() == country_norm
+                ),
+                None,
             )
             if country_key:
-                filtered_embi["country"] = embi_match.get(country_key)
+                raw = embi_match.get(country_key)
+                try:
+                    num = float(str(raw).replace(",", "."))
+                    # La tabla EMBI se carga en puntos básicos (p. ej. 132.68);
+                    # la plantilla espera tanto por uno (0.013268).
+                    value = num / 10000 if abs(num) > 1 else num
+                except (TypeError, ValueError):
+                    value = raw
+                filtered_embi["country"] = value
             input_dict["embi"] = filtered_embi
         else:
             input_dict["embi"] = {}
