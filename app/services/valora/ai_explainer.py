@@ -31,7 +31,9 @@ RESPONDE EXCLUSIVAMENTE EN JSON con esta estructura exacta:
       "outlier_reason": ""
     }},
     "forecast_fde_1er_periodo": {{...}},
-    "crecimiento_perpetuo": {{...}}
+    "crecimiento_perpetuo": {{...}},
+    "capex_income_rate": {{...}},
+    "cto_income_rate": {{...}}
   }}
 }}
 

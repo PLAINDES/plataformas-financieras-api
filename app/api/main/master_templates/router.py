@@ -391,6 +391,44 @@ def list_master_templates(
     }
 
 
+@router.get("/default", response_model=MasterTemplateResponse)
+def get_default_master_template(
+    user_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    """Plantilla maestra predeterminada (para que los cálculos usen la
+    selección del admin en vez de la última subida)."""
+    base = select(MasterTemplate).where(
+        (MasterTemplate.deleted_at.is_(None))
+        & (MasterTemplate.s3_object_key.isnot(None))
+    )
+    if user_id is not None:
+        own = (
+            db.execute(
+                base.where(
+                    (MasterTemplate.created_by_user_id == user_id)
+                    & (MasterTemplate.is_default.is_(True))
+                ).order_by(MasterTemplate.updated_at.desc())
+            )
+            .scalars()
+            .first()
+        )
+        if own is not None:
+            return MasterTemplateResponse.model_validate(own)
+    glob = (
+        db.execute(
+            base.where(MasterTemplate.is_default.is_(True)).order_by(
+                MasterTemplate.updated_at.desc()
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if glob is None:
+        raise HTTPException(404, "No hay plantilla maestra predeterminada")
+    return MasterTemplateResponse.model_validate(glob)
+
+
 @router.get("/{template_id}", response_model=MasterTemplateResponse)
 def get_master_template(
     template_id: int,

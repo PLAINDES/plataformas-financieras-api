@@ -32,6 +32,8 @@ from app.schemas.main import (
 from .graphs import _generate_calculation_images
 from .macros_service import (
     get_default_or_latest_master_template,
+    _enrich_input_with_macros,
+    get_default_master_template_key,
 )
 from .payload_manager import (
     _normalize_calculation_data,
@@ -402,13 +404,22 @@ async def refresh_calculation(
             detail="El refresh legacy fue eliminado. Este cálculo debe recrearse mediante el flujo nativo.",
         )
 
-    latest_input = (native_data.get("inputs") or [{}])[-1]
+    latest_input = dict((native_data.get("inputs") or [{}])[-1])
+    # Reconexión Excel nativo: el input persistido no trae macros; se
+    # reinyectan desde BD (rf/embi/prima/tax/damodaran/ir/riesgo) antes de
+    # recalcular para que F6/F7/F8/F9/F11/D18:H18/H:J8-14 se escriban.
+    try:
+        _enrich_input_with_macros(db, latest_input)
+    except Exception as exc:
+        logger.exception("Native Kapital refresh macro enrichment failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Error enriqueciendo input con datos macro de BD") from exc
     headers = {"X-API-Key": settings.WEB_SERVICE_API_KEY} if settings.WEB_SERVICE_API_KEY else {}
+    refresh_template_key = get_default_master_template_key(db, calculation.user_id)
     try:
         async with httpx.AsyncClient(timeout=300) as client:
             response = await client.post(
                 f"{settings.WEB_SERVICE_URL.rstrip('/')}/api/v1/kapital/calculate",
-                json={"input": latest_input},
+                json={"input": latest_input, "template_s3_key": refresh_template_key},
                 headers=headers,
             )
             response.raise_for_status()

@@ -87,6 +87,11 @@ async def recommend_valora_from_payload(
     source = inputs[0] if isinstance(inputs, list) and inputs else {}
     if not isinstance(source, dict):
         source = {}
+    base_results = calculation_data.get("base_results") or {}
+    if not base_results:
+        saved_results = calculation_data.get("resultados")
+        if isinstance(saved_results, list) and saved_results:
+            base_results = saved_results[0] if isinstance(saved_results[0], dict) else {}
 
     def values(table: Any, labels: set[str]) -> list[float]:
         return _find_row_values(table if isinstance(table, dict) else None, labels)
@@ -109,6 +114,8 @@ async def recommend_valora_from_payload(
             "revenue_cagr": revenue_cagr,
             "fde_values": fde,
             "fde_cagr": fde_cagr,
+            "capex_income_rate": base_results.get("capex_income_rate", calculation_data.get("capex_income_rate")),
+            "cto_income_rate": base_results.get("cto_income_rate", calculation_data.get("cto_income_rate")),
         },
     }
     if db is not None:
@@ -121,13 +128,17 @@ async def recommend_valora_from_payload(
     ai_result = await estimate_valora_rates(context)
     ai_rates = (ai_result or {}).get("rates", {})
 
-    def recommendation(key: str, fallback: float | None) -> tuple[Any, str]:
+    def recommendation(key: str, fallback: float | None, fallback_source: str = "financial_data_cagr") -> tuple[Any, str]:
         value = (ai_rates.get(key) or {}).get("value")
-        return (value, "ai_estimation") if value is not None else (fallback, "financial_data_cagr" if fallback is not None else "empty")
+        return (value, "ai_estimation") if value is not None else (fallback, fallback_source if fallback is not None else "empty")
 
     ing, ing_source = recommendation("forecast_ingresos", revenue_cagr)
     fde_rate, fde_source = recommendation("forecast_fde", fde_cagr)
     perp, perp_source = recommendation("crecimiento_perpetuo", 0.025)
+    capex_base = base_results.get("capex_income_rate", calculation_data.get("capex_income_rate"))
+    cto_base = base_results.get("cto_income_rate", calculation_data.get("cto_income_rate"))
+    capex, capex_source = recommendation("capex_income_rate", capex_base, "excel_cache")
+    cto, cto_source = recommendation("cto_income_rate", cto_base, "excel_cache")
 
     def rate(label: str, value: Any, source_name: str, key: str) -> dict[str, Any]:
         return {
@@ -142,6 +153,8 @@ async def recommend_valora_from_payload(
                   "forecast_ingresos_1er_periodo": rate("Tasa Forecast Ingresos 1er Periodo", ing, ing_source, "forecast_ingresos"),
                   "forecast_fde_1er_periodo": rate("Tasa Forecast FDE 1er Periodo", fde_rate, fde_source, "forecast_fde"),
                   "crecimiento_perpetuo": rate("Tasa de Crecimiento Perpetuo", perp, perp_source, "crecimiento_perpetuo"),
+                  "capex_income_rate": rate("Razón CAPEX/Ingresos", capex, capex_source, "capex_income_rate"),
+                  "cto_income_rate": rate("Razón CTO/Ingresos", cto, cto_source, "cto_income_rate"),
               }, "warnings": []}
     try:
         analysis = await generate_valora_ai_analysis(result)
