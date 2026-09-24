@@ -43,6 +43,8 @@ def _cover_to_dict(cover: Cover | None) -> dict | None:
     return {
         "id": cover.id,
         "nombre": cover.nombre,
+        # Compatibilidad con instancias/modelos antiguos mientras se aplica la migración.
+        "producto": getattr(cover, "producto", None),
         "tipo": cover.tipo.value,
         "portada": _media_to_dict(cover.portada),
         "primer_imagen_footer": _media_to_dict(cover.primer_imagen_footer),
@@ -106,12 +108,13 @@ def list_covers(db: Session = Depends(get_db)):
     return [_cover_to_dict(c) for c in covers]
 
 
-def _create_media_from_upload(db: Session, file: UploadFile) -> Optional[int]:
+def _create_media_from_upload(db: Session, file: UploadFile, producto: str | None = None) -> Optional[int]:
     if not file or not file.filename:
         return None
 
     try:
-        s3_result = s3_service.upload_image(file, folder="covers")
+        folder = f"covers/{producto}" if producto in {"kapital", "valora"} else "covers"
+        s3_result = s3_service.upload_image(file, folder=folder)
     except Exception as e:
         # Si falla AWS S3, lanzamos un 400 para que el frontend lo pueda mostrar
         # y no cause un 500 que rompe los headers CORS.
@@ -125,7 +128,7 @@ def _create_media_from_upload(db: Session, file: UploadFile) -> Optional[int]:
         mime_type="image/webp",
         url=s3_result["file_url"],
         storage_path=s3_result["object_key"],
-        folder="/covers",
+        folder=f"/{folder}",
     )
     db.add(media)
     db.flush()  # Para obtener el ID generado
@@ -136,6 +139,7 @@ def _create_media_from_upload(db: Session, file: UploadFile) -> Optional[int]:
 def create_cover(
     nombre: str = Form(...),
     tipo: str = Form(...),
+    producto: Optional[str] = Form(None),
     portada_id: Optional[int] = Form(None),
     primer_imagen_footer_id: Optional[int] = Form(None),
     segundo_imagen_footer_id: Optional[int] = Form(None),
@@ -154,23 +158,24 @@ def create_cover(
 ):
     # Subir nuevos archivos a S3 y crear los Media correspondientes si existen
     if portada and portada.filename:
-        portada_id = _create_media_from_upload(db, portada)
+        portada_id = _create_media_from_upload(db, portada, producto)
     if primer_imagen_footer and primer_imagen_footer.filename:
-        primer_imagen_footer_id = _create_media_from_upload(db, primer_imagen_footer)
+        primer_imagen_footer_id = _create_media_from_upload(db, primer_imagen_footer, producto)
     if segundo_imagen_footer and segundo_imagen_footer.filename:
-        segundo_imagen_footer_id = _create_media_from_upload(db, segundo_imagen_footer)
+        segundo_imagen_footer_id = _create_media_from_upload(db, segundo_imagen_footer, producto)
     if logo_superior and logo_superior.filename:
-        logo_superior_id = _create_media_from_upload(db, logo_superior)
+        logo_superior_id = _create_media_from_upload(db, logo_superior, producto)
     if imagen_central and imagen_central.filename:
-        imagen_central_id = _create_media_from_upload(db, imagen_central)
+        imagen_central_id = _create_media_from_upload(db, imagen_central, producto)
     if logo_inferior and logo_inferior.filename:
-        logo_inferior_id = _create_media_from_upload(db, logo_inferior)
+        logo_inferior_id = _create_media_from_upload(db, logo_inferior, producto)
     if imagen_fondo and imagen_fondo.filename:
-        imagen_fondo_id = _create_media_from_upload(db, imagen_fondo)
+        imagen_fondo_id = _create_media_from_upload(db, imagen_fondo, producto)
 
     cover = Cover(
         nombre=nombre,
         tipo=tipo,
+        producto=producto if producto in {"kapital", "valora"} else None,
         portada_id=portada_id,
         primer_imagen_footer_id=primer_imagen_footer_id,
         segundo_imagen_footer_id=segundo_imagen_footer_id,
@@ -190,6 +195,7 @@ def update_cover(
     cover_id: int,
     nombre: Optional[str] = Form(None),
     tipo: Optional[str] = Form(None),
+    producto: Optional[str] = Form(None),
     portada_id: Optional[int] = Form(None),
     primer_imagen_footer_id: Optional[int] = Form(None),
     segundo_imagen_footer_id: Optional[int] = Form(None),
@@ -224,7 +230,7 @@ def update_cover(
             existing.deleted_at = now
             db.add(existing)
             cover.portada_id = None
-        portada_id = _create_media_from_upload(db, portada)
+        portada_id = _create_media_from_upload(db, portada, producto or cover.producto)
 
     if primer_imagen_footer and primer_imagen_footer.filename:
         existing = getattr(cover, "primer_imagen_footer")
@@ -236,7 +242,7 @@ def update_cover(
             existing.deleted_at = now
             db.add(existing)
             cover.primer_imagen_footer_id = None
-        primer_imagen_footer_id = _create_media_from_upload(db, primer_imagen_footer)
+        primer_imagen_footer_id = _create_media_from_upload(db, primer_imagen_footer, producto or cover.producto)
 
     if segundo_imagen_footer and segundo_imagen_footer.filename:
         existing = getattr(cover, "segundo_imagen_footer")
@@ -248,7 +254,7 @@ def update_cover(
             existing.deleted_at = now
             db.add(existing)
             cover.segundo_imagen_footer_id = None
-        segundo_imagen_footer_id = _create_media_from_upload(db, segundo_imagen_footer)
+        segundo_imagen_footer_id = _create_media_from_upload(db, segundo_imagen_footer, producto or cover.producto)
 
     if logo_superior and logo_superior.filename:
         existing = getattr(cover, "logo_superior")
@@ -260,7 +266,7 @@ def update_cover(
             existing.deleted_at = now
             db.add(existing)
             cover.logo_superior_id = None
-        logo_superior_id = _create_media_from_upload(db, logo_superior)
+        logo_superior_id = _create_media_from_upload(db, logo_superior, producto or cover.producto)
 
     if imagen_central and imagen_central.filename:
         existing = getattr(cover, "imagen_central")
@@ -272,7 +278,7 @@ def update_cover(
             existing.deleted_at = now
             db.add(existing)
             cover.imagen_central_id = None
-        imagen_central_id = _create_media_from_upload(db, imagen_central)
+        imagen_central_id = _create_media_from_upload(db, imagen_central, producto or cover.producto)
 
     if logo_inferior and logo_inferior.filename:
         existing = getattr(cover, "logo_inferior")
@@ -284,7 +290,7 @@ def update_cover(
             existing.deleted_at = now
             db.add(existing)
             cover.logo_inferior_id = None
-        logo_inferior_id = _create_media_from_upload(db, logo_inferior)
+        logo_inferior_id = _create_media_from_upload(db, logo_inferior, producto or cover.producto)
 
     if imagen_fondo and imagen_fondo.filename:
         existing = getattr(cover, "imagen_fondo")
@@ -296,13 +302,15 @@ def update_cover(
             existing.deleted_at = now
             db.add(existing)
             cover.imagen_fondo_id = None
-        imagen_fondo_id = _create_media_from_upload(db, imagen_fondo)
+        imagen_fondo_id = _create_media_from_upload(db, imagen_fondo, producto or cover.producto)
 
     # Actualizar campos si se proporcionaron
     if nombre is not None:
         cover.nombre = nombre
     if tipo is not None:
         cover.tipo = tipo
+    if producto in {"kapital", "valora"}:
+        cover.producto = producto
 
     # Asociar nuevos media ids si fueron proporcionados
     if portada_id is not None:

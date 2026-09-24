@@ -42,11 +42,17 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
         return normalize_label(value).casefold()
 
     def canonical_label(value: object) -> str:
+        # Se conserva el texto tal como lo ingresó el usuario (solo trim).
+        # La agrupación insensible a mayúsculas la hace normalize_key.
         label = normalize_label(value)
         if not label:
             return "Otro"
-        parts = [part.capitalize() for part in label.casefold().split()]
-        return " ".join(parts)
+        return label
+
+    # Audiencias válidas: "specialist" (formulario anterior) y
+    # "trabajo" / "estudiante" (formulario nuevo motivo → sector → cargo).
+    trabajador_audiences = {"specialist", "trabajo"}
+    valid_audiences = trabajador_audiences | {"estudiante"}
 
     unique_devices = set()
     latest_by_device: dict[str, tuple] = {}
@@ -55,7 +61,7 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
             continue
         device_id = str(metadata.get("device_id") or "").strip()
         audience = str(metadata.get("audience") or "").strip().lower()
-        if not device_id or audience not in {"specialist"}:
+        if not device_id or audience not in valid_audiences:
             continue
         unique_devices.add(device_id)
         prev = latest_by_device.get(device_id)
@@ -63,24 +69,75 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
             latest_by_device[device_id] = (timestamp, metadata)
 
     total_devices = len(unique_devices)
-    audience_counts = {"Especialistas": total_devices, "Empresas": 0}
+    trabajadores_total = sum(
+        1
+        for _, (_, metadata) in latest_by_device.items()
+        if str(metadata.get("audience") or "").strip().lower()
+        in trabajador_audiences
+    )
+    estudiantes_total = total_devices - trabajadores_total
+    audience_counts = {
+        "Trabajadores": trabajadores_total,
+        "Estudiantes": estudiantes_total,
+    }
     role_counts: dict[str, dict[str, object]] = {}
     company_counts: dict[str, dict[str, object]] = {}
+    sector_counts: dict[str, dict[str, object]] = {}
+    cargo_counts: dict[str, dict[str, object]] = {}
     for device_id, (timestamp, metadata) in latest_by_device.items():
-        raw_role = canonical_label(metadata.get("role"))
-        raw_company = canonical_label(metadata.get("company") or metadata.get("company_name"))
-        role_key = normalize_key(raw_role)
-        company_key = normalize_key(raw_company)
-        role_entry = role_counts.setdefault(role_key, {"label": raw_role, "count": 0})
-        company_entry = company_counts.setdefault(company_key, {"label": raw_company, "count": 0})
-        role_entry["label"] = role_entry["label"] or raw_role
-        company_entry["label"] = company_entry["label"] or raw_company
+        audience = str(metadata.get("audience") or "").strip().lower()
+        if audience not in trabajador_audiences:
+            # Estudiantes: sin sector ni cargo que agregar.
+            continue
+        # Claves nuevas (sector/cargo) con fallback a las anteriores
+        # (company/role) para los eventos del formulario viejo.
+        raw_sector = canonical_label(
+            metadata.get("sector")
+            or metadata.get("company")
+            or metadata.get("company_name")
+        )
+        raw_cargo = canonical_label(metadata.get("cargo") or metadata.get("role"))
+        sector_key = normalize_key(raw_sector)
+        cargo_key = normalize_key(raw_cargo)
+        sector_entry = sector_counts.setdefault(
+            sector_key, {"label": raw_sector, "count": 0}
+        )
+        cargo_entry = cargo_counts.setdefault(
+            cargo_key, {"label": raw_cargo, "count": 0}
+        )
+        sector_entry["label"] = sector_entry["label"] or raw_sector
+        cargo_entry["label"] = cargo_entry["label"] or raw_cargo
+        sector_entry["count"] = int(sector_entry["count"]) + 1
+        cargo_entry["count"] = int(cargo_entry["count"]) + 1
+        # Compatibilidad: los campos históricos siguen poblándose.
+        role_entry = role_counts.setdefault(
+            cargo_key, {"label": raw_cargo, "count": 0}
+        )
+        company_entry = company_counts.setdefault(
+            sector_key, {"label": raw_sector, "count": 0}
+        )
+        role_entry["label"] = role_entry["label"] or raw_cargo
+        company_entry["label"] = company_entry["label"] or raw_sector
         role_entry["count"] = int(role_entry["count"]) + 1
         company_entry["count"] = int(company_entry["count"]) + 1
 
-    audience_counts["Empresas"] = total_devices
+    def build_top_items(
+        counts: dict[str, dict[str, object]], denominator: int
+    ) -> list:
+        return [
+            TopItem(
+                label=value["label"],
+                count=int(value["count"]),
+                percentage=round(
+                    int(value["count"]) / max(denominator, 1) * 100, 1
+                ),
+            )
+            for _, value in sorted(
+                counts.items(),
+                key=lambda item: (-int(item[1]["count"]), item[1]["label"]),
+            )
+        ]
 
-    specialist_total = audience_counts["Especialistas"]
     audiences = [
         TopItem(
             label=label,
@@ -89,31 +146,18 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
         )
         for label, count in audience_counts.items()
     ]
-    specialist_roles = [
-        TopItem(
-            label=value["label"],
-            count=int(value["count"]),
-            percentage=round(int(value["count"]) / max(specialist_total, 1) * 100, 1),
-        )
-        for _, value in sorted(
-            role_counts.items(), key=lambda item: (-int(item[1]["count"]), item[1]["label"])
-        )
-    ]
-    company_names = [
-        TopItem(
-            label=value["label"],
-            count=int(value["count"]),
-            percentage=round(int(value["count"]) / max(audience_counts["Empresas"], 1) * 100, 1),
-        )
-        for _, value in sorted(
-            company_counts.items(), key=lambda item: (-int(item[1]["count"]), item[1]["label"])
-        )
-    ]
+    denominator = max(trabajadores_total, 1)
+    specialist_roles = build_top_items(role_counts, denominator)
+    company_names = build_top_items(company_counts, denominator)
+    sectors = build_top_items(sector_counts, denominator)
+    cargos = build_top_items(cargo_counts, denominator)
     return OccupationProfileMetrics(
         total_devices=total_devices,
         audiences=audiences,
         specialist_roles=specialist_roles,
         company_names=company_names,
+        sectors=sectors,
+        cargos=cargos,
     )
 
 

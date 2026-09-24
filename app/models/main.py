@@ -193,6 +193,7 @@ class Cover(Base):
 
     id = Column(MySQLBigInt(unsigned=True), primary_key=True, autoincrement=True)
     nombre = Column(String(255), nullable=False)
+    producto = Column(String(20), nullable=True)
     tipo = Column(
         SQLEnum(
             CoverType,

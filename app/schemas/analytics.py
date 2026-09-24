@@ -119,6 +119,8 @@ class OccupationProfileMetrics(BaseModel):
     audiences: List[TopItem]
     specialist_roles: List[TopItem]
     company_names: List[TopItem]
+    sectors: List[TopItem] = []
+    cargos: List[TopItem] = []
 
 
 class DashboardData(BaseModel):
