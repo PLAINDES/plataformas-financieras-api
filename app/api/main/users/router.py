@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_admin
 from app.db.database import get_db
+from app.models.analytics import AnalyticsSession
 from app.models.user import Session as SessionModel
 from app.models.user import User, UserRole
 from app.schemas.user import (
@@ -65,8 +66,30 @@ def list_users(
         .all()
     )
 
+    # Última actividad por usuario (último inicio de sesión registrado en
+    # analytics). Una sola consulta agrupada para toda la página.
+    last_activity: dict = {}
+    user_ids = [user.id for user in users]
+    if user_ids:
+        activity_rows = db.execute(
+            select(
+                AnalyticsSession.user_id,
+                func.max(AnalyticsSession.start_time),
+            )
+            .where(AnalyticsSession.user_id.in_(user_ids))
+            .group_by(AnalyticsSession.user_id)
+        ).all()
+        last_activity = {row[0]: row[1] for row in activity_rows}
+
+    items = [
+        UserResponse.model_validate(user).model_copy(
+            update={"last_activity_at": last_activity.get(user.id)}
+        )
+        for user in users
+    ]
+
     return {
-        "items": users,
+        "items": items,
         "total": total_count,
         "page": page,
         "limit": limit,

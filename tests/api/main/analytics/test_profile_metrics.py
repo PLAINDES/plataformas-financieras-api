@@ -39,14 +39,21 @@ def test_profile_metrics_keep_latest_choice_per_device():
 
     assert result.total_devices == 2
     assert [(item.label, item.count, item.percentage) for item in result.audiences] == [
-        ("Especialistas", 2, 100.0),
-        ("Empresas", 2, 100.0),
+        ("Trabajadores", 2, 100.0),
+        ("Estudiantes", 0, 0.0),
     ]
     assert [(item.label, item.count, item.percentage) for item in result.specialist_roles] == [
         ("Contabilidad", 1, 50.0),
         ("Tesorería", 1, 50.0),
     ]
     assert [(item.label, item.count, item.percentage) for item in result.company_names] == [
+        ("Alicorp", 2, 100.0),
+    ]
+    assert [(item.label, item.count, item.percentage) for item in result.cargos] == [
+        ("Contabilidad", 1, 50.0),
+        ("Tesorería", 1, 50.0),
+    ]
+    assert [(item.label, item.count, item.percentage) for item in result.sectors] == [
         ("Alicorp", 2, 100.0),
     ]
 
@@ -69,4 +76,63 @@ def test_profile_metrics_group_other_without_storing_detail():
     assert [(item.label, item.count, item.percentage) for item in result.company_names] == [
         ("Otro", 2, 66.7),
         ("Kapital", 1, 33.3),
+    ]
+
+
+def test_profile_metrics_new_flow_trabajo_and_estudiante():
+    now = datetime(2026, 8, 12, 10, 0, 0)
+    rows = [
+        (
+            {
+                "device_id": "device-1",
+                "audience": "trabajo",
+                "motivo": "Trabajo",
+                "sector": "Minería",
+                "cargo": "Analista financiero",
+                "role": "Analista financiero",
+                "company": "Minería",
+            },
+            now,
+        ),
+        (
+            {
+                "device_id": "device-2",
+                "audience": "trabajo",
+                "motivo": "Trabajo",
+                "sector": "Asesoramiento de Finanzas y Valorización",
+                "cargo": "Asesor de valorización",
+                "role": "Asesor de valorización",
+                "company": "Asesoramiento de Finanzas y Valorización",
+            },
+            now,
+        ),
+        (
+            {
+                "device_id": "device-3",
+                "audience": "estudiante",
+                "motivo": "Estudiante",
+                "role": None,
+                "company": None,
+                "sector": None,
+                "cargo": None,
+            },
+            now,
+        ),
+    ]
+
+    result = build_occupation_profile_metrics(rows)
+
+    assert result.total_devices == 3
+    assert [(item.label, item.count, item.percentage) for item in result.audiences] == [
+        ("Trabajadores", 2, 66.7),
+        ("Estudiantes", 1, 33.3),
+    ]
+    # El texto libre de "Otros" es lo que se registra, no la palabra "Otros".
+    assert [(item.label, item.count) for item in result.sectors] == [
+        ("Asesoramiento de Finanzas y Valorización", 1),
+        ("Minería", 1),
+    ]
+    assert [(item.label, item.count) for item in result.cargos] == [
+        ("Analista financiero", 1),
+        ("Asesor de valorización", 1),
     ]
