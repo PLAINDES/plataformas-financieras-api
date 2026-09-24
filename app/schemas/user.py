@@ -16,12 +16,15 @@ class UserCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=255)
     lastname: Optional[str] = Field(None, max_length=255)
     phone_number: str = Field(..., min_length=7, max_length=30)
-    birth_date: date
-    document_type: str = Field(..., pattern="^(dni|ruc|ce)$")
-    document_number: str = Field(..., min_length=8, max_length=30)
+    # Campos de perfil: opcionales para no romper el contrato de /register
+    # (la BD los define como nullable). Cuando se envían, se validan.
+    birth_date: Optional[date] = Field(None)
+    document_type: Optional[str] = Field(None, pattern="^(dni|ruc|ce)$")
+    document_number: Optional[str] = Field(None, max_length=30)
     ruc: Optional[str] = Field(None, min_length=11, max_length=20)
     password: str = Field(..., min_length=8)
-    password_confirmation: str
+    # Opcional por compatibilidad: si se envía, debe coincidir con password.
+    password_confirmation: Optional[str] = Field(None)
     role: Optional[str] = Field(default="user")
 
     @field_validator("phone_number", mode="before")
@@ -29,10 +32,20 @@ class UserCreate(BaseModel):
     def normalize_phone_number(cls, value: object) -> object:
         return value.strip() if isinstance(value, str) else value
 
+    @field_validator("document_number", mode="before")
+    @classmethod
+    def normalize_document_number(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value.strip() if isinstance(value, str) else value
+
     @field_validator("document_number")
     @classmethod
-    def validate_document_number(cls, value: str, info) -> str:
-        value = value.strip()
+    def validate_document_number(cls, value: Optional[str], info) -> Optional[str]:
+        if value is None:
+            return value
+        if len(value) < 8:
+            raise ValueError("Document number must contain at least 8 characters")
         document_type = info.data.get("document_type")
         if document_type == "dni" and (not value.isdigit() or len(value) != 8):
             raise ValueError("DNI must contain exactly 8 digits")
@@ -49,16 +62,11 @@ class UserCreate(BaseModel):
             return None
         return value.strip() if isinstance(value, str) else value
 
-    @field_validator("password")
-    @classmethod
-    def validate_password(cls, value: str) -> str:
-        if not any(char.isupper() for char in value) or not any(not char.isalnum() for char in value):
-            raise ValueError("Password must contain an uppercase letter and a symbol")
-        return value
-
     @field_validator("password_confirmation")
     @classmethod
-    def validate_password_confirmation(cls, value: str, info):
+    def validate_password_confirmation(cls, value: Optional[str], info):
+        if value is None:
+            return value
         if value != info.data.get("password"):
             raise ValueError("Passwords do not match")
         return value
