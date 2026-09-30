@@ -30,7 +30,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/main/report-payments", tags=["Report payments"])
 
 _CURRENCY_ALIASES = {"SOLES": "PEN", "SOL": "PEN", "S/": "PEN"}
-_CHECKOUT_URL_PREFIX = "https://platinumarket.proideas.org/embedded/pay"
+_CHECKOUT_URL_PREFIXES = (
+    "https://platinumarket.proideas.org/embedded/pay",
+    "https://platinumarket.pro-educative.com/embedded/pay",
+    "https://apiplatinumarket.pro-educative.com/embedded/pay",
+)
 _WEBHOOK_EVENT_STATUS = {
     "payment.succeeded": "paid",
     "payment.failed": "failed",
@@ -85,9 +89,9 @@ def _build_payment_payload(
     amount = Decimal(report.precio or 0)
     if amount <= 0:
         raise HTTPException(status_code=422, detail="El reporte no tiene un precio valido")
-    description = (report.contenido or "").strip()
+    description = (report.nombre or "").strip() or (report.contenido or "").strip()
     if not description:
-        raise HTTPException(status_code=422, detail="El reporte no tiene descripcion de pago")
+        raise HTTPException(status_code=422, detail="El reporte no tiene nombre de producto")
     phone_number = (current_user.phone_number or "").strip()
     if len(phone_number) < 7:
         raise HTTPException(status_code=422, detail="El usuario no tiene un telefono valido")
@@ -366,9 +370,12 @@ async def create_payment_session(
         db.rollback()
         logger.error("Incomplete Certprox response keys=%s", sorted(gateway_data.keys()))
         raise HTTPException(status_code=502, detail="Certprox devolvio una sesion incompleta")
-    if not checkout_url.startswith(_CHECKOUT_URL_PREFIX):
+    if not checkout_url.startswith(_CHECKOUT_URL_PREFIXES):
         db.rollback()
-        logger.error("Certprox returned an unexpected checkout URL")
+        logger.error(
+            "Certprox returned an unexpected checkout URL host=%s",
+            checkout_url.split("?")[0].rsplit("/", 1)[0][:120],
+        )
         raise HTTPException(status_code=502, detail="Certprox devolvio una URL no permitida")
 
     expires_at = None
