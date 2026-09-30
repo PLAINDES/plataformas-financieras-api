@@ -19,6 +19,7 @@ class AnalyticsSession(Base):
     browser = Column(String(50), nullable=True)
     entry_page = Column(String(255), nullable=True)
     referrer = Column(String(500), nullable=True)
+    utm_source = Column(String(100), nullable=True)
     start_time = Column(DateTime, default=func.now(), nullable=False)
     end_time = Column(DateTime, nullable=True)
     duration_seconds = Column(Integer, nullable=True)

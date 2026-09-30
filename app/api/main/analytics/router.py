@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -84,10 +85,25 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
     company_counts: dict[str, dict[str, object]] = {}
     sector_counts: dict[str, dict[str, object]] = {}
     cargo_counts: dict[str, dict[str, object]] = {}
+    especialidad_counts: dict[str, dict[str, object]] = {}
     for device_id, (timestamp, metadata) in latest_by_device.items():
         audience = str(metadata.get("audience") or "").strip().lower()
         if audience not in trabajador_audiences:
-            # Estudiantes: sin sector ni cargo que agregar.
+            # Estudiantes: solo se cuentan si informaron especialidad
+            # (paso nuevo del formulario). Los eventos del formulario
+            # anterior, sin especialidad, se omiten en vez de agruparse
+            # en "Otro".
+            raw_especialidad = normalize_label(metadata.get("especialidad"))
+            if not raw_especialidad:
+                continue
+            especialidad_key = normalize_key(raw_especialidad)
+            especialidad_entry = especialidad_counts.setdefault(
+                especialidad_key, {"label": raw_especialidad, "count": 0}
+            )
+            especialidad_entry["label"] = (
+                especialidad_entry["label"] or raw_especialidad
+            )
+            especialidad_entry["count"] = int(especialidad_entry["count"]) + 1
             continue
         # Claves nuevas (sector/cargo) con fallback a las anteriores
         # (company/role) para los eventos del formulario viejo.
@@ -147,10 +163,16 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
         for label, count in audience_counts.items()
     ]
     denominator = max(trabajadores_total, 1)
+    # Porcentajes de especialidad sobre los estudiantes que sí la
+    # informaron, no sobre el total de estudiantes.
+    especialidades_denominator = max(
+        sum(int(value["count"]) for value in especialidad_counts.values()), 1
+    )
     specialist_roles = build_top_items(role_counts, denominator)
     company_names = build_top_items(company_counts, denominator)
     sectors = build_top_items(sector_counts, denominator)
     cargos = build_top_items(cargo_counts, denominator)
+    especialidades = build_top_items(especialidad_counts, especialidades_denominator)
     return OccupationProfileMetrics(
         total_devices=total_devices,
         audiences=audiences,
@@ -158,7 +180,65 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
         company_names=company_names,
         sectors=sectors,
         cargos=cargos,
+        especialidades=especialidades,
     )
+
+
+def normalize_utm(value: object) -> Optional[str]:
+    text = str(value or "").strip().lower()
+    return text or None
+
+
+UTM_SOURCE_LABELS = {
+    "linkedin": "LinkedIn",
+    "youtube": "YouTube",
+    "facebook": "Facebook",
+    "instagram": "Instagram",
+    "tiktok": "TikTok",
+    "google": "Google",
+    "bing": "Bing",
+    "whatsapp": "WhatsApp",
+    "twitter": "X (Twitter)",
+    "x": "X (Twitter)",
+    "telegram": "Telegram",
+}
+
+
+def prettify_traffic_source(value: object) -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return "Directo"
+    return UTM_SOURCE_LABELS.get(text, text)
+
+
+REFERRER_SOURCE_DOMAINS = (
+    ("linkedin.", "LinkedIn"),
+    ("youtu", "YouTube"),
+    ("facebook.", "Facebook"),
+    ("fb.com", "Facebook"),
+    ("instagram.", "Instagram"),
+    ("tiktok.", "TikTok"),
+    ("google.", "Google"),
+    ("bing.", "Bing"),
+    ("whatsapp", "WhatsApp"),
+    ("twitter.", "X (Twitter)"),
+    ("x.com", "X (Twitter)"),
+)
+
+
+def traffic_source_from_referrer(referrer: object) -> str:
+    """Respaldo cuando la sesión no trae UTM: mapea el dominio del referrer."""
+    text = str(referrer or "").strip().lower()
+    if not text:
+        return "Directo"
+    try:
+        host = urlparse(text).hostname or text
+    except Exception:
+        host = text
+    for domain, label in REFERRER_SOURCE_DOMAINS:
+        if domain in host:
+            return label
+    return "Otros"
 
 
 def now_lima() -> datetime:
@@ -282,6 +362,7 @@ async def track_event(request: Request, payload: TrackPayload, db: Session = Dep
             browser=payload.browser,
             entry_page=payload.page_path,
             referrer=payload.referrer,
+            utm_source=normalize_utm(payload.utm_source),
         )
         session = AnalyticsSession(**session_data.model_dump())
         session.start_time = now_lima()
@@ -633,6 +714,42 @@ def get_dashboard(
     ).all()
     browsers = [TopItem(label=b[0] or "Unknown", count=b[1], percentage=round(b[1] / max(total_sessions, 1) * 100, 1)) for b in browsers_result]
 
+    # Traffic sources: sesiones por origen de llegada (UTM con fallback
+    # al dominio del referrer). Atribución first-touch: el UTM se guarda
+    # una sola vez al crear la sesión.
+    source_counts: dict[str, int] = {}
+    source_rows = db.execute(
+        select(AnalyticsSession.utm_source, func.count(AnalyticsSession.id))
+        .where(AnalyticsSession.start_time >= since)
+        .where(AnalyticsSession.utm_source.isnot(None))
+        .group_by(AnalyticsSession.utm_source)
+    ).all()
+    for utm_source, count in source_rows:
+        label = prettify_traffic_source(utm_source)
+        source_counts[label] = source_counts.get(label, 0) + count
+    ref_rows = db.execute(
+        select(AnalyticsSession.referrer, func.count(AnalyticsSession.id))
+        .where(AnalyticsSession.start_time >= since)
+        .where(AnalyticsSession.utm_source.is_(None))
+        .where(AnalyticsSession.referrer.isnot(None))
+        .group_by(AnalyticsSession.referrer)
+    ).all()
+    for referrer, count in ref_rows:
+        label = traffic_source_from_referrer(referrer)
+        source_counts[label] = source_counts.get(label, 0) + count
+    direct_count = db.execute(
+        select(func.count(AnalyticsSession.id))
+        .where(AnalyticsSession.start_time >= since)
+        .where(AnalyticsSession.utm_source.is_(None))
+        .where(AnalyticsSession.referrer.is_(None))
+    ).scalar() or 0
+    if direct_count:
+        source_counts["Directo"] = source_counts.get("Directo", 0) + direct_count
+    traffic_sources = [
+        TopItem(label=label, count=count, percentage=round(count / max(total_sessions, 1) * 100, 1))
+        for label, count in sorted(source_counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
     # Hourly distribution (por page view timestamp, no session start — refleja actividad real)
     hourly_result = db.execute(
         select(func.hour(AnalyticsPageView.timestamp), func.count(AnalyticsPageView.id))
@@ -700,6 +817,7 @@ def get_dashboard(
         daily_distribution=daily,
         pages=pages,
         sessions_over_time=sessions_over_time,
+        traffic_sources=traffic_sources,
         kapital_funnel=CalculationFunnel(
             users_started=users_started,
             activation_rate=activation_rate,

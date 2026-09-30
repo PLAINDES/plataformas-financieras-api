@@ -111,6 +111,7 @@ def test_profile_metrics_new_flow_trabajo_and_estudiante():
                 "device_id": "device-3",
                 "audience": "estudiante",
                 "motivo": "Estudiante",
+                "especialidad": "Ingeniería de sistemas",
                 "role": None,
                 "company": None,
                 "sector": None,
@@ -135,4 +136,58 @@ def test_profile_metrics_new_flow_trabajo_and_estudiante():
     assert [(item.label, item.count) for item in result.cargos] == [
         ("Analista financiero", 1),
         ("Asesor de valorización", 1),
+    ]
+    # La especialidad del estudiante se agrega sobre el total de estudiantes.
+    assert [(item.label, item.count, item.percentage) for item in result.especialidades] == [
+        ("Ingeniería de sistemas", 1, 100.0),
+    ]
+
+
+def test_profile_metrics_especialidades_keep_latest_and_group_case_insensitive():
+    now = datetime(2026, 8, 12, 10, 0, 0)
+    rows = [
+        (
+            {
+                "device_id": "device-1",
+                "audience": "estudiante",
+                "motivo": "Estudiante",
+                "especialidad": "medicina",
+            },
+            now,
+        ),
+        (
+            {
+                "device_id": "device-1",
+                "audience": "estudiante",
+                "motivo": "Estudiante",
+                "especialidad": "Medicina",
+            },
+            now + timedelta(minutes=1),
+        ),
+        (
+            {
+                "device_id": "device-2",
+                "audience": "estudiante",
+                "motivo": "Estudiante",
+                "especialidad": "MEDICINA",
+            },
+            now,
+        ),
+        (
+            {
+                "device_id": "device-3",
+                "audience": "estudiante",
+                "motivo": "Estudiante",
+            },
+            now,
+        ),
+    ]
+
+    result = build_occupation_profile_metrics(rows)
+
+    assert result.total_devices == 3
+    # Solo cuenta la última elección por dispositivo y agrupa sin
+    # distinguir mayúsculas; sin especialidad no se cuenta (sin "Otro").
+    assert [(item.label, item.count, item.percentage) for item in result.especialidades] == [
+        ("Medicina", 2, 100.0),
     ]
