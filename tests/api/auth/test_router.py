@@ -32,6 +32,11 @@ def disable_auth_mocks(client):
     app.dependency_overrides.pop(get_current_admin, None)
     yield
 
+def _unique_dni() -> str:
+    """Genera un DNI único de 8 dígitos para evitar choques con unique=True en BD."""
+    return str(uuid.uuid4().int % 90000000 + 10000000)
+
+
 def create_fresh_user(client: TestClient) -> dict:
     """
     Crea un usuario completamente nuevo con un correo único (UUID) y devuelve sus datos.
@@ -44,11 +49,17 @@ def create_fresh_user(client: TestClient) -> dict:
     payload = {
         "email": test_email,
         "name": "QA User",
+        "lastname": "Prueba",
         "phone_number": "999999999",
+        "birth_date": "1990-01-01",
+        "document_type": "dni",
+        "document_number": _unique_dni(),
         "password": password,
+        "password_confirmation": password,
         "role": "user"
     }
     response = client.post(f"{PREFIX}/register", json=payload)
+    assert response.status_code == 201, f"Register failed in helper: {response.text}"
     token = response.json()["access_token"]
 
     # Retornamos las credenciales para que los tests puedan hacer login
@@ -68,12 +79,17 @@ def test_register_user_success(client: TestClient, db_session: Session):
     Prueba el registro de un usuario nuevo. Verifica que devuelva un token
     y que el usuario se persista correctamente en la base de datos.
     """
+    unique_id = uuid.uuid4().hex[:8]
     payload = {
-        "email": "nuevo_usuario_qa@example.com",
+        "email": f"nuevo_usuario_qa_{unique_id}@example.com",
         "name": "Usuario",
         "lastname": "Prueba",
         "phone_number": "999999999",
+        "birth_date": "1990-01-01",
+        "document_type": "dni",
+        "document_number": _unique_dni(),
         "password": "securepassword123",
+        "password_confirmation": "securepassword123",
         "role": "user"
     }
 
@@ -100,8 +116,13 @@ def test_register_user_duplicate_email(client: TestClient):
     payload = {
         "email": user_creds["email"], # Email que acabamos de crear
         "name": "Clon",
+        "lastname": "Prueba",
         "phone_number": "999999999",
-        "password": "password123"
+        "birth_date": "1990-01-01",
+        "document_type": "dni",
+        "document_number": _unique_dni(),
+        "password": "password123",
+        "password_confirmation": "password123"
     }
 
     response = client.post(f"{PREFIX}/register", json=payload)

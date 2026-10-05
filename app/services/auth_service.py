@@ -44,6 +44,21 @@ class AuthService:
             raise ValueError("Email already registered")
         print("No existing user found for email:", user_data.email)
 
+        # Verificar duplicados de documento / ruc solo si se enviaron
+        # (evita IntegrityError 500 y devuelve 400 controlado).
+        if user_data.document_number:
+            existing_doc = self.db.query(User).filter(
+                User.document_number == user_data.document_number
+            ).first()
+            if existing_doc:
+                raise ValueError("Document number already registered")
+        if user_data.ruc:
+            existing_ruc = self.db.query(User).filter(
+                User.ruc == user_data.ruc
+            ).first()
+            if existing_ruc:
+                raise ValueError("RUC already registered")
+
 
         # Hash de la contraseña
         hashed_password = self._hash_password(user_data.password)
@@ -58,6 +73,10 @@ class AuthService:
             "name": user_data.name,
             "lastname": user_data.lastname,
             "phone_number": user_data.phone_number,
+            "birth_date": user_data.birth_date,
+            "document_type": user_data.document_type,
+            "document_number": user_data.document_number,
+            "ruc": user_data.ruc or None,
             "password": hashed_password,
             "role": user_data.role or "user"
         })
@@ -214,8 +233,13 @@ class AuthService:
             name=user.name,
             lastname=user.lastname,
             phone_number=user.phone_number,
+            birth_date=user.birth_date,
+            document_type=user.document_type,
+            document_number=user.document_number,
+            ruc=user.ruc,
             role=user.role.value,
             is_active=user.is_active,
             avatar=user.avatar,
-            created_at=user.created_at
+            created_at=user.created_at,
+            updated_at=user.updated_at
         )

@@ -18,7 +18,6 @@ from .api.main.report_payments.router import router as report_payments_router
 from .api.main.router import router as main_router
 from .api.main.users.router import router as users_router
 from .api.main.analytics.router import router as analytics_router
-from .api.storage.onedrive_router import router as onedrive_router
 from .core.config import settings
 
 
@@ -96,7 +95,6 @@ app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(cms_router, prefix=settings.API_V1_PREFIX)
 app.include_router(main_router, prefix=settings.API_V1_PREFIX)
 app.include_router(master_templates_router, prefix=settings.API_V1_PREFIX)
-app.include_router(onedrive_router, prefix=settings.API_V1_PREFIX)
 app.include_router(calculations_router, prefix=settings.API_V1_PREFIX)
 app.include_router(chatbot_router, prefix=settings.API_V1_PREFIX)
 app.include_router(reports_router, prefix=settings.API_V1_PREFIX)

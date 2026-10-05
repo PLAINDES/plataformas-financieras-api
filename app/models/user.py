@@ -1,5 +1,5 @@
 # app/models/user.py
-from sqlalchemy import Column, BigInteger, String, DateTime, Enum as SQLEnum, Boolean, JSON, Text
+from sqlalchemy import Column, BigInteger, String, DateTime, Date, Enum as SQLEnum, Boolean, JSON, Text
 from sqlalchemy.dialects.mysql import BIGINT as MySQLBigInt
 from sqlalchemy.sql import func
 from datetime import datetime
@@ -22,6 +22,10 @@ class User(Base):
     name = Column(String(255), nullable=False)
     lastname = Column(String(255), nullable=True)
     phone_number = Column(String(30), nullable=True)
+    birth_date = Column(Date, nullable=True)
+    document_type = Column(String(10), nullable=True)
+    document_number = Column(String(30), nullable=True, unique=True, index=True)
+    ruc = Column(String(20), nullable=True, unique=True, index=True)
     role = Column(SQLEnum(UserRole, values_callable=lambda enum_cls: [e.value for e in enum_cls]), default=UserRole.USER, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     avatar = Column(String(255), nullable=True)

@@ -695,7 +695,15 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
         total_assets = market_cap_usd + debt_value
     elif market_cap_usd is not None:
         total_assets = market_cap_usd
-    _log_ticker_step(ticker, "activo_mercado", total_assets=total_assets)
+    # Activo de mercado: valor propio e independiente (market cap USD + deuda).
+    # No deriva de total_assets ni de ningún otro campo: tiene exclusividad.
+    if market_cap_usd is not None and debt_value is not None:
+        activo_mercado = market_cap_usd + debt_value
+    elif market_cap_usd is not None:
+        activo_mercado = market_cap_usd
+    else:
+        activo_mercado = None
+    _log_ticker_step(ticker, "activo_mercado", total_assets=activo_mercado)
 
     de_ratio = None
     if debt_value is not None and market_cap_usd is not None and market_cap_usd != 0:
@@ -792,6 +800,9 @@ def _process_single_ticker(ticker: str, cancel_event: threading.Event = None):
         "debt_value": debt_value,
         "equity_value": market_cap_usd,
         "total_assets": total_assets,
+        # Activo de mercado = market cap USD + deuda (valor de mercado de activos).
+        # Campo exclusivo: solo recibe su propio valor, nunca otro campo.
+        "activo_mercado": activo_mercado,
         "dc_ratio": round(de_ratio, 4) if de_ratio is not None else None,
         "effective_tax_rate": round(tax_rate_val, 4),
         "tax_source": tax_source,
@@ -1162,6 +1173,9 @@ def _merge_boa_to_subsectores_master(companies: list[dict], job_id: str = "") ->
                     "market_cap": c.get("market_cap"),
                     "beta_apalancado": c.get("beta_levered"),
                     "total_activos": c.get("total_assets"),
+                    # Activo de mercado real y exclusivo (market cap USD + deuda).
+                    # Sin fallback a otros campos: si es None queda None (N/A).
+                    "activo_mercado": c.get("activo_mercado"),
                     "fx": c.get("fx_rate"),
                     "sector": sector,
                     "subsector": subsector,

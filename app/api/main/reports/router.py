@@ -1,6 +1,5 @@
 # app/api/main/reports/router.py
 
-import asyncio
 import html
 import json
 import logging
@@ -23,7 +22,6 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse
-from pypdf import PdfReader, PdfWriter
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session, joinedload
 
@@ -31,7 +29,7 @@ from app.api.main.calculations.router import get_default_or_latest_master_templa
 from app.db.database import get_db
 from app.models.main import Calculation, CalculationType, Cover, Report, TemplateCode
 from app.models.templates import MasterTemplate
-from app.services.onedrive.service import get_onedrive_service
+from app.services.aws_service import s3_service
 from app.services.query_service import apply_filters
 
 logger = logging.getLogger(__name__)
@@ -348,12 +346,15 @@ async def get_current_codes(db: Session = Depends(get_db)):
     images_payload = master_templates_router.get_template_chart_images(obj.id, db)
 
     # Build a map code -> image url (codes are returned as strings like $$CODE$$)
+    def normalize_code(value):
+        return f"$${str(value or '').replace('$$', '').replace(' ', '').upper()}$$"
+
     image_map = {}
     for t in ("valora", "kapital"):
         for img in images_payload.get(t, []):
             code = img.get("code")
             if code:
-                image_map[code] = img.get("url")
+                image_map[normalize_code(code)] = img.get("url")
 
     # Attach image url to each template code if available
     def attach_urls(codes_list, t):
@@ -380,6 +381,7 @@ async def get_current_codes(db: Session = Depends(get_db)):
                     c_dict = dict(c)
                 entry = {
                     "id": c_dict.get("id", -1),
+                    "template_code_image_id": c_dict.get("template_code_image_id"),
                     "nombre": c_dict.get("nombre")
                     or c_dict.get("original_name")
                     or c_dict.get("filename")
@@ -390,7 +392,7 @@ async def get_current_codes(db: Session = Depends(get_db)):
                     "value": c_dict.get("value"),
                 }
 
-            img_url = image_map.get(entry.get("code"))
+            img_url = image_map.get(normalize_code(entry.get("code")))
             if img_url:
                 entry["template_code_image_url"] = img_url
 
@@ -608,7 +610,6 @@ async def generate_report_pdf(
     if not browser:
         raise HTTPException(status_code=500, detail="Browser instance not available")
 
-    onedrive_service = get_onedrive_service()
     html_content = report.contentEditor or ""
 
     calculation_data = calculation.data if isinstance(calculation.data, dict) else {}
@@ -617,35 +618,24 @@ async def generate_report_pdf(
             if isinstance(item, dict) and item.get("name") == "comparables_subsector":
                 calculation_data["comparables_subsector"] = item.get("value")
                 break
-    # La sesión guardada puede haber expirado en Graph. El reporte necesita una
-    # sesión nueva para leer valores y gráficos de forma consistente.
-    session_id = None
-    calculation_file = (
-        calculation_data.get("file")
-        if isinstance(calculation_data.get("file"), dict)
-        else None
-    )
-    item_id = (
-        calculation_file.get("onedrive_item_id")
-        if calculation_file and calculation_file.get("onedrive_item_id")
-        else report.template.onedrive_item_id
-    )
-    if not item_id:
-        raise HTTPException(status_code=500, detail="No se encontró la plantilla Excel del cálculo")
-    try:
-        session_id = await onedrive_service._create_workbook_session(
-            item_id=item_id,
-            persist_changes=False,
+    is_native_calculation = isinstance(calculation_data.get("template_values"), dict)
+    if not is_native_calculation:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Este reporte legacy fue retirado. Genera el cálculo nuevamente mediante el flujo nativo.",
         )
-        logger.info("[REPORT] Nueva sesión Graph %s para item %s", session_id, item_id)
-    except Exception as exc:
-        logger.warning("[REPORT] No se pudo abrir sesión Graph; se leerá sin sesión: %s", exc)
-
     raw_html_codes = sorted(set(re.findall(r"\$\$[^$\s]+\$\$", html_content)))
 
     def _normalise_code(raw_code: str) -> str:
         clean_code = re.sub(r"\s+", "", str(raw_code or ""))
         return f"$${clean_code.replace('$$', '').upper()}$$"
+
+    def _format_native_value(value):
+        if isinstance(value, bool) or value is None:
+            return value
+        if isinstance(value, float):
+            return f"{value:.6f}".rstrip("0").rstrip(".")
+        return value
 
     html_code_set = {code.upper() for code in raw_html_codes}
 
@@ -691,148 +681,88 @@ async def generate_report_pdf(
                 template_codes_by_code[normalized_code] = code_obj
 
     template_codes = list(template_codes_by_code.values())
+    print(
+        f"[REPORT NATIVE DEBUG] report={report.id} calculation={calculation.id} "
+        f"html_codes={len(raw_html_codes)} linked_codes={len(linked_template_codes)} "
+        f"resolved_codes={len(template_codes_by_code)} "
+        f"template_values={len(calculation_data.get('template_values') or {})}",
+        flush=True,
+    )
+
+    # Native calculations contain report values and S3 media metadata.
+    native_template_values = calculation_data.get("template_values")
+    is_native = isinstance(native_template_values, dict)
+    if is_native:
+        def native_path_value(path):
+            current = calculation_data
+            for part in str(path or "").split("."):
+                if isinstance(current, list):
+                    current = current[0] if current else None
+                if not isinstance(current, dict) or part not in current:
+                    return None
+                current = current[part]
+            if isinstance(current, list):
+                current = current[0] if current else None
+            return current
+
+        for normalized_code, code_obj in template_codes_by_code.items():
+            if normalized_code not in html_content:
+                continue
+            value_source = "template_values"
+            value = native_template_values.get(normalized_code)
+            if code_obj.source_path:
+                value = native_path_value(code_obj.source_path)
+                value_source = "source_path"
+            logger.info(
+                "[REPORT NATIVE RESOLVE] report=%s calculation=%s code=%s label=%s path=%s source=%s value=%r",
+                report.id,
+                calculation.id,
+                normalized_code,
+                code_obj.nombre,
+                code_obj.source_path,
+                value_source if value is not None else "unresolved",
+                value,
+            )
+            print(
+                f"[REPORT NATIVE DEBUG] code={normalized_code} label={code_obj.nombre!r} "
+                f"source_path={code_obj.source_path!r} source={value_source} value={value!r}",
+                flush=True,
+            )
+            if isinstance(value, dict):
+                media_url = value.get("url")
+                storage_path = value.get("storage_path")
+                if not media_url and storage_path:
+                    media_url = s3_service.generate_presigned_url(storage_path)
+                if media_url:
+                    html_content = html_content.replace(
+                        normalized_code,
+                        f'<img src="{media_url}" alt="{html.escape(code_obj.nombre or normalized_code)}" style="max-width:100%;height:auto;display:block;margin:0 auto;" />',
+                    )
+                    continue
+            if code_obj.template_code_image and code_obj.template_code_image.storage_path:
+                media_url = s3_service.generate_presigned_url(
+                    code_obj.template_code_image.storage_path
+                )
+                html_content = html_content.replace(
+                    normalized_code,
+                    f'<img src="{media_url}" alt="{html.escape(code_obj.nombre or normalized_code)}" style="max-width:100%;height:auto;display:block;margin:0 auto;" />',
+                )
+                continue
+            if value is not None:
+                if code_obj.source_format == "percent" and isinstance(value, (int, float)):
+                    value = f"{value * 100:.2f}%"
+                html_content = html_content.replace(
+                    normalized_code,
+                    html.escape(str(_format_native_value(value))),
+                )
+
+        template_codes = []
 
     def _is_image_code(code_obj: TemplateCode) -> bool:
         return (
             code_obj.template_code_image_id is not None
             or code_obj.template_code_image is not None
         )
-
-    # 1. Separar códigos encontrados en el HTML (Textos vs Gráficos)
-    text_codes = []
-    image_codes = []
-
-    for code_obj in template_codes:
-        normalized_code = _normalise_code(code_obj.code)
-
-        if normalized_code not in html_content:
-            continue
-
-        if _is_image_code(code_obj):
-            image_codes.append((normalized_code, code_obj))
-        else:
-            text_codes.append((normalized_code, code_obj))
-
-    # 2. PROCESAMIENTO DE GRÁFICOS
-    for normalized_code, code_obj in image_codes:
-        if not code_obj.hoja or not code_obj.nombre:
-            html_content = html_content.replace(
-                normalized_code,
-                f"<p><em>[Configuración incompleta: {normalized_code}]</em></p>",
-            )
-            continue
-
-        try:
-            base64_chart = await onedrive_service.get_excel_chart_image(
-                item_id=item_id,
-                sheet_name=code_obj.hoja,
-                chart_name=code_obj.nombre,
-                session_id=session_id,
-            )
-            if base64_chart:
-                img_tag = f'<img src="data:image/png;base64,{base64_chart}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />'
-                html_content = html_content.replace(normalized_code, img_tag)
-            else:
-                html_content = html_content.replace(
-                    normalized_code,
-                    f"<p><em>[Gráfico vacio: {code_obj.nombre}]</em></p>",
-                )
-        except Exception as e:
-            logger.error(f"Error procesando grafico {normalized_code}: {e}")
-            html_content = html_content.replace(
-                normalized_code, f"<p><em>[Fallo al cargar: {code_obj.nombre}]</em></p>"
-            )
-
-    # 3. PROCESAMIENTO DE TEXTOS EN BATCH
-    if text_codes:
-        read_requests = []
-        mapping = {}  # req_id -> (normalized_code, code_obj)
-        req_id = 1
-        user_email = onedrive_service.config.user_email
-
-        # Armar el payload de peticiones para Graph API
-        for normalized_code, code_obj in text_codes:
-            if not code_obj.hoja or not code_obj.coordinate:
-                html_content = html_content.replace(
-                    normalized_code,
-                    f"<p><em>[Configuración incompleta: {normalized_code}]</em></p>",
-                )
-                continue
-
-            mapping[str(req_id)] = (normalized_code, code_obj)
-
-            # URL relativa requerida por Microsoft Graph para $batch
-            url = f"/users/{user_email}/drive/items/{item_id}/workbook/worksheets('{quote(code_obj.hoja)}')/range(address='{quote(code_obj.coordinate)}')"
-
-            read_requests.append(
-                {
-                    "id": str(req_id),
-                    "method": "GET",
-                    "url": url,
-                    "headers": {"workbook-session-id": session_id}
-                    if session_id
-                    else {},
-                }
-            )
-            req_id += 1
-
-        # Ejecutar peticiones en lotes de 20 simultáneamente
-        if read_requests:
-            chunks = [
-                read_requests[i : i + 20] for i in range(0, len(read_requests), 20)
-            ]
-            batch_tasks = [onedrive_service.execute_batch(chunk) for chunk in chunks]
-            batch_results = await asyncio.gather(*batch_tasks)
-
-            # Reemplazar resultados en el HTML
-            for chunk_responses in batch_results:
-                for resp in chunk_responses:
-                    request_id = resp.get("id")
-                    if not request_id or request_id not in mapping:
-                        continue
-
-                    norm_code, c_obj = mapping[request_id]
-                    rendered_value = None
-
-                    if resp.get("status") == 200:
-                        body = resp.get("body", {})
-                        text_block = body.get("text")
-                        values_block = body.get("values")
-
-                        # Prioriza texto renderizado (text), fallback a crudo (values)
-                        if (
-                            isinstance(text_block, list)
-                            and text_block
-                            and isinstance(text_block[0], list)
-                            and text_block[0]
-                        ):
-                            rendered_value = text_block[0][0]
-                        elif (
-                            isinstance(values_block, list)
-                            and values_block
-                            and isinstance(values_block[0], list)
-                            and values_block[0]
-                        ):
-                            rendered_value = values_block[0][0]
-
-                    if rendered_value is None or str(rendered_value).strip() == "":
-                        logger.warning(
-                            "Empty report template value report_id=%s code=%s sheet=%s "
-                            "coordinate=%s status=%s body=%s",
-                            report.id,
-                            norm_code,
-                            c_obj.hoja,
-                            c_obj.coordinate,
-                            resp.get("status"),
-                            resp.get("body"),
-                        )
-                        html_content = html_content.replace(
-                            norm_code, f"<p><em>[Sin valor: {c_obj.nombre}]</em></p>"
-                        )
-                    else:
-                        html_content = html_content.replace(
-                            norm_code, str(rendered_value)
-                        )
 
     html_content = _sanitize_text(html_content)
     comparables_html = _comparables_table_html(calculation_data)
@@ -1034,13 +964,6 @@ async def generate_report_pdf(
     #         delete_temp_file(lock_path)
 
     background_tasks.add_task(delete_temp_file, temp_path)
-    if session_id:
-        background_tasks.add_task(
-            onedrive_service._close_workbook_session,
-            item_id,
-            session_id,
-        )
-
     return FileResponse(
         temp_path,
         media_type="application/pdf",

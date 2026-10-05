@@ -103,6 +103,8 @@ class AWSS3Service:
 
             region = settings.AWS_REGION_NAME
             file_url = f"https://{self.bucket_name}.s3.{region}.amazonaws.com/{object_key}"
+            logger.info("[S3] ✅ upload_file recibido key=%s bucket=%s", object_key, self.bucket_name)
+            print(f"[S3] ✅ upload_file recibido key={object_key} bucket={self.bucket_name}", flush=True)
 
             return {
                 "file_url": file_url,
@@ -120,6 +122,25 @@ class AWSS3Service:
             raise Exception(f"Revisa credenciales de S3 (boto3.client): {e}")
         finally:
             file.file.close()
+
+    def upload_bytes(self, content: bytes, filename: str, folder: str, content_type: str) -> dict:
+        """Sube bytes directamente sin depender de UploadFile."""
+        self._ensure_client()
+        object_key = f"{self.base_prefix}/{folder}/{filename}"
+        self.s3_client.upload_fileobj(
+            BytesIO(content),
+            self.bucket_name,
+            object_key,
+            ExtraArgs={"ContentType": content_type},
+        )
+        region = settings.AWS_REGION_NAME
+        file_url = f"https://{self.bucket_name}.s3.{region}.amazonaws.com/{object_key}"
+        logger.info("[S3] ✅ upload_bytes recibido key=%s bytes=%s bucket=%s", object_key, len(content), self.bucket_name)
+        print(f"[S3] ✅ upload_bytes recibido key={object_key} bytes={len(content)} bucket={self.bucket_name}", flush=True)
+        return {
+            "file_url": file_url,
+            "object_key": object_key,
+        }
 
     def upload_image(self, file: UploadFile, folder: str = "uploads") -> dict:
         """
@@ -204,12 +225,16 @@ class AWSS3Service:
         try:
             self._ensure_client()
             self.s3_client.delete_object(Bucket=self.bucket_name, Key=object_key)
+            logger.info("[S3] 🗑️ delete_file eliminado key=%s bucket=%s", object_key, self.bucket_name)
+            print(f"[S3] 🗑️ delete_file eliminado key={object_key} bucket={self.bucket_name}", flush=True)
             return True
         except ClientError as e:
             logger.error(f"Error eliminando archivo de S3: {e}")
+            print(f"[S3] ❌ delete_file error key={object_key} error={e}", flush=True)
             return False
         except Exception as e:
             logger.warning(f"S3 no disponible para eliminar {object_key}: {e}")
+            print(f"[S3] ❌ delete_file no disponible key={object_key} error={e}", flush=True)
             return False
 
     def download_file_bytes(self, object_key: str) -> bytes:

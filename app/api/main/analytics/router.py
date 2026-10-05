@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.analytics import AnalyticsSession, AnalyticsPageView, AnalyticsEvent
 from app.models.main import Calculation, CalculationType
-from app.services.valora.recommender import read_valora_recommendations
+from app.services.valora.recommender import recommend_valora_from_payload
 from app.schemas.analytics import (
     TrackPayload,
     AnalyticsSessionCreate,
@@ -42,11 +43,17 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
         return normalize_label(value).casefold()
 
     def canonical_label(value: object) -> str:
+        # Se conserva el texto tal como lo ingresó el usuario (solo trim).
+        # La agrupación insensible a mayúsculas la hace normalize_key.
         label = normalize_label(value)
         if not label:
             return "Otro"
-        parts = [part.capitalize() for part in label.casefold().split()]
-        return " ".join(parts)
+        return label
+
+    # Audiencias válidas: "specialist" (formulario anterior) y
+    # "trabajo" / "estudiante" (formulario nuevo motivo → sector → cargo).
+    trabajador_audiences = {"specialist", "trabajo"}
+    valid_audiences = trabajador_audiences | {"estudiante"}
 
     unique_devices = set()
     latest_by_device: dict[str, tuple] = {}
@@ -55,7 +62,7 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
             continue
         device_id = str(metadata.get("device_id") or "").strip()
         audience = str(metadata.get("audience") or "").strip().lower()
-        if not device_id or audience not in {"specialist"}:
+        if not device_id or audience not in valid_audiences:
             continue
         unique_devices.add(device_id)
         prev = latest_by_device.get(device_id)
@@ -63,24 +70,90 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
             latest_by_device[device_id] = (timestamp, metadata)
 
     total_devices = len(unique_devices)
-    audience_counts = {"Especialistas": total_devices, "Empresas": 0}
+    trabajadores_total = sum(
+        1
+        for _, (_, metadata) in latest_by_device.items()
+        if str(metadata.get("audience") or "").strip().lower()
+        in trabajador_audiences
+    )
+    estudiantes_total = total_devices - trabajadores_total
+    audience_counts = {
+        "Trabajadores": trabajadores_total,
+        "Estudiantes": estudiantes_total,
+    }
     role_counts: dict[str, dict[str, object]] = {}
     company_counts: dict[str, dict[str, object]] = {}
+    sector_counts: dict[str, dict[str, object]] = {}
+    cargo_counts: dict[str, dict[str, object]] = {}
+    especialidad_counts: dict[str, dict[str, object]] = {}
     for device_id, (timestamp, metadata) in latest_by_device.items():
-        raw_role = canonical_label(metadata.get("role"))
-        raw_company = canonical_label(metadata.get("company") or metadata.get("company_name"))
-        role_key = normalize_key(raw_role)
-        company_key = normalize_key(raw_company)
-        role_entry = role_counts.setdefault(role_key, {"label": raw_role, "count": 0})
-        company_entry = company_counts.setdefault(company_key, {"label": raw_company, "count": 0})
-        role_entry["label"] = role_entry["label"] or raw_role
-        company_entry["label"] = company_entry["label"] or raw_company
+        audience = str(metadata.get("audience") or "").strip().lower()
+        if audience not in trabajador_audiences:
+            # Estudiantes: solo se cuentan si informaron especialidad
+            # (paso nuevo del formulario). Los eventos del formulario
+            # anterior, sin especialidad, se omiten en vez de agruparse
+            # en "Otro".
+            raw_especialidad = normalize_label(metadata.get("especialidad"))
+            if not raw_especialidad:
+                continue
+            especialidad_key = normalize_key(raw_especialidad)
+            especialidad_entry = especialidad_counts.setdefault(
+                especialidad_key, {"label": raw_especialidad, "count": 0}
+            )
+            especialidad_entry["label"] = (
+                especialidad_entry["label"] or raw_especialidad
+            )
+            especialidad_entry["count"] = int(especialidad_entry["count"]) + 1
+            continue
+        # Claves nuevas (sector/cargo) con fallback a las anteriores
+        # (company/role) para los eventos del formulario viejo.
+        raw_sector = canonical_label(
+            metadata.get("sector")
+            or metadata.get("company")
+            or metadata.get("company_name")
+        )
+        raw_cargo = canonical_label(metadata.get("cargo") or metadata.get("role"))
+        sector_key = normalize_key(raw_sector)
+        cargo_key = normalize_key(raw_cargo)
+        sector_entry = sector_counts.setdefault(
+            sector_key, {"label": raw_sector, "count": 0}
+        )
+        cargo_entry = cargo_counts.setdefault(
+            cargo_key, {"label": raw_cargo, "count": 0}
+        )
+        sector_entry["label"] = sector_entry["label"] or raw_sector
+        cargo_entry["label"] = cargo_entry["label"] or raw_cargo
+        sector_entry["count"] = int(sector_entry["count"]) + 1
+        cargo_entry["count"] = int(cargo_entry["count"]) + 1
+        # Compatibilidad: los campos históricos siguen poblándose.
+        role_entry = role_counts.setdefault(
+            cargo_key, {"label": raw_cargo, "count": 0}
+        )
+        company_entry = company_counts.setdefault(
+            sector_key, {"label": raw_sector, "count": 0}
+        )
+        role_entry["label"] = role_entry["label"] or raw_cargo
+        company_entry["label"] = company_entry["label"] or raw_sector
         role_entry["count"] = int(role_entry["count"]) + 1
         company_entry["count"] = int(company_entry["count"]) + 1
 
-    audience_counts["Empresas"] = total_devices
+    def build_top_items(
+        counts: dict[str, dict[str, object]], denominator: int
+    ) -> list:
+        return [
+            TopItem(
+                label=value["label"],
+                count=int(value["count"]),
+                percentage=round(
+                    int(value["count"]) / max(denominator, 1) * 100, 1
+                ),
+            )
+            for _, value in sorted(
+                counts.items(),
+                key=lambda item: (-int(item[1]["count"]), item[1]["label"]),
+            )
+        ]
 
-    specialist_total = audience_counts["Especialistas"]
     audiences = [
         TopItem(
             label=label,
@@ -89,32 +162,99 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
         )
         for label, count in audience_counts.items()
     ]
-    specialist_roles = [
-        TopItem(
-            label=value["label"],
-            count=int(value["count"]),
-            percentage=round(int(value["count"]) / max(specialist_total, 1) * 100, 1),
-        )
-        for _, value in sorted(
-            role_counts.items(), key=lambda item: (-int(item[1]["count"]), item[1]["label"])
-        )
-    ]
-    company_names = [
-        TopItem(
-            label=value["label"],
-            count=int(value["count"]),
-            percentage=round(int(value["count"]) / max(audience_counts["Empresas"], 1) * 100, 1),
-        )
-        for _, value in sorted(
-            company_counts.items(), key=lambda item: (-int(item[1]["count"]), item[1]["label"])
-        )
-    ]
+    denominator = max(trabajadores_total, 1)
+    # Porcentajes de especialidad sobre los estudiantes que sí la
+    # informaron, no sobre el total de estudiantes.
+    especialidades_denominator = max(
+        sum(int(value["count"]) for value in especialidad_counts.values()), 1
+    )
+    specialist_roles = build_top_items(role_counts, denominator)
+    company_names = build_top_items(company_counts, denominator)
+    sectors = build_top_items(sector_counts, denominator)
+    cargos = build_top_items(cargo_counts, denominator)
+    especialidades = build_top_items(especialidad_counts, especialidades_denominator)
     return OccupationProfileMetrics(
         total_devices=total_devices,
         audiences=audiences,
         specialist_roles=specialist_roles,
         company_names=company_names,
+        sectors=sectors,
+        cargos=cargos,
+        especialidades=especialidades,
     )
+
+
+def normalize_utm(value: object) -> Optional[str]:
+    text = str(value or "").strip().lower()
+    if not text:
+        return None
+    # Códigos opacos del generador de links (md5 "proideas-utm:<id>").
+    # Se resuelven a la plataforma real para que la atribución siga legible.
+    return UTM_HASH_TO_SOURCE.get(text, text)
+
+
+UTM_HASH_TO_SOURCE = {
+    "476a655311a802792c48a559228694df": "linkedin",
+    "ad4f8d797ed88637758ec9dcef2183fe": "whatsapp",
+    "dfe1dbd607948ec62198cc531db1aa21": "facebook",
+    "34003e7d0dab8b22b2868feb7ad2ccf4": "youtube",
+    "f26869a21dcda4c0136a3904ef31f8ec": "instagram",
+    "6f109b4d8b401902aa7496e996d18ff4": "tiktok",
+    "1295949cec8ccaec602cfb0cd83c07fe": "x",
+    "a454df4840d08a266c332a0e20012e4a": "telegram",
+}
+
+
+UTM_SOURCE_LABELS = {
+    "linkedin": "LinkedIn",
+    "youtube": "YouTube",
+    "facebook": "Facebook",
+    "instagram": "Instagram",
+    "tiktok": "TikTok",
+    "google": "Google",
+    "bing": "Bing",
+    "whatsapp": "WhatsApp",
+    "twitter": "X (Twitter)",
+    "x": "X (Twitter)",
+    "telegram": "Telegram",
+}
+
+
+def prettify_traffic_source(value: object) -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return "Directo"
+    return UTM_SOURCE_LABELS.get(text, text)
+
+
+REFERRER_SOURCE_DOMAINS = (
+    ("linkedin.", "LinkedIn"),
+    ("youtu", "YouTube"),
+    ("facebook.", "Facebook"),
+    ("fb.com", "Facebook"),
+    ("instagram.", "Instagram"),
+    ("tiktok.", "TikTok"),
+    ("google.", "Google"),
+    ("bing.", "Bing"),
+    ("whatsapp", "WhatsApp"),
+    ("twitter.", "X (Twitter)"),
+    ("x.com", "X (Twitter)"),
+)
+
+
+def traffic_source_from_referrer(referrer: object) -> str:
+    """Respaldo cuando la sesión no trae UTM: mapea el dominio del referrer."""
+    text = str(referrer or "").strip().lower()
+    if not text:
+        return "Directo"
+    try:
+        host = urlparse(text).hostname or text
+    except Exception:
+        host = text
+    for domain, label in REFERRER_SOURCE_DOMAINS:
+        if domain in host:
+            return label
+    return "Otros"
 
 
 def now_lima() -> datetime:
@@ -238,6 +378,7 @@ async def track_event(request: Request, payload: TrackPayload, db: Session = Dep
             browser=payload.browser,
             entry_page=payload.page_path,
             referrer=payload.referrer,
+            utm_source=normalize_utm(payload.utm_source),
         )
         session = AnalyticsSession(**session_data.model_dump())
         session.start_time = now_lima()
@@ -589,6 +730,42 @@ def get_dashboard(
     ).all()
     browsers = [TopItem(label=b[0] or "Unknown", count=b[1], percentage=round(b[1] / max(total_sessions, 1) * 100, 1)) for b in browsers_result]
 
+    # Traffic sources: sesiones por origen de llegada (UTM con fallback
+    # al dominio del referrer). Atribución first-touch: el UTM se guarda
+    # una sola vez al crear la sesión.
+    source_counts: dict[str, int] = {}
+    source_rows = db.execute(
+        select(AnalyticsSession.utm_source, func.count(AnalyticsSession.id))
+        .where(AnalyticsSession.start_time >= since)
+        .where(AnalyticsSession.utm_source.isnot(None))
+        .group_by(AnalyticsSession.utm_source)
+    ).all()
+    for utm_source, count in source_rows:
+        label = prettify_traffic_source(utm_source)
+        source_counts[label] = source_counts.get(label, 0) + count
+    ref_rows = db.execute(
+        select(AnalyticsSession.referrer, func.count(AnalyticsSession.id))
+        .where(AnalyticsSession.start_time >= since)
+        .where(AnalyticsSession.utm_source.is_(None))
+        .where(AnalyticsSession.referrer.isnot(None))
+        .group_by(AnalyticsSession.referrer)
+    ).all()
+    for referrer, count in ref_rows:
+        label = traffic_source_from_referrer(referrer)
+        source_counts[label] = source_counts.get(label, 0) + count
+    direct_count = db.execute(
+        select(func.count(AnalyticsSession.id))
+        .where(AnalyticsSession.start_time >= since)
+        .where(AnalyticsSession.utm_source.is_(None))
+        .where(AnalyticsSession.referrer.is_(None))
+    ).scalar() or 0
+    if direct_count:
+        source_counts["Directo"] = source_counts.get("Directo", 0) + direct_count
+    traffic_sources = [
+        TopItem(label=label, count=count, percentage=round(count / max(total_sessions, 1) * 100, 1))
+        for label, count in sorted(source_counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
     # Hourly distribution (por page view timestamp, no session start — refleja actividad real)
     hourly_result = db.execute(
         select(func.hour(AnalyticsPageView.timestamp), func.count(AnalyticsPageView.id))
@@ -656,6 +833,7 @@ def get_dashboard(
         daily_distribution=daily,
         pages=pages,
         sessions_over_time=sessions_over_time,
+        traffic_sources=traffic_sources,
         kapital_funnel=CalculationFunnel(
             users_started=users_started,
             activation_rate=activation_rate,
@@ -673,53 +851,11 @@ def get_dashboard(
     )
 
 
-@router.get("/valora-recommendations/{calculation_id}")
-async def get_valora_recommendations(
-    calculation_id: int, db: Session = Depends(get_db)
-):
-    """
-    Devuelve las tasas recomendadas para el módulo de sensibilidad de Valora
-    leyendo directamente la copia de trabajo en Excel Online.
-    """
-    calculation = db.get(Calculation, calculation_id)
-    if not calculation:
-        raise HTTPException(status_code=404, detail="Calculation not found")
-
-    if calculation.type != CalculationType.VALORA:
-        raise HTTPException(
-            status_code=400, detail="Solo disponible para cálculos Valora"
-        )
-
-    data = calculation.data or {}
-    file_meta = data.get("file") or {}
-    item_id = file_meta.get("onedrive_item_id")
-    session_id = data.get("active_session_id")
-
-    if not item_id:
-        raise HTTPException(
-            status_code=400, detail="No se encontró el archivo de trabajo (onedrive_item_id)"
-        )
-
-    logger.info(
-        f"[VALORA RECOMMENDATIONS] calculation_id={calculation_id}, "
-        f"item_id={item_id}, session_id={session_id}"
-    )
-
+@router.post("/valora-recommendations")
+async def post_valora_recommendations(payload: dict, db: Session = Depends(get_db)):
+    """Recomendaciones para cálculos nativos sin depender de archivos persistidos."""
     try:
-        result = await read_valora_recommendations(
-            item_id,
-            session_id=session_id,
-            calculation_data=calculation.data,
-            db=db,
-        )
-        logger.info(
-            f"[VALORA RECOMMENDATIONS] Recomendaciones obtenidas exitosamente para calculation_id={calculation_id}"
-        )
-        return result
+        return await recommend_valora_from_payload(payload, db=db)
     except Exception as e:
-        logger.exception(
-            f"[VALORA RECOMMENDATIONS] Error obteniendo recomendaciones: {e}"
-        )
-        raise HTTPException(
-            status_code=502, detail="Error leyendo recomendaciones del Excel"
-        )
+        logger.exception("[VALORA RECOMMENDATIONS] Error en payload nativo: %s", e)
+        raise HTTPException(status_code=502, detail="Error generando recomendaciones Valora")

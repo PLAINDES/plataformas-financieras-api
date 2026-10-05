@@ -15,6 +15,7 @@ class AnalyticsSessionCreate(BaseModel):
     browser: Optional[str] = Field(None, max_length=50)
     entry_page: Optional[str] = Field(None, max_length=255)
     referrer: Optional[str] = Field(None, max_length=500)
+    utm_source: Optional[str] = Field(None, max_length=100)
 
 
 class AnalyticsSessionUpdate(BaseModel):
@@ -77,6 +78,7 @@ class TrackPayload(BaseModel):
     os: Optional[str] = Field(None, max_length=50)
     browser: Optional[str] = Field(None, max_length=50)
     referrer: Optional[str] = Field(None, max_length=500)
+    utm_source: Optional[str] = Field(None, max_length=100)
     event_metadata: Optional[Dict[str, Any]] = None
 
 
@@ -119,6 +121,9 @@ class OccupationProfileMetrics(BaseModel):
     audiences: List[TopItem]
     specialist_roles: List[TopItem]
     company_names: List[TopItem]
+    sectors: List[TopItem] = []
+    cargos: List[TopItem] = []
+    especialidades: List[TopItem] = []
 
 
 class DashboardData(BaseModel):
@@ -126,6 +131,7 @@ class DashboardData(BaseModel):
     devices: List[TopItem]
     cities: List[TopItem]
     browsers: List[TopItem]
+    traffic_sources: List[TopItem] = []
     hourly_distribution: List[TopItem]
     daily_distribution: List[TopItem]
     pages: List[TopItem]

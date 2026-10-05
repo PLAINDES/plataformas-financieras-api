@@ -13,7 +13,7 @@ from app.services.valora.gemini_client import call_gemini
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """Analista financiero DCF. Estima 3 tasas primer período proyección usando todo el contexto.
+SYSTEM_PROMPT = """Analista financiero DCF. Estima 5 parámetros de proyección usando todo el contexto.
 
 CONTEXTO:
 {context}
@@ -22,6 +22,8 @@ TASAS (decimal, 0.10=10%):
 1. forecast_ingresos: crecimiento ingresos/ventas.
 2. forecast_fde: crecimiento FDE/FCF.
 3. crecimiento_perpetuo: crecimiento perpetuo largo plazo FDE.
+4. capex_income_rate: CAPEX / ingresos del primer período proyectado.
+5. cto_income_rate: CTO / ingresos del primer período proyectado.
 
 REGLAS:
 - Partir de CAGR/YoY históricos.
@@ -36,7 +38,9 @@ JSON EXACTO, sin texto fuera:
 {{
   "forecast_ingresos": {{"value": 0.12, "rationale": "...", "confidence": "medium", "suggested_range": {{"min": 0.08, "max": 0.16}}}},
   "forecast_fde": {{"value": 0.10, "rationale": "...", "confidence": "medium", "suggested_range": {{"min": 0.06, "max": 0.14}}}},
-  "crecimiento_perpetuo": {{"value": 0.025, "rationale": "...", "confidence": "high", "suggested_range": {{"min": 0.015, "max": 0.035}}}}
+  "crecimiento_perpetuo": {{"value": 0.025, "rationale": "...", "confidence": "high", "suggested_range": {{"min": 0.015, "max": 0.035}}}},
+  "capex_income_rate": {{"value": 0.03, "rationale": "...", "confidence": "medium", "suggested_range": {{"min": 0.01, "max": 0.08}}}},
+  "cto_income_rate": {{"value": 0.22, "rationale": "...", "confidence": "medium", "suggested_range": {{"min": 0.05, "max": 0.60}}}}
 }}"""
 
 
@@ -44,6 +48,8 @@ RATE_LIMITS = {
     "forecast_ingresos": {"min": -0.50, "max": 1.00},
     "forecast_fde": {"min": -0.50, "max": 1.00},
     "crecimiento_perpetuo": {"min": -0.05, "max": 0.10},
+    "capex_income_rate": {"min": 0.00, "max": 1.00},
+    "cto_income_rate": {"min": -1.00, "max": 3.00},
 }
 
 
@@ -168,7 +174,7 @@ async def estimate_valora_rates(context: dict[str, Any]) -> dict[str, Any] | Non
     rates: dict[str, Any] = {}
     any_valid = False
 
-    for key in ("forecast_ingresos", "forecast_fde", "crecimiento_perpetuo"):
+    for key in ("forecast_ingresos", "forecast_fde", "crecimiento_perpetuo", "capex_income_rate", "cto_income_rate"):
         entry = parsed.get(key) or {}
         value = _validate_value(entry.get("value"), key)
         if value is not None:

@@ -152,6 +152,7 @@ def fill_valora_template(template_bytes: bytes, extracted: dict) -> bytes:
         "balance_general": extracted.get("balance_general") or table_to_source(extracted.get("balance_table")),
         "estado_resultados": extracted.get("estado_resultados") or table_to_source(extracted.get("results_table")),
     }
+
     write_section("balance_general", BALANCE_ROWS, balance_rows)
     write_section("estado_resultados", RESULTS_ROWS, result_rows)
 

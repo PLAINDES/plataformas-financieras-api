@@ -47,7 +47,7 @@ def _fix_subsectores_data(data: Any) -> Any:
     return data
 
 import pandas as pd
-from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -61,7 +61,7 @@ from app.models.main import (
     TemplateComplement,
 )
 from app.models.user import User
-from app.api.main.calculations.macros_service import get_default_or_latest_master_template
+from app.api.main.calculations.macros_service import get_default_or_latest_master_template, _enrich_input_with_macros, get_default_master_template_key
 from app.schemas.main import (
     AppConfigurationUpdate,
     TemplateComplementCreate,
@@ -80,8 +80,36 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/main", tags=["Main"])
 
 
+def _normalize_sensitivity_subsector(sens: Any) -> Any:
+    """Garantiza passthrough de subsector para B20/Custom.
+
+    Si la sensibilidad trae beta pero sin subsector (beta manual), fija
+    subsector/subsector_sensibilizacion en "" para que el web-service
+    escriba el fallback "Custom" en WACC!B20 en vez de omitir la key.
+    """
+    items = sens if isinstance(sens, list) else [sens]
+    out: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        norm = dict(item)
+        has_beta = any(norm.get(k) not in (None, "") for k in (
+            "beta_desapalancado", "beta_subsector", "beta_subsector_custom",
+            "beta_unlevered", "beta_unlevered_industry", "beta_unlevered_sensitivity",
+        ))
+        if has_beta:
+            if norm.get("subsector") is None:
+                norm["subsector"] = norm.get("subsector_sensibilizacion") or ""
+            if norm.get("subsector_sensibilizacion") is None:
+                norm["subsector_sensibilizacion"] = norm.get("subsector") or ""
+        out.append(norm)
+    if isinstance(sens, list):
+        return out
+    return out[0] if out else sens
+
+
 @router.post("/valora/calculate-excel")
-async def calculate_valora_with_excel(payload: dict):
+async def calculate_valora_with_excel(payload: dict, db: Session = Depends(get_db)):
     """Proxy seguro al servicio Windows que ejecuta Excel COM."""
     input_data = dict(payload.get("input") or payload)
     aliases = {
@@ -96,6 +124,16 @@ async def calculate_valora_with_excel(payload: dict):
     for source, target in aliases.items():
         if input_data.get(target) in (None, "") and input_data.get(source) not in (None, ""):
             input_data[target] = input_data[source]
+    # Enriquecimiento macro DESDE BD (mismo que Kapital): rf/prima/tax/embi/
+    # damodaran/ir/riesgo para el bloque WACC. Va ANTES del recorte de fecha
+    # porque RF/EMBI buscan por fecha exacta ("31/12/2025").
+    try:
+        _enrich_input_with_macros(db, input_data)
+    except Exception as exc:
+        logger.exception("[VALORA PROXY] macro enrichment failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Error enriqueciendo input con datos macro de BD") from exc
+    macro_keys = [k for k in ("rf", "embi", "prima", "tax", "damodaran", "ir", "riesgo") if isinstance(input_data.get(k), dict) and input_data.get(k)]
+    logger.info(f"[VALORA PROXY] macros inyectadas: {macro_keys} fecha={input_data.get('fecha')} pais={input_data.get('pais')} industria={input_data.get('industria')}")
     # sanitizar "" -> None y strings numericos -> float
     for key in ["costo_deuda","porcentaje_deuda","porcentaje_capital","beta_desapalancado","revenue_forecast_rate","fdc_forecast_rate","perpetual_growth_rate","tasa_libre_riesgo"]:
         v = input_data.get(key)
@@ -136,11 +174,24 @@ async def calculate_valora_with_excel(payload: dict):
             orig = (payload.get("input") or payload).get(tbl)
             if orig is not None:
                 input_data[tbl] = orig
-    request_payload = {"input": input_data, "forecast_method": "ETS", "use_template": True, "return_details": True}
+    template_key = get_default_master_template_key(db, (payload.get("input") or payload).get("user_id") if isinstance(payload.get("input"), dict) else payload.get("user_id"))
+    if template_key:
+        logger.info(f"[PROXY] plantilla predeterminada: {template_key}")
+    else:
+        logger.warning("[PROXY] sin plantilla predeterminada: el web-service usará la última subida")
+    # La sensibilidad debe reenviarse tal cual: sin ella el web-service solo
+    # calcula la base y el frontend pierde tabs/escenarios (parece "nuevo cálculo").
+    calculation_code = payload.get("calculation_code")
+    if not calculation_code and isinstance(payload.get("input"), dict):
+        calculation_code = payload["input"].get("calculation_code")
+    sens_raw = payload.get("sensitivity")
+    sens_raw = _normalize_sensitivity_subsector(sens_raw) if sens_raw else sens_raw
+    request_payload = {"input": input_data, "sensitivity": sens_raw, "forecast_method": "ETS", "use_template": True, "return_details": True, "template_s3_key": template_key, "calculation_code": calculation_code}
     url = f"{settings.WEB_SERVICE_URL.rstrip('/')}/api/v1/valora/calculate"
     headers = {"X-API-Key": settings.WEB_SERVICE_API_KEY} if settings.WEB_SERVICE_API_KEY else {}
     import json as _json
-    logger.info(f"[PROXY] -> {url} payload_keys={list(input_data.keys())} payload={_json.dumps(request_payload)[:2000]}")
+    logger.info(f"[PROXY] -> {url} calculation_code={calculation_code} sensitivity={_json.dumps(sens_raw)[:500] if sens_raw else 'None'} payload_keys={list(input_data.keys())}")
+    logger.info(f"[PROXY] -> full payload (truncated): {_json.dumps(request_payload)[:2000]}")
     try:
         async with httpx.AsyncClient(timeout=300) as client:
             response = await client.post(url, json=request_payload, headers=headers)
@@ -158,24 +209,51 @@ async def calculate_valora_with_excel(payload: dict):
         raise HTTPException(status_code=502, detail=f"Excel service unavailable: {exc}") from exc
 
 
-@router.get("/internal/active-master-template")
-def get_active_master_template(
-    db: Session = Depends(get_db),
-    api_key: str | None = Header(default=None, alias="X-API-Key"),
-):
-    """Returns the admin-selected master workbook to the Windows Excel service."""
-    configured_key = settings.WEB_SERVICE_API_KEY.strip()
-    if not configured_key or api_key != configured_key:
-        raise HTTPException(status_code=403, detail="Invalid internal service key")
-    template = get_default_or_latest_master_template(db)
-    if not template or not template.onedrive_item_id:
-        raise HTTPException(status_code=404, detail="No active master template is available")
-    return {
-        "id": template.id,
-        "name": template.nombre,
-        "onedrive_item_id": template.onedrive_item_id,
-        "filename": template.original_filename or template.onedrive_filename or "Valora_Template.xlsx",
-    }
+@router.post("/kapital/calculate-excel")
+async def calculate_kapital_with_excel(payload: dict, db: Session = Depends(get_db)):
+    """Proxy a financiera-web-service con enriquecimiento macro desde BD.
+
+    Reconexión del traslado a Excel nativo: inyecta los bloques de
+    complementos (rf->F6, prima->F7, tax->F8/F9, embi->F11, damodaran->D18:H18,
+    riesgo->H:J8-14, ir) en el input antes de reenviarlo al web-service, que
+    los escribe en la plantilla. F13/F14 siguen llegando del formulario
+    (tasa_impositiva/devaluacion).
+    """
+    input_data = dict(payload.get("input") or payload)
+    sensitivity = payload.get("sensitivity")
+    sensitivity = _normalize_sensitivity_subsector(sensitivity) if sensitivity else sensitivity
+    try:
+        _enrich_input_with_macros(db, input_data)
+    except Exception as exc:
+        logger.exception("[KAPITAL PROXY] macro enrichment failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Error enriqueciendo input con datos macro de BD") from exc
+    macro_keys = [k for k in ("rf", "embi", "prima", "tax", "damodaran", "ir", "riesgo") if isinstance(input_data.get(k), dict) and input_data.get(k)]
+    logger.info(f"[KAPITAL PROXY] macros inyectadas: {macro_keys} fecha={input_data.get('fecha')} pais={input_data.get('pais')} industria={input_data.get('industria')}")
+    template_key = get_default_master_template_key(db, payload.get("user_id"))
+    if template_key:
+        logger.info(f"[KAPITAL PROXY] plantilla predeterminada: {template_key}")
+    else:
+        logger.warning("[KAPITAL PROXY] sin plantilla predeterminada: el web-service usará la última subida")
+    request_payload = {"input": input_data, "sensitivity": sensitivity, "template_s3_key": template_key}
+    url = f"{settings.WEB_SERVICE_URL.rstrip('/')}/api/v1/kapital/calculate"
+    headers = {"X-API-Key": settings.WEB_SERVICE_API_KEY} if settings.WEB_SERVICE_API_KEY else {}
+    try:
+        async with httpx.AsyncClient(timeout=300) as client:
+            response = await client.post(url, json=request_payload, headers=headers)
+            response.raise_for_status()
+            result = response.json()
+            # Se devuelve el input enriquecido para que el frontend lo persista
+            # (trazabilidad de las macros usadas + refresh robusto).
+            if isinstance(result, dict):
+                result["enriched_input"] = input_data
+            return result
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:2000]
+        logger.error(f"[KAPITAL PROXY] upstream_status={exc.response.status_code} from web-service: {detail}")
+        raise HTTPException(status_code=502, detail=f"Excel service error: {detail}") from exc
+    except httpx.HTTPError as exc:
+        logger.error(f"[KAPITAL PROXY] HTTPError to web-service: {exc}")
+        raise HTTPException(status_code=502, detail=f"Excel service unavailable: {exc}") from exc
 
 
 def _get_latest_calculation_by_user_and_type(
