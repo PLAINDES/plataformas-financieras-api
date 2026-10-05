@@ -80,6 +80,34 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/main", tags=["Main"])
 
 
+def _normalize_sensitivity_subsector(sens: Any) -> Any:
+    """Garantiza passthrough de subsector para B20/Custom.
+
+    Si la sensibilidad trae beta pero sin subsector (beta manual), fija
+    subsector/subsector_sensibilizacion en "" para que el web-service
+    escriba el fallback "Custom" en WACC!B20 en vez de omitir la key.
+    """
+    items = sens if isinstance(sens, list) else [sens]
+    out: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        norm = dict(item)
+        has_beta = any(norm.get(k) not in (None, "") for k in (
+            "beta_desapalancado", "beta_subsector", "beta_subsector_custom",
+            "beta_unlevered", "beta_unlevered_industry", "beta_unlevered_sensitivity",
+        ))
+        if has_beta:
+            if norm.get("subsector") is None:
+                norm["subsector"] = norm.get("subsector_sensibilizacion") or ""
+            if norm.get("subsector_sensibilizacion") is None:
+                norm["subsector_sensibilizacion"] = norm.get("subsector") or ""
+        out.append(norm)
+    if isinstance(sens, list):
+        return out
+    return out[0] if out else sens
+
+
 @router.post("/valora/calculate-excel")
 async def calculate_valora_with_excel(payload: dict, db: Session = Depends(get_db)):
     """Proxy seguro al servicio Windows que ejecuta Excel COM."""
@@ -157,6 +185,7 @@ async def calculate_valora_with_excel(payload: dict, db: Session = Depends(get_d
     if not calculation_code and isinstance(payload.get("input"), dict):
         calculation_code = payload["input"].get("calculation_code")
     sens_raw = payload.get("sensitivity")
+    sens_raw = _normalize_sensitivity_subsector(sens_raw) if sens_raw else sens_raw
     request_payload = {"input": input_data, "sensitivity": sens_raw, "forecast_method": "ETS", "use_template": True, "return_details": True, "template_s3_key": template_key, "calculation_code": calculation_code}
     url = f"{settings.WEB_SERVICE_URL.rstrip('/')}/api/v1/valora/calculate"
     headers = {"X-API-Key": settings.WEB_SERVICE_API_KEY} if settings.WEB_SERVICE_API_KEY else {}
@@ -192,6 +221,7 @@ async def calculate_kapital_with_excel(payload: dict, db: Session = Depends(get_
     """
     input_data = dict(payload.get("input") or payload)
     sensitivity = payload.get("sensitivity")
+    sensitivity = _normalize_sensitivity_subsector(sensitivity) if sensitivity else sensitivity
     try:
         _enrich_input_with_macros(db, input_data)
     except Exception as exc:
