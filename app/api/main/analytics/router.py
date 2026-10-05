@@ -186,7 +186,23 @@ def build_occupation_profile_metrics(rows) -> OccupationProfileMetrics:
 
 def normalize_utm(value: object) -> Optional[str]:
     text = str(value or "").strip().lower()
-    return text or None
+    if not text:
+        return None
+    # Códigos opacos del generador de links (md5 "proideas-utm:<id>").
+    # Se resuelven a la plataforma real para que la atribución siga legible.
+    return UTM_HASH_TO_SOURCE.get(text, text)
+
+
+UTM_HASH_TO_SOURCE = {
+    "476a655311a802792c48a559228694df": "linkedin",
+    "ad4f8d797ed88637758ec9dcef2183fe": "whatsapp",
+    "dfe1dbd607948ec62198cc531db1aa21": "facebook",
+    "34003e7d0dab8b22b2868feb7ad2ccf4": "youtube",
+    "f26869a21dcda4c0136a3904ef31f8ec": "instagram",
+    "6f109b4d8b401902aa7496e996d18ff4": "tiktok",
+    "1295949cec8ccaec602cfb0cd83c07fe": "x",
+    "a454df4840d08a266c332a0e20012e4a": "telegram",
+}
 
 
 UTM_SOURCE_LABELS = {
